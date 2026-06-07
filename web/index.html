@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Хоккейный словарь · англ → рус</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="board">
+    <div class="v">v0.1 · спринт 1</div>
+    <div class="tag">Хоккейный словарь</div>
+    <h1>Англ → рус, по-человечески</h1>
+    <p>Утыкаешься в английский термин в материале или таблице — смотришь сюда и понимаешь. Без академизма.</p>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input
+      type="search"
+      id="search"
+      placeholder="Поиск по-русски или by English..."
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    >
+  </div>
+  <div class="search-count" id="search-count"></div>
+
+  <!-- Filter chips -->
+  <div class="legend">
+    <span class="chip active" data-filter="all"><span class="dot all"></span>Все</span>
+    <span class="chip" data-filter="stat"><span class="dot stat"></span>Статистика</span>
+    <span class="chip" data-filter="tactic"><span class="dot tactic"></span>Тактика</span>
+    <span class="chip" data-filter="rule"><span class="dot rule"></span>Правила</span>
+    <span class="chip" data-filter="position"><span class="dot position"></span>Позиции</span>
+  </div>
+
+  <!-- Terms (rendered by JS) -->
+  <div id="terms-container"></div>
+
+  <!-- Expert review section -->
+  <div id="expert-section">
+    <h2>
+      <span class="ic" style="background:var(--gold)">?</span>
+      На выверку с экспертом
+    </h2>
+    <p class="sub">Сленг и спорные термины — версии, которые требуют подтверждения живого специалиста. Не выдаём за факт.</p>
+    <div id="expert-container"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="foot">
+    hockey-platform · спринт 1 · данные в /data/terms.json<br>
+    Нашёл ошибку или знаешь термин лучше? → issues на GitHub
+  </div>
+
+</div>
+
+<!-- Fuse.js for fuzzy search -->
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
