@@ -36,8 +36,8 @@ let activeFilter = 'all';
 
 async function loadData() {
   const [terms, expert] = await Promise.all([
-    fetch('../data/terms.json').then(r => r.json()),
-    fetch('../data/expert_review.json').then(r => r.json())
+    fetch('./data/terms.json').then(r => r.json()),
+    fetch('./data/expert_review.json').then(r => r.json())
   ]);
   allTerms = terms;
   expertTerms = expert;
