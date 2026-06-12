@@ -22,3 +22,6 @@ node_modules/
 
 # Logs
 *.log
+
+# Бот: лог ненайденных запросов
+bot/missing_queries.log

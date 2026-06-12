@@ -1,0 +1,28 @@
+# systemd-юнит для хоккейного бота
+# Установка (один раз, на VPS):
+#   sudo cp deploy/hockey-bot.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now hockey-bot
+# Логи: journalctl -u hockey-bot -f
+
+[Unit]
+Description=Hockey Dictionary Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hockey
+WorkingDirectory=/opt/hockey-platform/bot
+ExecStart=/opt/hockey-platform/bot/venv/bin/python bot.py
+Restart=on-failure
+RestartSec=10
+
+# Безопасность: боту не нужно ничего, кроме своей папки
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/hockey-platform/bot
+
+[Install]
+WantedBy=multi-user.target

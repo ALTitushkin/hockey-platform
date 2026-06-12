@@ -6,6 +6,7 @@
 
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from telegram import Update
@@ -24,6 +25,17 @@ logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", le
 log = logging.getLogger("hockey-bot")
 
 TERMS = load_terms()
+MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
+
+
+def log_missing(query: str) -> None:
+    """Ненайденный запрос — сырьё для наполнения базы."""
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    try:
+        with MISSING_LOG.open("a", encoding="utf-8") as f:
+            f.write(f"{stamp}\t{query.strip()}\n")
+    except OSError:
+        log.warning("Не удалось записать missing_queries.log")
 
 HELP_TEXT = (
     "🏒 <b>Хоккейный словарь</b>\n\n"
@@ -49,6 +61,7 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.message.reply_text(format_card(term), parse_mode=ParseMode.HTML)
         return
 
+    log_missing(query)
     hints = suggest(query, TERMS)
     if hints:
         msg = "Не нашёл точного совпадения. Возможно, ты имел в виду:\n" + "\n".join(
