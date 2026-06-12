@@ -25,3 +25,6 @@ node_modules/
 
 # Бот: лог ненайденных запросов
 bot/missing_queries.log
+
+# VPS: deploy-ключи в домашней папке hockey
+.ssh/

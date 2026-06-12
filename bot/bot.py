@@ -1,7 +1,8 @@
-"""Telegram-бот хоккейного словаря.
+"""Telegram-бот хоккейного словаря. v0.3
 
 Запуск: BOT_TOKEN=<токен> python bot.py
 Или положи токен в bot/.env (BOT_TOKEN=...).
+Прод: VPS, systemd-юнит hockey-bot, автодеплой из main.
 """
 
 import logging
@@ -94,9 +95,4 @@ def main() -> None:
     app.add_handler(CommandHandler(["start", "help"], cmd_start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
 
-    log.info("Бот запущен, терминов в базе: %d", len(TERMS))
-    app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
+    log.info("Бот запущен, терминов в базе
