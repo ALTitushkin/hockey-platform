@@ -95,4 +95,9 @@ def main() -> None:
     app.add_handler(CommandHandler(["start", "help"], cmd_start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
 
-    log.info("Бот запущен, терминов в базе
+    log.info("Бот запущен, терминов в базе: %d", len(TERMS))
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
