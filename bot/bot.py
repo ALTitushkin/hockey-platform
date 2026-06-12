@@ -27,16 +27,23 @@ log = logging.getLogger("hockey-bot")
 
 TERMS = load_terms()
 MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
+QUERIES_LOG = Path(__file__).resolve().parent / "queries.log"
 
 
-def log_missing(query: str) -> None:
-    """Ненайденный запрос — сырьё для наполнения базы."""
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+def _append(path: Path, line: str) -> None:
     try:
-        with MISSING_LOG.open("a", encoding="utf-8") as f:
-            f.write(f"{stamp}\t{query.strip()}\n")
+        with path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
     except OSError:
-        log.warning("Не удалось записать missing_queries.log")
+        log.warning("Не удалось записать %s", path.name)
+
+
+def log_query(query: str, hit: bool) -> None:
+    """Все запросы (без user_id — только текст). Анализ раз в спринт, затем файл чистим."""
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    _append(QUERIES_LOG, f"{stamp}\t{'hit' if hit else 'miss'}\t{query.strip()[:200]}")
+    if not hit:
+        _append(MISSING_LOG, f"{stamp}\t{query.strip()[:200]}")
 
 HELP_TEXT = (
     "🏒 <b>Хоккейный словарь</b>\n"
@@ -81,12 +88,12 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.message.text
     results = search(query, TERMS)
+    log_query(query, hit=bool(results))
     if results:
         for term in results[:2]:
             await update.message.reply_text(format_card(term), parse_mode=ParseMode.HTML)
         return
 
-    log_missing(query)
     hints = suggest(query, TERMS)
     if hints:
         msg = "Не нашёл точного совпадения. Возможно, ты имел в виду:\n" + "\n".join(

@@ -28,3 +28,4 @@ bot/missing_queries.log
 
 # VPS: deploy-ключи в домашней папке hockey
 .ssh/
+bot/queries.log
