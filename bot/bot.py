@@ -51,6 +51,18 @@ HELP_TEXT = (
     "не нашёл — всё равно отправь, добавим."
 )
 
+HELP_SEARCH = (
+    "🔍 <b>Как искать</b>\n\n"
+    "Просто пришли термин сообщением — в любом виде:\n"
+    "  • по-английски: <code>forecheck</code>, <code>one-timer</code>\n"
+    "  • по-русски: <code>форчек</code>, <code>пятак</code>, <code>сухарь</code>\n"
+    "  • аббревиатурой: <code>xG</code>, <code>CF%</code>, <code>SHO</code>\n"
+    "  • даже с опечаткой: <code>корс</code> найдёт Corsi\n\n"
+    "Если найдётся несколько похожих — пришлю до двух карточек.\n"
+    "Не нашлось? Запрос сохранится, и термин появится в базе позже.\n\n"
+    "Категории: 📊 статистика · 🧩 тактика · 📏 правила · ⛸ позиции"
+)
+
 START_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")]]
 )
@@ -60,6 +72,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         HELP_TEXT, parse_mode=ParseMode.HTML, reply_markup=START_KEYBOARD
     )
+
+
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(HELP_SEARCH, parse_mode=ParseMode.HTML)
 
 
 async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -101,7 +117,8 @@ def main() -> None:
         raise SystemExit("Нет токена: задай переменную окружения BOT_TOKEN или создай bot/.env")
 
     app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler(["start", "help"], cmd_start))
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
 
     log.info("Бот запущен, терминов в базе: %d", len(TERMS))
