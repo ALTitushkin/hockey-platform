@@ -75,17 +75,26 @@ def suggest(query: str, terms: list[dict], limit: int = 3) -> list[str]:
     return difflib.get_close_matches(query.strip().lower(), all_keys, n=limit, cutoff=0.5)
 
 
+CATEGORY_EMOJI = {
+    "stat": "📊",
+    "tactic": "🧩",
+    "rule": "📏",
+    "position": "⛸",
+}
+
+
 def format_card(term: dict) -> str:
     """Карточка термина для Telegram (HTML-разметка)."""
-    lines = [f"<b>{term['en']}</b> · {term['ru']}"]
+    emoji = CATEGORY_EMOJI.get(term["category"], "🏒")
+    lines = [f"{emoji} <b>{term['en']}</b> — {term['ru']}"]
     meta = [CATEGORY_RU.get(term["category"], term["category"])]
     if term.get("abbr"):
-        meta.append(", ".join(term["abbr"]))
-    lines.append(f"<i>{' · '.join(meta)}</i>")
+        meta.append(" ".join(f"<code>{a}</code>" for a in term["abbr"]))
+    lines.append(f"<i>{meta[0]}</i>" + (f" · {meta[1]}" if len(meta) > 1 else ""))
     lines.append("")
     lines.append(term["definition"])
     if term.get("ru_slang"):
-        lines.append(f"\n💬 Сленг: {term['ru_slang']}")
+        lines.append(f"\n💬 <i>У нас говорят:</i> {term['ru_slang']}")
     if term.get("status") != "verified":
-        lines.append("\n⚠️ <i>Термин требует проверки экспертом — возможны неточности.</i>")
+        lines.append("\n⚠️ <i>Термин на выверке у эксперта — возможны неточности.</i>")
     return "\n".join(lines)

@@ -36,9 +36,9 @@ def main() -> None:
 
     print("Карточка:")
     card = format_card(search("рыбачок", TERMS)[0])
-    assert "требует проверки" in card, "unverified без плашки!"
+    assert "на выверке" in card, "unverified без плашки!"
     card = format_card(search("corsi", TERMS)[0])
-    assert "требует проверки" not in card, "verified с плашкой!"
+    assert "на выверке" not in card, "verified с плашкой!"
     print("  ok: плашка unverified работает")
 
     print(f"\nВсе тесты пройдены. Терминов в базе: {len(TERMS)}")

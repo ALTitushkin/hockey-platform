@@ -10,7 +10,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -39,19 +39,27 @@ def log_missing(query: str) -> None:
         log.warning("Не удалось записать missing_queries.log")
 
 HELP_TEXT = (
-    "🏒 <b>Хоккейный словарь</b>\n\n"
-    "Пришли термин — отвечу карточкой с объяснением.\n"
-    "Понимаю английский, русский и аббревиатуры:\n"
-    "  • <code>xG</code>\n"
-    "  • <code>корси</code>\n"
-    "  • <code>forecheck</code>\n\n"
-    f"В базе сейчас {len(TERMS)} терминов.\n"
-    "Полный словарь: altitushkin.github.io/hockey-platform"
+    "🏒 <b>Хоккейный словарь</b>\n"
+    "<i>от канала «Хоккейный Овертайм»</i>\n\n"
+    "Встретил незнакомый термин в статистике или разборе? "
+    "Пришли его мне — объясню по-человечески.\n\n"
+    "Понимаю любой формат:\n"
+    "  📊 <code>xG</code>, <code>CF%</code>, <code>PDO</code>\n"
+    "  🧩 <code>форчек</code>, <code>слот</code>, <code>цикл</code>\n"
+    "  🇬🇧 <code>breakaway</code>, <code>one-timer</code>\n\n"
+    f"В базе {len(TERMS)} терминов, пополняется от ваших запросов: "
+    "не нашёл — всё равно отправь, добавим."
+)
+
+START_KEYBOARD = InlineKeyboardMarkup(
+    [[InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")]]
 )
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(HELP_TEXT, parse_mode=ParseMode.HTML)
+    await update.message.reply_text(
+        HELP_TEXT, parse_mode=ParseMode.HTML, reply_markup=START_KEYBOARD
+    )
 
 
 async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -70,8 +78,9 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
     else:
         msg = (
-            "Такого термина в базе пока нет. 🤷\n"
-            "База пополняется — попробуй другой запрос или напиши /help."
+            "Такого термина в базе пока нет — но я его записал, "
+            "разберём и добавим. 📝\n"
+            "А пока попробуй другой запрос или /help."
         )
     await update.message.reply_text(msg)
 
