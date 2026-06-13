@@ -229,50 +229,74 @@ body::before {
   font-family: 'PT Mono', monospace; font-size: 10.5px;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--ink-soft); 
-/* ---------- Анонс раздела «История» ---------- */
-.history-teaser { margin-top: 30px; }
+
+/* ---------- Секция «История хоккея» ---------- */
+.history-teaser {
+  margin-top: 40px;
+  padding-bottom: 8px;
+}
 
 .history-card {
   display: block;
-  background: var(--card);
-  border: 1.5px solid var(--line);
-  border-left: 4px solid var(--ochre);
-  border-radius: 3px;
-  padding: 16px 20px;
   text-decoration: none;
   color: inherit;
-  transition: background 0.12s;
-  max-width: 640px;
-  margin: 0 auto;
+  border: 1.5px solid var(--line);
+  border-top: 5px solid var(--ochre);
+  border-radius: 3px;
+  background: var(--card);
+  padding: 22px 24px 20px;
+  transition: background 0.14s, box-shadow 0.14s;
+  position: relative;
 }
-.history-card:hover { background: #f5ede0; }
-.history-card__label {
+.history-card:hover {
+  background: #f6ede0;
+  box-shadow: 3px 3px 0 var(--ochre);
+}
+
+.history-card__eyebrow {
   font-family: 'PT Mono', monospace;
   font-size: 9.5px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--ochre);
   font-weight: 700;
-  margin-bottom: 6px;
-}
-.history-card__title {
-  font-family: 'Oswald', sans-serif;
-  font-weight: 600;
-  font-size: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
   margin-bottom: 8px;
 }
-.history-card__desc {
-  font-size: 13.5px;
-  color: var(--ink-soft);
-  line-height: 1.55;
-  margin-bottom: 10px;
-}
-.history-card__cta {
-  font-family: 'PT Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.12em;
+
+.history-card__title {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: clamp(22px, 4vw, 30px);
   text-transform: uppercase;
-  color: var(--steel);
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+.history-card__body {
+  font-family: 'PT Serif', serif;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+
+.history-card__cta {
+  display: inline-block;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #F1EAD9;
+  background: var(--navy);
+  border: 1.5px solid var(--navy);
+  border-radius: 3px;
+  padding: 7px 16px;
+  transition: background 0.12s;
+}
+.history-card:hover .history-card__cta {
+  background: var(--ochre);
+  border-color: var(--ochre);
 }
