@@ -252,4 +252,43 @@ async def handle_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await update.inline_query.answer(answers, cache_time=300)
 
-# ─── Bootstrap ──────────────────────────────────────────────
+# ─── Bootstrap ────────────────────────────────────────────────────────────────
+
+def _load_dotenv() -> None:
+    env = Path(__file__).resolve().parent / ".env"
+    if env.exists():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k.strip(), v.strip())
+
+
+async def _post_init(app: Application) -> None:
+    """После старта берём реальный username бота из Telegram — без хардкода."""
+    global BOT_USERNAME
+    me = await app.bot.get_me()
+    if me.username:
+        BOT_USERNAME = me.username
+    log.info(
+        "Бот запущен v0.6 (@%s), терминов: %d, глав истории: %d",
+        BOT_USERNAME, len(TERMS), len(HISTORY),
+    )
+
+
+def main() -> None:
+    _load_dotenv()
+    token = os.environ.get("BOT_TOKEN")
+    if not token:
+        raise SystemExit("Нет токена: задай переменную окружения BOT_TOKEN или создай bot/.env")
+
+    app = Application.builder().token(token).post_init(_post_init).build()
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(InlineQueryHandler(handle_inline))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
+
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
