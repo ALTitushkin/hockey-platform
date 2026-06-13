@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Истоки хоккея · Хоккейный словарь</title>
+<meta name="description" content="Откуда взялся хоккей на льду: от зимних игр с клюшкой до первой профессиональной лиги. Глава 1 исторического раздела.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+<style>
+  /* ── Дополнительные стили для статейной страницы ── */
+  .article-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .breadcrumb {
+    font-family: 'PT Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 20px;
+  }
+  .breadcrumb a { color: var(--steel); text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb span { margin: 0 6px; }
+
+  .article-header {
+    border-bottom: 4px double var(--line);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  .article-header .chapter-label {
+    font-family: 'PT Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ochre);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .article-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 6vw, 40px);
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 12px;
+  }
+  .article-header .subtitle {
+    font-size: 16px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  .article-body h2 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 36px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1.5px solid var(--line);
+  }
+  .article-body p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    margin-bottom: 16px;
+  }
+  .article-body p strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .fact-box {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-left: 4px solid var(--steel);
+    border-radius: 3px;
+    padding: 14px 16px;
+    margin: 20px 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .fact-box .fact-label {
+    font-family: 'PT Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--steel);
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .timeline {
+    border-left: 2px solid var(--line);
+    margin: 24px 0;
+    padding-left: 20px;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -25px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--navy);
+    border-radius: 50%;
+  }
+  .timeline-item .year {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--navy);
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+  .timeline-item p {
+    margin-bottom: 0;
+    font-size: 14px;
+  }
+
+  .nav-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 4px double var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .nav-footer a {
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--steel);
+    text-decoration: none;
+    border: 1.5px solid var(--steel);
+    border-radius: 3px;
+    padding: 8px 14px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .nav-footer a:hover {
+    background: var(--steel);
+    color: #F1EAD9;
+  }
+  .nav-footer .next-label {
+    font-family: 'PT Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="site-header">
+    <div class="rules"></div>
+    <div class="logo">
+      <a href="../index.html">
+        <img class="logo-img" src="../logo.png" alt="Хоккейный словарь" width="68" height="68">
+      </a>
+    </div>
+    <h1>Хоккейный словарь</h1>
+    <p class="tagline">Исторический раздел</p>
+    <p class="channel">приложение к каналу «Хоккейный Овертайм»</p>
+  </header>
+
+  <div class="article-wrap">
+
+    <div class="breadcrumb">
+      <a href="../index.html">Словарь</a>
+      <span>·</span>
+      История хоккея
+      <span>·</span>
+      Глава 1
+    </div>
+
+    <header class="article-header">
+      <span class="chapter-label">Глава 1 · История хоккея</span>
+      <h1>Истоки:<br>от поля до коробки</h1>
+      <p class="subtitle">Как зимняя забава превратилась в самый быстрый командный вид спорта</p>
+    </header>
+
+    <div class="article-body">
+
+      <p>Хоккей не изобретали — он вырастал сам. Люди гоняли что-то плоское по льду клюшками задолго до того, как кто-то записал правила. Но в какой-то момент любительская неразбериха уступила место точным стандартам, а региональная игра стала мировой. Вот как это произошло.</p>
+
+      <h2>Предшественники: мяч, лёд и клюшка</h2>
+
+      <p>Зимние игры с клюшкой существовали в Северной Европе с Средневековья. В Нидерландах гоняли мяч по замёрзшим каналам — <strong>«кольвен»</strong>. В Британии на льду играли в <strong>«бэнди»</strong> — с круглым мячом и клюшкой без крюка, правила ближе к футболу, чем к современному хоккею. В Канаде британские солдаты и моряки привезли с собой навыки и адаптировали их к жёстким зимам Нового Света.</p>
+
+      <p>Принципиальный момент: в Канаде не было ни мяча, ни ровных полей. Зато были широкие замёрзшие реки, тяжёлые канадские зимы и умелые резчики по дереву. Мяч заменили деревянным диском — предком шайбы. Поле сжалось и обрело борта из снега.</p>
+
+      <div class="fact-box">
+        <span class="fact-label">Откуда слово «шайба»</span>
+        Слово «puck» в английском, вероятно, происходит от ирландского «poc» — удар. В русском «шайба» появилась как транслитерация немецкого «Scheibe» (диск, шайба крепления). Слово прижилось и в технике, и в спорте.
+      </div>
+
+      <h2>Монреаль, 1875: первый задокументированный матч</h2>
+
+      <p>Именно в Монреале, 3 марта 1875 года, состоялся первый хоккейный матч, о котором сохранились газетные свидетельства. Играли студенты Университета Макгилла на крытом катке <em>Victoria Skating Rink</em>. Вместо мяча — деревянный диск. Правила — адаптированный бэнди.</p>
+
+      <p>В 1877 году студенты Макгилла записали <strong>первые официальные правила хоккея</strong> — семь пунктов. Среди них: девять игроков на команду (в том числе двое голкиперов), запрет поднимать шайбу выше плеча, правило вбрасывания.</p>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="year">1875</div>
+          <p>Первый задокументированный матч в Монреале, Victoria Skating Rink</p>
+        </div>
+        <div class="timeline-item">
+          <div class="year">1877</div>
+          <p>Первые письменные правила — 7 пунктов, 9 игроков в команде</p>
+        </div>
+        <div class="timeline-item">
+          <div class="year">1886</div>
+          <p>Первая любительская лига — Amateur Hockey Association of Canada (AHAC)</p>
+        </div>
+        <div class="timeline-item">
+          <div class="year">1893</div>
+          <p>Генерал-губернатор Канады лорд Стэнли учреждает Кубок Стэнли</p>
+        </div>
+        <div class="timeline-item">
+          <div class="year">1917</div>
+          <p>Основана Национальная хоккейная лига (NHL) — пять команд, четыре из Канады</p>
+        </div>
+      </div>
+
+      <h2>Кубок Стэнли и рождение профессионального хоккея</h2>
+
+      <p>В 1893 году Фредерик Артур Стэнли, генерал-губернатор Канады, приобрёл серебряный кубок за 10 гиней и учредил приз для лучшей хоккейной команды страны. Тогда никто не предполагал, что этот трофей станет самым узнаваемым в спортивном мире.</p>
+
+      <p>Сначала Кубок разыгрывали любители. Но спрос на хоккей рос, а вместе с ним — и деньги. В 1904–1908 годах в Канаде появились первые <strong>профессиональные лиги</strong> — игрокам начали платить зарплату. Клубы переманивали друг у друга звёзд, создавая прецедент трансферного рынка.</p>
+
+      <p>В 1917 году четыре владельца клубов основали <strong>Национальную хоккейную лигу</strong>, чтобы взять под контроль разросшийся бизнес. Первый сезон NHL сыграли пять команд: «Монреаль Канадиенс», «Монреаль Уондерерс», «Оттава Сенаторс», «Квебек Бульдогс» и — единственная американская — «Торонто Аренас».</p>
+
+      <div class="fact-box">
+        <span class="fact-label">Кубок Стэнли сегодня</span>
+        Оригинальная чаша 1893 года хранится в Зале хоккейной славы в Торонто. На официальных церемониях используется копия. Каждый игрок команды-победителя может провести один день с Кубком — традиция, которой нет ни в одном другом крупном спорте.
+      </div>
+
+      <h2>Почему именно Канада?</h2>
+
+      <p>Хоккей мог вырасти в Скандинавии или России — зимы там не менее суровые. Но именно канадский климат дал нужное сочетание: длинная зима с устойчивым льдом, плотная сеть рек и озёр, и — главное — культура, в которой зимний досуг был не роскошью, а необходимостью.</p>
+
+      <p>К этому добавились британские переселенцы с опытом командных игр, промышленная революция, давшая инструменты для заливки искусственных катков, и газеты, которые создавали болельщиков быстрее, чем строились арены. Хоккей стал национальной идентичностью Канады раньше, чем страна успела придумать себе другую.</p>
+
+    </div>
+
+    <nav class="nav-footer">
+      <a href="../index.html">← Вернуться к словарю</a>
+      <div style="text-align:right">
+        <span class="next-label">Следующая глава</span>
+        <a href="#" style="opacity:0.45;pointer-events:none;cursor:default">Советский хоккей и Суперсерия →</a>
+      </div>
+    </nav>
+
+  </div>
+
+  <footer class="site-footer">
+    <a href="https://t.me/hockey_overtime" rel="noopener">Telegram · Хоккейный Овертайм</a><br>
+    <a href="https://github.com/altitushkin/hockey-platform" rel="noopener">GitHub · hockey-platform</a>
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -121,6 +121,9 @@ body::before {
 }
 .chip:hover { background: rgba(42,42,36,0.08); }
 .chip.is-active { background: var(--navy); border-color: var(--navy); color: #F1EAD9; }
+.chip--level { border-color: var(--green); color: var(--green); }
+.chip--level:hover { background: rgba(74,110,79,0.1); }
+.chip--level.is-active { background: var(--green); border-color: var(--green); color: #F1EAD9; }
 
 /* ---------- Сетка терминов ---------- */
 .terms-grid { display: grid; gap: 12px; }
@@ -225,12 +228,51 @@ body::before {
   text-align: center;
   font-family: 'PT Mono', monospace; font-size: 10.5px;
   letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-soft); line-height: 2.1;
-  position: relative; z-index: 2;
+  color: var(--ink-soft); 
+/* ---------- Анонс раздела «История» ---------- */
+.history-teaser { margin-top: 30px; }
+
+.history-card {
+  display: block;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-left: 4px solid var(--ochre);
+  border-radius: 3px;
+  padding: 16px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s;
+  max-width: 640px;
+  margin: 0 auto;
 }
-.site-footer a {
+.history-card:hover { background: #f5ede0; }
+.history-card__label {
+  font-family: 'PT Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.history-card__title {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+.history-card__desc {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+.history-card__cta {
+  font-family: 'PT Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--steel);
-  text-decoration: underline; text-underline-offset: 3px;
-  padding: 4px 2px;
 }
-.site-footer a:hover { color: var(--navy); }
