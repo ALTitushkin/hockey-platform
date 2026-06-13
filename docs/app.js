@@ -46,6 +46,7 @@ function render(query = '', filter = 'all') {
   const container     = document.getElementById('terms-container');
   const expertCont    = document.getElementById('expert-container');
   const expertSection = document.getElementById('expert-section');
+  const historySection = document.getElementById('history-section');
   const countEl       = document.getElementById('search-count');
 
   // Поиск
@@ -83,10 +84,11 @@ function render(query = '', filter = 'all') {
     countEl.textContent = `${allTerms.length} терминов · 4 категории`;
   }
 
-  // Секция «На выверке» — скрыть при любом фильтре/поиске
-  const showExpert = !isFiltered;
-  expertSection.style.display = showExpert ? '' : 'none';
-  if (showExpert) {
+  // Секции «История» и «На выверке» — скрыть при любом фильтре/поиске
+  const showStatic = !isFiltered;
+  expertSection.style.display = showStatic ? '' : 'none';
+  historySection.style.display = showStatic ? '' : 'none';
+  if (showStatic) {
     expertCont.innerHTML = expertTerms.map(t => renderExpertCard(t)).join('');
   }
 }
@@ -165,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 180);
   });
 
-  // Фильтр по категории
+  // Фильтр по категории (чипы)
   document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('is-active'));
@@ -175,16 +177,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Фильтр по уровню (toggle: повторный клик снимает)
-  document.querySelectorAll('.chip[data-level]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      if (chip.classList.contains('is-active')) {
-        chip.classList.remove('is-active');
+  // Фильтр по уровню (тэги — toggle: повторный клик снимает)
+  document.querySelectorAll('.tag[data-level]').forEach(tag => {
+    tag.addEventListener('click', () => {
+      if (tag.classList.contains('is-active')) {
+        tag.classList.remove('is-active');
         activeLevel = 'all';
       } else {
-        document.querySelectorAll('.chip[data-level]').forEach(c => c.classList.remove('is-active'));
-        chip.classList.add('is-active');
-        activeLevel = chip.dataset.level;
+        document.querySelectorAll('.tag[data-level]').forEach(t => t.classList.remove('is-active'));
+        tag.classList.add('is-active');
+        activeLevel = tag.dataset.level;
       }
       render(searchInput.value.trim(), activeFilter);
     });
