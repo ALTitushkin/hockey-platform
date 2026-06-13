@@ -3,6 +3,7 @@
 ## [0.6.0] — 2026-06-13
 
 ### Добавлено
+- База: +10 терминов из разбора лога запросов (wrist-shot, slap-shot, snap-shot, zone-defense, umbrella, box-out, neutral-zone, cross-check, delayed-penalty, empty-net) → 49 verified
 - Бот: inline-режим теперь отдаёт **главы истории** при miss по словарю (`@bot история хоккея` → карточка со ссылкой «Читать статью»)
 - `data/history.json`: расширены `keywords` главы «Истоки» под реальные формулировки (18 ключей)
 - `bot/search.py`: история вынесена в чистый модуль — `load_history()`, `find_history_chapter()` (совпадение по границам слов, защита от ложных срабатываний на короткие/общие слова)
@@ -13,6 +14,7 @@
 - Бот: в `/start` и `/help` был захардкожен неверный username `@hockey_overtime_bot`; теперь реальный `@hockey_platform_bot` берётся из `bot.username` на старте (`_post_init`), с дефолтом и override через env `BOT_USERNAME`
 - Бот: `handle_query` игнорирует сообщения «через бота» (`via_bot`) — бот больше не реагирует на эхо собственных inline-карточек в группах
 - Деплой: `python-telegram-bot` запинен `>=21.0,<22` — версия 22.x ломала `run_polling` (процесс стартовал и тихо выходил)
+- Бот: запрос, по которому нашлась глава истории, больше не пишется в `missing_queries.log` как miss (логируется как hit)
 - Настройка: в @BotFather включён privacy mode, чтобы бот не отвечал на постороннюю переписку в группах (см. `bot/README.md`)
 
 ## [0.5.0] — 2026-06-13
