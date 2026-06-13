@@ -152,9 +152,9 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     query = update.message.text
     results = search(query, TERMS)
-    log_query(query, hit=bool(results))
 
     if results:
+        log_query(query, hit=True)
         for term in results[:2]:
             await update.message.reply_text(format_card(term), parse_mode=ParseMode.HTML)
         return
@@ -162,6 +162,7 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Словарь не нашёл — проверяем исторический раздел
     chapter = find_history_chapter(query, HISTORY)
     if chapter:
+        log_query(query, hit=True)  # глава истории — это попадание, не miss
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton(f"📖 {chapter['title']}", url=chapter["url"])]]
         )
@@ -174,7 +175,8 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    # Ничего не найдено
+    # Ничего не найдено — записываем miss
+    log_query(query, hit=False)
     hints = suggest(query, TERMS)
     if hints:
         msg = "Не нашёл точного совпадения. Возможно, ты имел в виду:\n" + "\n".join(
