@@ -1,8 +1,16 @@
 """Тесты поиска. Запуск: python test_search.py (без зависимостей)."""
 
-from search import format_card, load_terms, search, suggest
+from search import (
+    find_history_chapter,
+    format_card,
+    load_history,
+    load_terms,
+    search,
+    suggest,
+)
 
 TERMS = load_terms()
+HISTORY = load_history()
 
 
 def check(query: str, expected_id: str) -> None:
@@ -11,6 +19,13 @@ def check(query: str, expected_id: str) -> None:
     got = results[0]["id"]
     assert got == expected_id, f"'{query}': ожидал {expected_id}, получил {got}"
     print(f"  ok: '{query}' → {results[0]['en']}")
+
+
+def check_history(query: str, expected_id: str | None) -> None:
+    chapter = find_history_chapter(query, HISTORY)
+    got = chapter["id"] if chapter else None
+    assert got == expected_id, f"'{query}': ожидал главу {expected_id}, получил {got}"
+    print(f"  ok: '{query}' → {got or '— (нет главы, верно)'}")
 
 
 def main() -> None:
@@ -41,7 +56,19 @@ def main() -> None:
     assert "на выверке" not in card, "verified с плашкой!"
     print("  ok: плашка unverified работает")
 
-    print(f"\nВсе тесты пройдены. Терминов в базе: {len(TERMS)}")
+    print("История (find_history_chapter):")
+    check_history("история хоккея", "origins")
+    check_history("откуда появился хоккей", "origins")
+    check_history("кубок стэнли", "origins")
+    check_history("нхл", "origins")
+    # не должно ловить термины аналитики и короткие/общие слова
+    check_history("форчек", None)
+    check_history("corsi", None)
+    check_history("ну", None)
+    # «нхл» как подстрока внутри слова не должна срабатывать (границы слов)
+    check_history("снхлынск", None)
+
+    print(f"\nВсе тесты пройдены. Терминов в базе: {len(TERMS)}, глав истории: {len(HISTORY)}")
 
 
 if __name__ == "__main__":

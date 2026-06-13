@@ -2,10 +2,12 @@
 
 Используется ботом (bot.py) и тестами (test_search.py).
 Источник данных: data/terms.json + data/expert_review.json.
+История: data/history.json.
 """
 
 import difflib
 import json
+import re
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -98,3 +100,37 @@ def format_card(term: dict) -> str:
     if term.get("status") != "verified":
         lines.append("\n⚠️ <i>Термин на выверке у эксперта — возможны неточности.</i>")
     return "\n".join(lines)
+
+
+# ─── История ────────────────────────────────────────────────────────────────
+
+# Минимальная длина запроса/ключевого слова, чтобы не ловить случайные совпадения.
+_MIN_HISTORY_LEN = 3
+
+
+def load_history() -> list[dict]:
+    """Грузит главы истории из data/history.json. Пустой список, если файла нет."""
+    path = DATA_DIR / "history.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def find_history_chapter(query: str, history: list[dict]) -> dict | None:
+    """Глава истории по ключевым словам. Только при miss в словаре.
+
+    Совпадение ищется по границам слов (а не подстрокой), чтобы короткие
+    ключи вроде «нхл» не срабатывали внутри других слов. Запросы и ключи
+    короче _MIN_HISTORY_LEN символов игнорируются.
+    """
+    q = query.strip().lower()
+    if len(q) < _MIN_HISTORY_LEN:
+        return None
+    for chapter in history:
+        for kw in chapter.get("keywords", []):
+            kw = kw.strip().lower()
+            if len(kw) < _MIN_HISTORY_LEN:
+                continue
+            if re.search(rf"(?<!\w){re.escape(kw)}(?!\w)", q):
+                return chapter
+    return None

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.0] — 2026-06-13
+
+### Добавлено
+- Бот: inline-режим теперь отдаёт **главы истории** при miss по словарю (`@bot история хоккея` → карточка со ссылкой «Читать статью»)
+- `data/history.json`: расширены `keywords` главы «Истоки» под реальные формулировки (18 ключей)
+- `bot/search.py`: история вынесена в чистый модуль — `load_history()`, `find_history_chapter()` (совпадение по границам слов, защита от ложных срабатываний на короткие/общие слова)
+- `bot/test_search.py`: тесты `find_history_chapter` (хиты + анти-ложные срабатывания)
+- `bot/README.md`: памятка по inline (что это, включение в BotFather, использование, частые грабли)
+
+### Исправлено
+- Бот: в `/start` и `/help` был захардкожен неверный username `@hockey_overtime_bot`; теперь реальный `@hockey_platform_bot` берётся из `bot.username` на старте (`_post_init`), с дефолтом и override через env `BOT_USERNAME`
+
+## [0.5.0] — 2026-06-13
+
+### Добавлено
+- Бот: inline-режим (`@bot термин` в любом чате) — `handle_inline`, `InlineQueryHandler`, карточки `InlineQueryResultArticle`
+- Мост в историю: `find_history_chapter` + `data/history.json` (1 глава «Истоки»), ответ текстом при miss по словарю
+- Лог всех запросов `bot/queries.log` (hit/miss)
+
 ## [0.3.0] — 2026-06-12
 
 ### Добавлено

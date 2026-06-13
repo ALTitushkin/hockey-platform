@@ -1,54 +1,57 @@
-"""Telegram-бот хоккейного словаря. v0.4
+"""Telegram-бот хоккейного словаря. v0.6
 
 Запуск: BOT_TOKEN=<токен> python bot.py
 Или положи токен в bot/.env (BOT_TOKEN=...).
 Прод: VPS, systemd-юнит hockey-bot, автодеплой из main.
+
+v0.5: добавлен inline-режим (@bot термин в любом чате)
+v0.6: inline отдаёт и главы истории при miss по словарю;
+      username бота больше не захардкожен (берётся из bot.username).
 """
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InlineQueryResultArticle,
+    InputTextMessageContent,
+    Update,
+)
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
+    InlineQueryHandler,
     MessageHandler,
     filters,
 )
 
-from search import format_card, load_terms, search, suggest
+from search import (
+    find_history_chapter,
+    format_card,
+    load_history,
+    load_terms,
+    search,
+    suggest,
+)
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
 log = logging.getLogger("hockey-bot")
 
 TERMS = load_terms()
+HISTORY = load_history()
 MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
 QUERIES_LOG = Path(__file__).resolve().parent / "queries.log"
 
-# ─── История ─────────────────────────────────────────────────────────────────
-
-def _load_history() -> list[dict]:
-    path = Path(__file__).resolve().parent.parent / "data" / "history.json"
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
-        log.warning("Не удалось загрузить history.json: %s", e)
-        return []
-
-HISTORY = _load_history()
-
-def find_history_chapter(query: str) -> dict | None:
-    """Ищет главу истории по ключевым словам. Вызывается только при miss в словаре."""
-    q = query.strip().lower()
-    for chapter in HISTORY:
-        if any(kw in q for kw in chapter.get("keywords", [])):
-            return chapter
-    return None
+# Username бота. Дефолт — реальный @hockey_platform_bot; на старте перезаписывается
+# фактическим значением из Telegram (см. _post_init), можно задать через env BOT_USERNAME.
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "hockey_platform_bot")
 
 # ─── Логирование ─────────────────────────────────────────────────────────────
 
@@ -67,32 +70,65 @@ def log_query(query: str, hit: bool) -> None:
     if not hit:
         _append(MISSING_LOG, f"{stamp}\t{query.strip()[:200]}")
 
+# ─── Форматирование для inline ────────────────────────────────────────────────
+
+def format_inline_text(term: dict) -> str:
+    """Текст карточки для inline-ответа (HTML)."""
+    abbrs = ", ".join(term.get("abbr") or [])
+    lines = [f"🏒 <b>{term['en']}</b> — {term['ru']}"]
+    if abbrs:
+        lines.append(f"<code>{abbrs}</code>")
+    lines.append("")
+    lines.append(term["definition"])
+    if term.get("ru_slang"):
+        lines.append(f"\n<i>Сленг: {term['ru_slang']}</i>")
+    lines.append(f"\n🔗 <a href='https://altitushkin.github.io/hockey-platform/'>Весь словарь</a>")
+    return "\n".join(lines)
+
+
+def format_inline_history(chapter: dict) -> str:
+    """Текст inline-карточки для главы истории (HTML)."""
+    return (
+        f"📚 <b>{chapter['title']}</b>\n\n"
+        f"{chapter['summary']}\n\n"
+        f"🔗 <a href='{chapter['url']}'>Читать статью</a>"
+    )
+
 # ─── Тексты ───────────────────────────────────────────────────────────────────
 
-HELP_TEXT = (
-    "🏒 <b>Хоккейный словарь</b>\n"
-    "<i>от канала «Хоккейный Овертайм»</i>\n\n"
-    "Встретил незнакомый термин в статистике или разборе? "
-    "Пришли его мне — объясню по-человечески.\n\n"
-    "Понимаю любой формат:\n"
-    "  📊 <code>xG</code>, <code>CF%</code>, <code>PDO</code>\n"
-    "  🧩 <code>форчек</code>, <code>слот</code>, <code>цикл</code>\n"
-    "  🇬🇧 <code>breakaway</code>, <code>one-timer</code>\n\n"
-    f"В базе {len(TERMS)} терминов, пополняется от ваших запросов: "
-    "не нашёл — всё равно отправь, добавим."
-)
+def help_text() -> str:
+    """Текст /start. Username берётся из BOT_USERNAME (см. _post_init)."""
+    return (
+        "🏒 <b>Хоккейный словарь</b>\n"
+        "<i>от канала «Хоккейный Овертайм»</i>\n\n"
+        "Встретил незнакомый термин в статистике или разборе? "
+        "Пришли его мне — объясню по-человечески.\n\n"
+        "Понимаю любой формат:\n"
+        "  📊 <code>xG</code>, <code>CF%</code>, <code>PDO</code>\n"
+        "  🧩 <code>форчек</code>, <code>слот</code>, <code>цикл</code>\n"
+        "  🇬🇧 <code>breakaway</code>, <code>one-timer</code>\n\n"
+        f"В базе {len(TERMS)} терминов, пополняется от ваших запросов: "
+        "не нашёл — всё равно отправь, добавим.\n\n"
+        f"💡 <b>Inline:</b> набери <code>@{BOT_USERNAME} форчек</code> в любом чате — "
+        "и поделись карточкой прямо там."
+    )
 
-HELP_SEARCH = (
-    "🔍 <b>Как искать</b>\n\n"
-    "Просто пришли термин сообщением — в любом виде:\n"
-    "  • по-английски: <code>forecheck</code>, <code>one-timer</code>\n"
-    "  • по-русски: <code>форчек</code>, <code>пятак</code>, <code>сухарь</code>\n"
-    "  • аббревиатурой: <code>xG</code>, <code>CF%</code>, <code>SHO</code>\n"
-    "  • даже с опечаткой: <code>корс</code> найдёт Corsi\n\n"
-    "Если найдётся несколько похожих — пришлю до двух карточек.\n"
-    "Не нашлось? Запрос сохранится, и термин появится в базе позже.\n\n"
-    "Категории: 📊 статистика · 🧩 тактика · 📏 правила · ⛸ позиции"
-)
+
+def help_search() -> str:
+    """Текст /help."""
+    return (
+        "🔍 <b>Как искать</b>\n\n"
+        "Просто пришли термин сообщением — в любом виде:\n"
+        "  • по-английски: <code>forecheck</code>, <code>one-timer</code>\n"
+        "  • по-русски: <code>форчек</code>, <code>пятак</code>, <code>сухарь</code>\n"
+        "  • аббревиатурой: <code>xG</code>, <code>CF%</code>, <code>SHO</code>\n"
+        "  • даже с опечаткой: <code>корс</code> найдёт Corsi\n\n"
+        "Если найдётся несколько похожих — пришлю до двух карточек.\n"
+        "Не нашлось? Запрос сохранится, и термин появится в базе позже.\n\n"
+        f"💡 <b>Inline-режим</b> — набери <code>@{BOT_USERNAME}</code> и термин "
+        "прямо в строке чата, чтобы поделиться объяснением с собеседником.\n\n"
+        "Категории: 📊 статистика · 🧩 тактика · 📏 правила · ⛸ позиции"
+    )
 
 START_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")]]
@@ -102,12 +138,12 @@ START_KEYBOARD = InlineKeyboardMarkup(
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        HELP_TEXT, parse_mode=ParseMode.HTML, reply_markup=START_KEYBOARD
+        help_text(), parse_mode=ParseMode.HTML, reply_markup=START_KEYBOARD
     )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(HELP_SEARCH, parse_mode=ParseMode.HTML)
+    await update.message.reply_text(help_search(), parse_mode=ParseMode.HTML)
 
 
 async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -121,7 +157,7 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     # Словарь не нашёл — проверяем исторический раздел
-    chapter = find_history_chapter(query)
+    chapter = find_history_chapter(query, HISTORY)
     if chapter:
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton(f"📖 {chapter['title']}", url=chapter["url"])]]
@@ -149,31 +185,71 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
     await update.message.reply_text(msg)
 
-# ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-def _load_dotenv() -> None:
-    env = Path(__file__).resolve().parent / ".env"
-    if env.exists():
-        for line in env.read_text(encoding="utf-8").splitlines():
-            if "=" in line and not line.lstrip().startswith("#"):
-                k, _, v = line.partition("=")
-                os.environ.setdefault(k.strip(), v.strip())
+async def handle_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Inline-режим: @bot термин → карточка прямо в чат."""
+    query = (update.inline_query.query or "").strip()
 
+    if len(query) < 2:
+        # Показываем подсказку пока запрос пустой/короткий
+        await update.inline_query.answer(
+            [],
+            switch_pm_text="Введи термин (мин. 2 символа)",
+            switch_pm_parameter="inline_help",
+            cache_time=10,
+        )
+        return
 
-def main() -> None:
-    _load_dotenv()
-    token = os.environ.get("BOT_TOKEN")
-    if not token:
-        raise SystemExit("Нет токена: задай переменную окружения BOT_TOKEN или создай bot/.env")
+    results_list = search(query, TERMS, limit=5)
 
-    app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("help", cmd_help))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
+    if not results_list:
+        # Словарь не нашёл — пробуем отдать главу истории
+        chapter = find_history_chapter(query, HISTORY)
+        if chapter:
+            description = chapter["summary"][:100] + ("…" if len(chapter["summary"]) > 100 else "")
+            await update.inline_query.answer(
+                [
+                    InlineQueryResultArticle(
+                        id=str(uuid4()),
+                        title=f"📚 {chapter['title']}",
+                        description=description,
+                        input_message_content=InputTextMessageContent(
+                            message_text=format_inline_history(chapter),
+                            parse_mode=ParseMode.HTML,
+                        ),
+                    )
+                ],
+                cache_time=300,
+            )
+            return
 
-    log.info("Бот запущен, терминов в базе: %d, глав истории: %d", len(TERMS), len(HISTORY))
-    app.run_polling()
+        await update.inline_query.answer(
+            [],
+            switch_pm_text="Термин не найден — спроси в боте",
+            switch_pm_parameter="inline_miss",
+            cache_time=10,
+        )
+        return
 
+    answers = []
+    for term in results_list:
+        abbrs = ", ".join(term.get("abbr") or [])
+        description = term["definition"][:100] + ("…" if len(term["definition"]) > 100 else "")
+        if abbrs:
+            description = f"{abbrs} · {description}"
 
-if __name__ == "__main__":
-    main()
+        answers.append(
+            InlineQueryResultArticle(
+                id=str(uuid4()),
+                title=f"{term['en']} — {term['ru']}",
+                description=description,
+                input_message_content=InputTextMessageContent(
+                    message_text=format_inline_text(term),
+                    parse_mode=ParseMode.HTML,
+                ),
+            )
+        )
+
+    await update.inline_query.answer(answers, cache_time=300)
+
+# ─── Bootstrap ──────────────────────────────────────────────
