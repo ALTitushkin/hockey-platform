@@ -1,5 +1,6 @@
 // Hockey Dictionary — app.js · Sprint 4
-// Fuse.js fuzzy search + rendering for новый дизайн «программка матча»
+// Fuse.js fuzzy search + rendering для дизайна «программка матча»
+// level-фильтр: novice | fan | geek
 
 const FUSE_OPTIONS = {
   keys: [
@@ -20,10 +21,11 @@ const CATEGORY_LABELS = {
   position: 'Позиции'
 };
 
-let allTerms   = [];
+let allTerms    = [];
 let expertTerms = [];
-let fuse       = null;
+let fuse        = null;
 let activeFilter = 'all';
+let activeLevel  = 'all'; // 'all' | 'novice' | 'fan' | 'geek'
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,11 @@ function render(query = '', filter = 'all') {
     results = results.filter(t => t.category === filter);
   }
 
+  // Фильтр по уровню
+  if (activeLevel !== 'all') {
+    results = results.filter(t => t.level === activeLevel);
+  }
+
   // Рендер карточек
   if (results.length === 0) {
     container.innerHTML = `
@@ -69,14 +76,15 @@ function render(query = '', filter = 'all') {
   }
 
   // Счётчик
-  if (query || filter !== 'all') {
+  const isFiltered = query || filter !== 'all' || activeLevel !== 'all';
+  if (isFiltered) {
     countEl.textContent = `найдено ${results.length} из ${allTerms.length} терминов`;
   } else {
     countEl.textContent = `${allTerms.length} терминов · 4 категории`;
   }
 
-  // Секция «На выверке» — скрыть при поиске/фильтре
-  const showExpert = !query && filter === 'all';
+  // Секция «На выверке» — скрыть при любом фильтре/поиске
+  const showExpert = !isFiltered;
   expertSection.style.display = showExpert ? '' : 'none';
   if (showExpert) {
     expertCont.innerHTML = expertTerms.map(t => renderExpertCard(t)).join('');
@@ -99,7 +107,7 @@ function renderTermCard(t, index) {
     : '';
 
   return `
-    <article class="term-card" data-cat="${t.category}" data-id="${t.id}">
+    <article class="term-card" data-cat="${t.category}" data-id="${t.id}" data-level="${t.level || ''}">
       <div class="term-card__meta">
         <span class="term-card__num">№ ${num}</span>
         <span class="term-card__cat ${catClass}">${catLabel}</span>
@@ -157,11 +165,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 180);
   });
 
+  // Фильтр по категории
   document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('is-active'));
       chip.classList.add('is-active');
       activeFilter = chip.dataset.filter;
+      render(searchInput.value.trim(), activeFilter);
+    });
+  });
+
+  // Фильтр по уровню (toggle: повторный клик снимает)
+  document.querySelectorAll('.chip[data-level]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (chip.classList.contains('is-active')) {
+        chip.classList.remove('is-active');
+        activeLevel = 'all';
+      } else {
+        document.querySelectorAll('.chip[data-level]').forEach(c => c.classList.remove('is-active'));
+        chip.classList.add('is-active');
+        activeLevel = chip.dataset.level;
+      }
       render(searchInput.value.trim(), activeFilter);
     });
   });

@@ -17,7 +17,8 @@
     "source": "naturalstattrick.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": "Базовая метрика владения шайбой. Более грубая, чем xG, но надёжнее на малых выборках. На NHL.com называется SAT (Shot Attempts)."
+    "notes": "Базовая метрика владения шайбой. Более грубая, чем xG, но надёжнее на малых выборках. На NHL.com называется SAT (Shot Attempts).",
+    "level": "geek"
   },
   {
     "id": "fenwick",
@@ -37,7 +38,8 @@
     "source": "naturalstattrick.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": " На NHL.com называется USAT (Unblocked Shot Attempts)."
+    "notes": " На NHL.com называется USAT (Unblocked Shot Attempts).",
+    "level": "geek"
   },
   {
     "id": "expected-goals",
@@ -57,7 +59,8 @@
     "source": "moneypuck.com, naturalstattrick.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": "Главная предиктивная метрика в современной аналитике. Лучше SOG и Corsi предсказывает результат на дистанции."
+    "notes": "Главная предиктивная метрика в современной аналитике. Лучше SOG и Corsi предсказывает результат на дистанции.",
+    "level": "geek"
   },
   {
     "id": "pdo",
@@ -74,7 +77,8 @@
     "source": "hockey-reference.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": "Назван в честь пользователя форума behindthenet. Используется для оценки удачи/неудачи в результатах."
+    "notes": "Назван в честь пользователя форума behindthenet. Используется для оценки удачи/неудачи в результатах.",
+    "level": "geek"
   },
   {
     "id": "shots-on-goal",
@@ -92,7 +96,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "high-danger-chances",
@@ -111,7 +116,8 @@
     "source": "naturalstattrick.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "save-percentage",
@@ -129,7 +135,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "goals-saved-above-expected",
@@ -147,7 +154,8 @@
     "source": "moneypuck.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "geek"
   },
   {
     "id": "forecheck",
@@ -162,7 +170,8 @@
     "source": "coachesclipboard.ca",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "backcheck",
@@ -177,7 +186,8 @@
     "source": "coachesclipboard.ca",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "neutral-zone-trap",
@@ -192,7 +202,8 @@
     "source": "hockey-reference.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "power-play",
@@ -210,7 +221,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "penalty-kill",
@@ -228,7 +240,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "zone-entry",
@@ -243,7 +256,8 @@
     "source": "coachingkidshockey.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "geek"
   },
   {
     "id": "slot",
@@ -258,7 +272,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "odd-man-rush",
@@ -273,7 +288,8 @@
     "source": "coachesclipboard.ca",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "goals-against-average",
@@ -290,7 +306,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "plus-minus",
@@ -307,7 +324,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": "Часто вводит в заблуждение неопытных зрителей. Полезно знать что это, но не полагаться как на главный показатель."
+    "notes": "Часто вводит в заблуждение неопытных зрителей. Полезно знать что это, но не полагаться как на главный показатель.",
+    "level": "novice"
   },
   {
     "id": "face-off",
@@ -325,7 +343,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "points-per-game",
@@ -343,7 +362,8 @@
     "source": "hockey-reference.com",
     "status": "verified",
     "added": "2026-06-07",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "shutout",
@@ -360,7 +380,8 @@
     "source": "NHL.com glossary",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": "Из ручного черновика hockey_slovar_v2.html."
+    "notes": "Из ручного черновика hockey_slovar_v2.html.",
+    "level": "novice"
   },
   {
     "id": "icing",
@@ -375,7 +396,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "offside",
@@ -390,7 +412,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "center",
@@ -407,7 +430,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "winger",
@@ -425,7 +449,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "defenseman",
@@ -444,7 +469,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "goaltender",
@@ -461,7 +487,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "deke",
@@ -476,7 +503,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "breakaway",
@@ -491,7 +519,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "novice"
   },
   {
     "id": "screen",
@@ -506,7 +535,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "rebound",
@@ -521,7 +551,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "one-timer",
@@ -536,7 +567,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "cycle",
@@ -551,7 +583,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "breakout",
@@ -566,7 +599,8 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   },
   {
     "id": "enforcer",
@@ -581,6 +615,7 @@
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
-    "notes": ""
+    "notes": "",
+    "level": "fan"
   }
 ]
