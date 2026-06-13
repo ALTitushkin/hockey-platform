@@ -147,6 +147,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Игнорируем эхо собственных inline-карточек и сообщения, отправленные «через бота».
+    if update.message.via_bot is not None:
+        return
     query = update.message.text
     results = search(query, TERMS)
     log_query(query, hit=bool(results))
