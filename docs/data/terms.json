@@ -171,7 +171,8 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "diagram": "diagrams/forecheck.svg"
   },
   {
     "id": "backcheck",
@@ -222,7 +223,8 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "diagram": "diagrams/powerplay.svg"
   },
   {
     "id": "penalty-kill",
@@ -273,7 +275,8 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "diagram": "diagrams/slot.svg"
   },
   {
     "id": "odd-man-rush",

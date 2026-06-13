@@ -108,6 +108,10 @@ function renderTermCard(t, index) {
     ? `<div class="term-card__slang"><span class="label">Сленг</span><span>${escapeHtml(t.ru_slang)}</span></div>`
     : '';
 
+  const diagram = t.diagram
+    ? `<a class="term-card__diagram" href="${t.diagram}" target="_blank" rel="noopener">📐 Схема</a>`
+    : '';
+
   return `
     <article class="term-card" data-cat="${t.category}" data-id="${t.id}" data-level="${t.level || ''}">
       <div class="term-card__meta">
@@ -121,6 +125,7 @@ function renderTermCard(t, index) {
       ${abbrs}
       <p class="term-card__def">${escapeHtml(t.definition)}</p>
       ${slang}
+      ${diagram}
     </article>`;
 }
 

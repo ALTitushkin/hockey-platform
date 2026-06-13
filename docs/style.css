@@ -318,3 +318,21 @@ body::before {
   background: var(--ochre);
   border-color: var(--ochre);
 }
+
+/* ---------- Ссылка на схему в карточке ---------- */
+.term-card__diagram {
+  display: inline-block;
+  margin-top: 9px;
+  font-family: 'PT Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--steel);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(74,110,146,0.35);
+  transition: color 0.12s, border-color 0.12s;
+}
+.term-card__diagram:hover {
+  color: var(--ochre);
+  border-color: var(--ochre);
+}

@@ -1,0 +1,81 @@
+<svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" font-family="'PT Mono', monospace">
+  <!-- Фон -->
+  <rect width="420" height="300" fill="#F1EAD9"/>
+
+  <!-- Заголовок -->
+  <text x="210" y="22" text-anchor="middle" font-family="'Oswald', sans-serif" font-size="13" font-weight="700" fill="#233048" letter-spacing="2">POWER PLAY · 5 на 4</text>
+  <line x1="20" y1="28" x2="400" y2="28" stroke="#2A2A24" stroke-width="0.8" opacity="0.3"/>
+
+  <!-- Каток: атакующая зона -->
+  <rect x="20" y="38" width="380" height="245" rx="18" ry="18" fill="#EAF2F8" stroke="#2A2A24" stroke-width="1.5"/>
+
+  <!-- Синяя линия -->
+  <line x1="168" y1="38" x2="168" y2="283" stroke="#4A6E92" stroke-width="2.5"/>
+  <text x="158" y="52" font-size="8" fill="#4A6E92" font-weight="700">СИНЯЯ</text>
+
+  <!-- Красная линия ворот -->
+  <line x1="360" y1="38" x2="360" y2="283" stroke="#A14A33" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- Ворота -->
+  <rect x="360" y="125" width="18" height="50" rx="2" fill="none" stroke="#233048" stroke-width="2.5"/>
+  <rect x="363" y="128" width="12" height="44" fill="#233048" opacity="0.2"/>
+
+  <!-- Точки вбрасывания -->
+  <circle cx="310" cy="110" r="4" fill="#A14A33"/>
+  <circle cx="310" cy="190" r="4" fill="#A14A33"/>
+
+  <!-- Вратарь (обороняющийся) -->
+  <circle cx="356" cy="150" r="13" fill="#8A8068" opacity="0.75"/>
+  <text x="356" y="154" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">G</text>
+
+  <!-- Формация ЗОНТИК (Umbrella) — 5 атакующих -->
+  <!-- D1 — верхний левый (точка вбрасывания у синей) -->
+  <circle cx="195" cy="120" r="13" fill="#4A6E4F" opacity="0.9"/>
+  <text x="195" y="124" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">D1</text>
+
+  <!-- D2 — верхний правый (точка вбрасывания у синей) -->
+  <circle cx="195" cy="190" r="13" fill="#4A6E4F" opacity="0.9"/>
+  <text x="195" y="194" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">D2</text>
+
+  <!-- F1 — левый фланг (угол) -->
+  <circle cx="270" cy="95" r="13" fill="#A14A33" opacity="0.9"/>
+  <text x="270" y="99" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">F1</text>
+
+  <!-- F2 — слот (центр) -->
+  <circle cx="310" cy="150" r="13" fill="#A14A33" opacity="0.9"/>
+  <text x="310" y="154" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">F2</text>
+
+  <!-- F3 — правый фланг (угол) -->
+  <circle cx="270" cy="205" r="13" fill="#A14A33" opacity="0.9"/>
+  <text x="270" y="209" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">F3</text>
+
+  <!-- Пасовые линии (пунктир) -->
+  <line x1="208" y1="120" x2="257" y2="100" stroke="#4A6E4F" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="208" y1="190" x2="257" y2="205" stroke="#4A6E4F" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="208" y1="130" x2="297" y2="148" stroke="#4A6E4F" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="208" y1="180" x2="297" y2="153" stroke="#4A6E4F" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="283" y1="103" x2="298" y2="140" stroke="#A14A33" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="283" y1="197" x2="298" y2="162" stroke="#A14A33" stroke-width="1.2" stroke-dasharray="5,3"/>
+
+  <!-- Шайба у D1 -->
+  <circle cx="210" cy="117" r="5" fill="#2A2A24"/>
+
+  <!-- 4 обороняющихся (коробочка) -->
+  <rect x="305" y="108" width="52" height="84" rx="3" fill="none" stroke="#8A8068" stroke-width="1" stroke-dasharray="3,3"/>
+  <circle cx="318" cy="121" r="9" fill="#8A8068" opacity="0.6"/>
+  <text x="318" y="125" text-anchor="middle" font-size="8" fill="#F1EAD9" font-weight="700">d1</text>
+  <circle cx="348" cy="121" r="9" fill="#8A8068" opacity="0.6"/>
+  <text x="348" y="125" text-anchor="middle" font-size="8" fill="#F1EAD9" font-weight="700">d2</text>
+  <circle cx="318" cy="179" r="9" fill="#8A8068" opacity="0.6"/>
+  <text x="318" y="183" text-anchor="middle" font-size="8" fill="#F1EAD9" font-weight="700">d3</text>
+  <circle cx="348" cy="179" r="9" fill="#8A8068" opacity="0.6"/>
+  <text x="348" y="183" text-anchor="middle" font-size="8" fill="#F1EAD9" font-weight="700">d4</text>
+
+  <!-- Легенда -->
+  <circle cx="35" cy="269" r="6" fill="#A14A33" opacity="0.9"/>
+  <text x="46" y="273" font-size="8.5" fill="#2A2A24">Нападающие (большинство)</text>
+  <circle cx="210" cy="269" r="6" fill="#4A6E4F" opacity="0.9"/>
+  <text x="221" y="273" font-size="8.5" fill="#2A2A24">Защитники (большинство)</text>
+  <circle cx="355" cy="269" r="6" fill="#8A8068" opacity="0.6"/>
+  <text x="366" y="273" font-size="8.5" fill="#2A2A24">Меньшинство</text>
+</svg>

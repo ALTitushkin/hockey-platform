@@ -1,0 +1,67 @@
+<svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" font-family="'PT Mono', monospace">
+  <!-- Фон -->
+  <rect width="420" height="300" fill="#F1EAD9"/>
+
+  <!-- Заголовок -->
+  <text x="210" y="22" text-anchor="middle" font-family="'Oswald', sans-serif" font-size="13" font-weight="700" fill="#233048" letter-spacing="2">SLOT · ПЯТАК / СЛОТ</text>
+  <line x1="20" y1="28" x2="400" y2="28" stroke="#2A2A24" stroke-width="0.8" opacity="0.3"/>
+
+  <!-- Каток: атакующая зона -->
+  <rect x="20" y="38" width="380" height="245" rx="18" ry="18" fill="#EAF2F8" stroke="#2A2A24" stroke-width="1.5"/>
+
+  <!-- Синяя линия -->
+  <line x1="168" y1="38" x2="168" y2="283" stroke="#4A6E92" stroke-width="2.5"/>
+  <text x="158" y="52" font-size="8" fill="#4A6E92" font-weight="700">СИНЯЯ</text>
+
+  <!-- Красная линия ворот -->
+  <line x1="360" y1="38" x2="360" y2="283" stroke="#A14A33" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- Ворота -->
+  <rect x="360" y="125" width="18" height="50" rx="2" fill="none" stroke="#233048" stroke-width="2.5"/>
+  <rect x="363" y="128" width="12" height="44" fill="#233048" opacity="0.2"/>
+
+  <!-- СЛОТ — выделенная зона -->
+  <rect x="268" y="100" width="92" height="100" rx="4" fill="#B08234" opacity="0.22" stroke="#B08234" stroke-width="2"/>
+  <text x="314" y="92" text-anchor="middle" font-family="'Oswald', sans-serif" font-size="11" fill="#B08234" font-weight="700" letter-spacing="1">СЛОТ</text>
+  <text x="314" y="104" text-anchor="middle" font-size="7.5" fill="#B08234">(высокоопасная зона)</text>
+
+  <!-- Вероятность гола — круги концентрические -->
+  <circle cx="368" cy="150" r="60" fill="none" stroke="#A14A33" stroke-width="0.8" stroke-dasharray="3,4" opacity="0.4"/>
+  <circle cx="368" cy="150" r="35" fill="none" stroke="#A14A33" stroke-width="0.8" stroke-dasharray="3,4" opacity="0.6"/>
+
+  <!-- Точки вбрасывания -->
+  <circle cx="310" cy="110" r="4" fill="#A14A33"/>
+  <circle cx="310" cy="190" r="4" fill="#A14A33"/>
+
+  <!-- Игрок в слоте -->
+  <circle cx="310" cy="150" r="13" fill="#A14A33" opacity="0.9"/>
+  <text x="310" y="154" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">F</text>
+
+  <!-- Вратарь -->
+  <circle cx="356" cy="150" r="13" fill="#4A6E92" opacity="0.9"/>
+  <text x="356" y="154" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">G</text>
+
+  <!-- Шайба -->
+  <circle cx="310" cy="130" r="5.5" fill="#2A2A24"/>
+
+  <!-- Стрелки бросков -->
+  <line x1="310" y1="135" x2="354" y2="147" stroke="#2A2A24" stroke-width="1.5" marker-end="url(#arr-dark)" stroke-dasharray="4,2"/>
+
+  <!-- Защитник соперника -->
+  <circle cx="270" cy="150" r="12" fill="#8A8068" opacity="0.75"/>
+  <text x="270" y="154" text-anchor="middle" font-size="9" fill="#F1EAD9" font-weight="700">D</text>
+
+  <defs>
+    <marker id="arr-dark" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 z" fill="#2A2A24"/>
+    </marker>
+  </defs>
+
+  <!-- Легенда -->
+  <circle cx="35" cy="269" r="6" fill="#A14A33" opacity="0.9"/>
+  <text x="46" y="273" font-size="8.5" fill="#2A2A24">Нападающий в слоте</text>
+  <circle cx="175" cy="269" r="6" fill="#4A6E92" opacity="0.9"/>
+  <text x="186" y="273" font-size="8.5" fill="#2A2A24">Вратарь</text>
+  <circle cx="255" cy="269" r="6" fill="#8A8068" opacity="0.75"/>
+  <text x="266" y="273" font-size="8.5" fill="#2A2A24">Защитник</text>
+</svg>
