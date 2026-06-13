@@ -1,10 +1,11 @@
-"""Telegram-бот хоккейного словаря. v0.3
+"""Telegram-бот хоккейного словаря. v0.4
 
 Запуск: BOT_TOKEN=<токен> python bot.py
 Или положи токен в bot/.env (BOT_TOKEN=...).
 Прод: VPS, systemd-юнит hockey-bot, автодеплой из main.
 """
 
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -29,6 +30,27 @@ TERMS = load_terms()
 MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
 QUERIES_LOG = Path(__file__).resolve().parent / "queries.log"
 
+# ─── История ─────────────────────────────────────────────────────────────────
+
+def _load_history() -> list[dict]:
+    path = Path(__file__).resolve().parent.parent / "data" / "history.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        log.warning("Не удалось загрузить history.json: %s", e)
+        return []
+
+HISTORY = _load_history()
+
+def find_history_chapter(query: str) -> dict | None:
+    """Ищет главу истории по ключевым словам. Вызывается только при miss в словаре."""
+    q = query.strip().lower()
+    for chapter in HISTORY:
+        if any(kw in q for kw in chapter.get("keywords", [])):
+            return chapter
+    return None
+
+# ─── Логирование ─────────────────────────────────────────────────────────────
 
 def _append(path: Path, line: str) -> None:
     try:
@@ -44,6 +66,8 @@ def log_query(query: str, hit: bool) -> None:
     _append(QUERIES_LOG, f"{stamp}\t{'hit' if hit else 'miss'}\t{query.strip()[:200]}")
     if not hit:
         _append(MISSING_LOG, f"{stamp}\t{query.strip()[:200]}")
+
+# ─── Тексты ───────────────────────────────────────────────────────────────────
 
 HELP_TEXT = (
     "🏒 <b>Хоккейный словарь</b>\n"
@@ -74,6 +98,7 @@ START_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")]]
 )
 
+# ─── Handlers ─────────────────────────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
@@ -89,11 +114,28 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     query = update.message.text
     results = search(query, TERMS)
     log_query(query, hit=bool(results))
+
     if results:
         for term in results[:2]:
             await update.message.reply_text(format_card(term), parse_mode=ParseMode.HTML)
         return
 
+    # Словарь не нашёл — проверяем исторический раздел
+    chapter = find_history_chapter(query)
+    if chapter:
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton(f"📖 {chapter['title']}", url=chapter["url"])]]
+        )
+        await update.message.reply_text(
+            f"Это из истории хоккея, а не термин аналитики.\n\n"
+            f"📚 <b>{chapter['title']}</b>\n"
+            f"<i>{chapter['summary']}</i>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+        return
+
+    # Ничего не найдено
     hints = suggest(query, TERMS)
     if hints:
         msg = "Не нашёл точного совпадения. Возможно, ты имел в виду:\n" + "\n".join(
@@ -107,6 +149,7 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
     await update.message.reply_text(msg)
 
+# ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 def _load_dotenv() -> None:
     env = Path(__file__).resolve().parent / ".env"
@@ -128,7 +171,7 @@ def main() -> None:
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
 
-    log.info("Бот запущен, терминов в базе: %d", len(TERMS))
+    log.info("Бот запущен, терминов в базе: %d, глав истории: %d", len(TERMS), len(HISTORY))
     app.run_polling()
 
 
