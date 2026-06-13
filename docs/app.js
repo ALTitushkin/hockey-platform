@@ -1,11 +1,11 @@
-// Hockey Dictionary — app.js
-// Loads terms.json and expert_review.json, renders cards, powers Fuse.js search
+// Hockey Dictionary — app.js · Sprint 4
+// Fuse.js fuzzy search + rendering for новый дизайн «программка матча»
 
 const FUSE_OPTIONS = {
   keys: [
-    { name: 'en', weight: 0.4 },
-    { name: 'ru', weight: 0.3 },
-    { name: 'abbr', weight: 0.2 },
+    { name: 'en',         weight: 0.4 },
+    { name: 'ru',         weight: 0.3 },
+    { name: 'abbr',       weight: 0.2 },
     { name: 'definition', weight: 0.1 }
   ],
   threshold: 0.35,
@@ -14,32 +14,25 @@ const FUSE_OPTIONS = {
 };
 
 const CATEGORY_LABELS = {
-  stat: 'Статистика',
-  tactic: 'Тактика',
-  rule: 'Правила',
+  stat:     'Статистика',
+  tactic:   'Тактика',
+  rule:     'Правила',
   position: 'Позиции'
 };
 
-const CATEGORY_ICONS = {
-  stat: '#',
-  tactic: '⬡',
-  rule: '§',
-  position: '◈'
-};
-
-let allTerms = [];
+let allTerms   = [];
 let expertTerms = [];
-let fuse = null;
+let fuse       = null;
 let activeFilter = 'all';
 
-// ─── Fetch data ───────────────────────────────────────────────────────────────
+// ─── Fetch ────────────────────────────────────────────────────────────────────
 
 async function loadData() {
   const [terms, expert] = await Promise.all([
     fetch('./data/terms.json').then(r => r.json()),
     fetch('./data/expert_review.json').then(r => r.json())
   ]);
-  allTerms = terms;
+  allTerms    = terms;
   expertTerms = expert;
   fuse = new Fuse(allTerms, FUSE_OPTIONS);
   render();
@@ -48,123 +41,96 @@ async function loadData() {
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function render(query = '', filter = 'all') {
-  const container = document.getElementById('terms-container');
-  const expertContainer = document.getElementById('expert-container');
+  const container     = document.getElementById('terms-container');
+  const expertCont    = document.getElementById('expert-container');
   const expertSection = document.getElementById('expert-section');
-  const countEl = document.getElementById('search-count');
+  const countEl       = document.getElementById('search-count');
 
+  // Поиск
   let results = allTerms;
-
-  // Search
   if (query.length >= 2) {
     results = fuse.search(query).map(r => r.item);
   }
 
-  // Filter by category
+  // Фильтр по категории
   if (filter !== 'all') {
     results = results.filter(t => t.category === filter);
   }
 
-  // Group by category
-  const grouped = {};
-  results.forEach(t => {
-    if (!grouped[t.category]) grouped[t.category] = [];
-    grouped[t.category].push(t);
-  });
-
-  // Render main terms
-  const categoryOrder = ['stat', 'tactic', 'rule', 'position'];
-  let html = '';
-  let total = 0;
-
-  categoryOrder.forEach(cat => {
-    if (!grouped[cat] || grouped[cat].length === 0) return;
-    const terms = grouped[cat];
-    total += terms.length;
-
-    html += `
-      <h2>
-        <span class="ic ${cat}">${CATEGORY_ICONS[cat]}</span>
-        ${CATEGORY_LABELS[cat] || cat}
-      </h2>
-      <p class="sub">${getCategorySubtitle(cat)}</p>
-    `;
-
-    terms.forEach(t => {
-      html += renderTermCard(t, query);
-    });
-  });
-
-  if (total === 0) {
-    html = `
-      <div class="empty">
-        <div class="emoji">🏒</div>
+  // Рендер карточек
+  if (results.length === 0) {
+    container.innerHTML = `
+      <div class="search-empty">
+        <div class="search-empty__icon">🏒</div>
         <p>По запросу «${escapeHtml(query)}» ничего не найдено</p>
-      </div>
-    `;
+      </div>`;
+  } else {
+    container.innerHTML = results.map((t, i) => renderTermCard(t, i)).join('');
   }
 
-  container.innerHTML = html;
+  // Счётчик
+  if (query || filter !== 'all') {
+    countEl.textContent = `найдено ${results.length} из ${allTerms.length} терминов`;
+  } else {
+    countEl.textContent = `${allTerms.length} терминов · 4 категории`;
+  }
 
-  // Count
-  countEl.textContent = query || filter !== 'all'
-    ? `Найдено: ${total} из ${allTerms.length}`
-    : `${allTerms.length} терминов`;
-
-  // Expert section — hide during search/filter
+  // Секция «На выверке» — скрыть при поиске/фильтре
   const showExpert = !query && filter === 'all';
   expertSection.style.display = showExpert ? '' : 'none';
-
-  if (showExpert && expertTerms.length > 0) {
-    expertContainer.innerHTML = expertTerms.map(t => renderExpertCard(t)).join('');
+  if (showExpert) {
+    expertCont.innerHTML = expertTerms.map(t => renderExpertCard(t)).join('');
   }
 }
 
-function renderTermCard(t, query = '') {
+// ─── Карточка термина ─────────────────────────────────────────────────────────
+
+function renderTermCard(t, index) {
+  const num      = String(index + 1).padStart(2, '0');
+  const catLabel = CATEGORY_LABELS[t.category] || t.category;
+  const catClass = `term-card__cat--${t.category}`;
+
   const abbrs = t.abbr && t.abbr.length > 0
-    ? `<span class="abbr">${escapeHtml(t.abbr.join(' · '))}</span>`
+    ? `<div class="term-card__abbrs">${t.abbr.map(a => `<span class="abbr">${escapeHtml(a)}</span>`).join('')}</div>`
     : '';
 
   const slang = t.ru_slang
-    ? `<div class="sleng"><span class="l">В разговоре</span>${escapeHtml(t.ru_slang)}</div>`
+    ? `<div class="term-card__slang"><span class="label">Сленг</span><span>${escapeHtml(t.ru_slang)}</span></div>`
     : '';
 
   return `
-    <div class="term" data-cat="${t.category}" data-id="${t.id}">
-      <div class="head">
-        <span class="en">${escapeHtml(t.en)}</span>
-        ${abbrs}
+    <article class="term-card" data-cat="${t.category}" data-id="${t.id}">
+      <div class="term-card__meta">
+        <span class="term-card__num">№ ${num}</span>
+        <span class="term-card__cat ${catClass}">${catLabel}</span>
       </div>
-      <div class="ru"><span class="arrow">→</span> ${escapeHtml(t.ru)}</div>
-      <div class="def">${escapeHtml(t.definition)}</div>
+      <div class="term-card__titles">
+        <span class="term-card__en">${escapeHtml(t.en)}</span>
+        <span class="term-card__ru">${escapeHtml(t.ru)}</span>
+      </div>
+      ${abbrs}
+      <p class="term-card__def">${escapeHtml(t.definition)}</p>
       ${slang}
-    </div>
-  `;
+    </article>`;
 }
+
+// ─── Карточка «На выверке» ────────────────────────────────────────────────────
 
 function renderExpertCard(t) {
   const slang = t.ru_slang
-    ? `<div class="ru-sl">«${escapeHtml(t.ru_slang)}»</div>`
+    ? `<div class="term-card__slang"><span class="label">Сленг</span><span>${escapeHtml(t.ru_slang)}</span></div>`
     : '';
 
   return `
-    <div class="exp-card">
-      <div class="en">${escapeHtml(t.en)}</div>
-      <div class="status">⚠ требует проверки с экспертом</div>
+    <article class="term-card term-card--unverified" data-cat="${t.category}" data-id="${t.id}">
+      <span class="stamp">Требует проверки экспертом</span>
+      <div class="term-card__titles">
+        <span class="term-card__en">${escapeHtml(t.en)}</span>
+        <span class="term-card__ru">${escapeHtml(t.ru)}</span>
+      </div>
+      <p class="term-card__def">${escapeHtml(t.definition)}</p>
       ${slang}
-      <div class="guess">${escapeHtml(t.definition)}</div>
-    </div>
-  `;
-}
-
-function getCategorySubtitle(cat) {
-  const subtitles = {
-    stat: 'То, что видишь в таблицах. Сокращение — чтобы ориентироваться по буквам.',
-    tactic: 'Системы и приёмы игры. Понять — значит видеть хоккей иначе.',
-    rule: 'Официальные правила и ситуации на льду.',
-    position: 'Роли и позиции игроков.'
-  };
-  return subtitles[cat] || '';
+    </article>`;
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
@@ -178,10 +144,9 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-// ─── Event listeners ──────────────────────────────────────────────────────────
+// ─── Events ───────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Search input
   const searchInput = document.getElementById('search');
   let debounceTimer;
 
@@ -192,24 +157,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 180);
   });
 
-  // Filter chips
   document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     chip.addEventListener('click', () => {
-      document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
+      document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
       activeFilter = chip.dataset.filter;
       render(searchInput.value.trim(), activeFilter);
     });
   });
 
-  // Load data
-  loadData().catch(err => {
+  loadData().catch(() => {
     document.getElementById('terms-container').innerHTML = `
-      <div class="empty">
-        <div class="emoji">⚠️</div>
+      <div class="search-empty">
+        <div class="search-empty__icon">⚠️</div>
         <p>Не удалось загрузить данные. Открой через локальный сервер, не через file://.</p>
-      </div>
-    `;
-    console.error('Failed to load data:', err);
+      </div>`;
   });
 });

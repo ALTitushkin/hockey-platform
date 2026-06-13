@@ -1,286 +1,236 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap');
-
+/* ============================================================
+   Хоккейный словарь — стиль «программка матча», тёплая палитра
+   Макет: вариант D (строгий ретро × ламповые цвета)
+   Sprint 4 — новый дизайн из Claude Design
+   ============================================================ */
 :root {
-  --ice: #eef3f7;
-  --ice-2: #dde6ee;
-  --paper: #fbfcfd;
-  --ink: #0d1b2a;
-  --ink-soft: #3d5066;
-  --ink-faint: #7a8ba0;
-  --line: #d3dde6;
-  --red: #c2362f;
-  --red-soft: #f4e3e1;
-  --blue: #1f5fb0;
-  --blue-soft: #e4eefb;
-  --gold: #b8842a;
-  --gold-soft: #f6ecd8;
-  --green: #1f7a4d;
+  --paper: #F1EAD9;
+  --card: #FAF5E9;
+  --field: #FCF9F0;
+  --ink: #2A2A24;
+  --ink-soft: #4A463A;
+  --ink-faint: #8A8068;
+  --steel: #4A6E92;
+  --navy: #233048;
+  --brick: #A14A33;
+  --green: #4A6E4F;
+  --ochre: #B08234;
+  --line: #2A2A24;
+  --grain-opacity: 0.06;
+  --fs-base: 13.5px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html { -webkit-font-smoothing: antialiased; }
+
 body {
-  background: var(--ice);
+  background: var(--paper);
   color: var(--ink);
-  font-family: 'Spline Sans', sans-serif;
+  font-family: 'PT Serif', serif;
   line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  background-image: repeating-linear-gradient(90deg, transparent, transparent 78px, rgba(31,95,176,0.04) 78px, rgba(31,95,176,0.04) 80px);
-}
-
-.wrap { max-width: 680px; margin: 0 auto; padding: 36px 18px 90px; }
-
-/* Header */
-.board {
-  background: var(--ink);
-  color: var(--ice);
-  border-radius: 18px;
-  padding: 26px 24px;
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 18px 40px -20px rgba(13,27,42,0.6);
 }
-.board::before {
+
+/* бумажная фактура — дозированно */
+body::before {
   content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--red), var(--blue), var(--gold));
-}
-.board .tag {
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 10px;
-}
-.board h1 {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 700;
-  font-size: clamp(26px, 6vw, 36px);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
-  margin-bottom: 10px;
-}
-.board p { color: #aebccd; font-size: 14px; max-width: 46ch; }
-.board .v {
-  position: absolute;
-  top: 22px; right: 24px;
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 11px;
-  color: #6b7d92;
-}
-
-/* Search */
-.search-wrap {
-  margin: 18px 0 8px;
-  position: relative;
-}
-.search-wrap input {
-  width: 100%;
-  padding: 13px 18px 13px 44px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--paper);
-  font-family: 'Spline Sans', sans-serif;
-  font-size: 15px;
-  color: var(--ink);
-  outline: none;
-  transition: border-color 0.15s;
-}
-.search-wrap input::placeholder { color: var(--ink-faint); }
-.search-wrap input:focus { border-color: var(--blue); }
-.search-icon {
-  position: absolute;
-  left: 14px; top: 50%;
-  transform: translateY(-50%);
-  color: var(--ink-faint);
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity: var(--grain-opacity);
+  mix-blend-mode: multiply;
   pointer-events: none;
-}
-.search-count {
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 11px;
-  color: var(--ink-faint);
-  margin: 6px 0 0 4px;
-  min-height: 16px;
+  z-index: 1;
 }
 
-/* Filter chips */
-.legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 8px; }
-.chip {
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 11px;
-  padding: 5px 11px;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink-soft);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
+.wrap { max-width: 1080px; margin: 0 auto; }
+
+/* ---------- Шапка ---------- */
+.site-header {
+  text-align: center;
+  padding: 26px 20px 20px;
+  border-bottom: 4px double var(--line);
+}
+.site-header .rules { border-top: 4px double var(--line); margin: 0 0 18px; }
+.site-header .logo { display: flex; justify-content: center; }
+
+.logo-badge {
+  width: 68px; height: 68px; border-radius: 50%;
+  background: var(--navy); border: 2px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 23px;
+  letter-spacing: 0.04em; color: #F0EADA; text-transform: uppercase;
   user-select: none;
 }
-.chip:hover { border-color: var(--blue); color: var(--blue); }
-.chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-.chip.active .dot { background: rgba(255,255,255,0.7); }
-
-.dot { width: 8px; height: 8px; border-radius: 50%; }
-.dot.stat { background: var(--blue); }
-.dot.tactic { background: var(--red); }
-.dot.rule { background: var(--green); }
-.dot.position { background: var(--gold); }
-.dot.all { background: var(--ink-soft); }
-
-/* Section headers */
-h2 {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: -0.01em;
-  margin: 38px 0 4px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.logo-img {
+  width: 68px; height: 68px; border-radius: 50%;
+  border: 2px solid var(--line); object-fit: cover; display: block;
 }
-h2 .ic {
-  width: 26px; height: 26px;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: #fff;
+.site-header h1 {
+  font-family: 'Oswald', sans-serif; font-weight: 700;
+  font-size: clamp(33px, 7vw, 44px); line-height: 1.05;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  margin: 12px 0 8px;
 }
-h2 .ic.stat { background: var(--blue); }
-h2 .ic.tactic { background: var(--red); }
-h2 .ic.rule { background: var(--green); }
-h2 .ic.position { background: var(--gold); }
-
-.sub { color: var(--ink-faint); font-size: 13px; margin-bottom: 14px; }
-
-/* Term card */
-.term {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin: 12px 0;
-  position: relative;
-  transition: box-shadow 0.15s;
+.site-header .tagline {
+  font-family: 'PT Mono', monospace; font-size: 10.5px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-soft);
 }
-.term:hover { box-shadow: 0 4px 16px -8px rgba(13,27,42,0.15); }
-.term .head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-.term .en {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 700;
-  font-size: 19px;
-  letter-spacing: -0.01em;
-}
-.term .abbr {
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 12px;
-  background: var(--ink);
-  color: var(--ice);
-  padding: 3px 9px;
-  border-radius: 6px;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-.term .ru {
-  font-size: 14px;
-  color: var(--blue);
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.term .ru .arrow { color: var(--ink-faint); font-weight: 400; }
-.term .def { font-size: 14.5px; color: var(--ink-soft); }
-.term .def b { color: var(--ink); }
-.term .sleng {
-  margin-top: 10px;
-  font-size: 13px;
-  background: var(--ice);
-  border-radius: 8px;
-  padding: 8px 12px;
-  color: var(--ink-soft);
-}
-.term .sleng .l {
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  display: block;
-  margin-bottom: 2px;
+.site-header .channel {
+  font-family: 'PT Mono', monospace; font-size: 10px;
+  letter-spacing: 0.1em; color: var(--ink-faint); margin-top: 7px;
 }
 
-/* Category border accent */
-.term[data-cat="stat"] { border-left: 3px solid var(--blue); }
-.term[data-cat="tactic"] { border-left: 3px solid var(--red); }
-.term[data-cat="rule"] { border-left: 3px solid var(--green); }
-.term[data-cat="position"] { border-left: 3px solid var(--gold); }
+/* ---------- Контент ---------- */
+.content { padding: 20px 16px 0; position: relative; z-index: 2; }
 
-/* Expert review card */
-.exp-card {
-  background: var(--gold-soft);
-  border: 1px solid #e8d4a8;
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin: 12px 0;
+/* ---------- Поиск ---------- */
+.search { position: relative; max-width: 640px; margin: 0 auto; }
+.search input {
+  width: 100%; height: 54px; padding: 0 16px 0 46px;
+  border: 2px solid var(--line); border-radius: 3px;
+  background: var(--field);
+  font-family: 'PT Mono', monospace; font-size: 14px; color: var(--ink);
+  outline: none;
 }
-.exp-card .en {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 700;
-  font-size: 17px;
+.search input::placeholder { color: var(--ink-faint); }
+.search input:focus { border-color: var(--steel); box-shadow: 0 0 0 3px rgba(74,110,146,0.2); }
+.search .icon {
+  position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+  color: var(--ink-soft); pointer-events: none;
 }
-.exp-card .status {
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin: 4px 0 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.search-count {
+  font-family: 'PT Mono', monospace; font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
+  margin: 8px auto 0; max-width: 640px; padding: 0 2px;
 }
-.exp-card .ru-sl { font-size: 14px; color: var(--blue); font-weight: 600; margin-bottom: 6px; }
-.exp-card .guess { font-size: 14px; color: var(--ink-soft); }
-.exp-card .guess i { color: var(--ink-faint); }
 
-/* Empty state */
-.empty {
+/* ---------- Фильтры ---------- */
+.filters {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  margin: 16px auto 20px; max-width: 640px;
+}
+.chip {
+  font-family: 'Oswald', sans-serif; font-weight: 500;
+  font-size: 12.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 8px 13px; min-height: 34px;
+  border: 1.5px solid var(--line); border-radius: 3px;
+  background: transparent; color: var(--ink);
+  cursor: pointer; transition: background 0.12s, color 0.12s;
+}
+.chip:hover { background: rgba(42,42,36,0.08); }
+.chip.is-active { background: var(--navy); border-color: var(--navy); color: #F1EAD9; }
+
+/* ---------- Сетка терминов ---------- */
+.terms-grid { display: grid; gap: 12px; }
+@media (min-width: 720px) {
+  .terms-grid { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+}
+
+/* ---------- Карточка термина ---------- */
+.term-card {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 3px;
+  padding: 14px 16px 16px;
+  break-inside: avoid;
+}
+.term-card__meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: 'PT Mono', monospace; font-size: 10px;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint);
+  border-bottom: 1px solid rgba(42,42,36,0.25);
+  padding-bottom: 8px; margin-bottom: 10px;
+}
+.term-card__cat { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.term-card__cat::before { content: ""; width: 8px; height: 8px; background: currentColor; }
+.term-card__cat--stat { color: var(--steel); }
+.term-card__cat--tactic { color: var(--brick); }
+.term-card__cat--rule { color: var(--green); }
+.term-card__cat--position { color: var(--ochre); }
+.term-card__titles {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  margin-bottom: 6px;
+}
+.term-card__en {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 21px;
+  text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.1;
+}
+.term-card__ru { font-size: 15px; font-weight: 700; font-style: italic; color: var(--steel); }
+.term-card__abbrs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 9px; }
+.abbr {
+  font-family: 'PT Mono', monospace; font-size: 11px;
+  background: var(--navy); color: #F0EADA;
+  padding: 2px 8px; border-radius: 2px; letter-spacing: 0.05em;
+}
+.term-card__def { font-size: var(--fs-base); color: var(--ink-soft); }
+.term-card__slang {
+  margin-top: 10px; padding-top: 9px;
+  border-top: 1px dashed rgba(42,42,36,0.4);
+  font-size: 13px; color: var(--ink-soft);
+  display: flex; gap: 8px; align-items: baseline;
+}
+.term-card__slang .label {
+  font-family: 'PT Mono', monospace; font-size: 9.5px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ochre); font-weight: 700; flex: 0 0 auto;
+}
+
+/* ---------- Пустой результат поиска ---------- */
+.search-empty {
+  grid-column: 1 / -1;
   text-align: center;
-  padding: 48px 24px;
+  padding: 48px 0;
+  font-family: 'PT Mono', monospace;
   color: var(--ink-faint);
-  font-size: 15px;
+  letter-spacing: 0.08em;
+  font-size: 13px;
 }
-.empty .emoji { font-size: 36px; margin-bottom: 12px; }
+.search-empty__icon { font-size: 32px; margin-bottom: 12px; }
 
-/* Footer */
-.foot {
-  margin-top: 46px;
-  border-top: 1px solid var(--line);
-  padding-top: 18px;
-  font-family: 'Spline Sans Mono', monospace;
-  font-size: 11px;
-  color: var(--ink-faint);
-  line-height: 1.7;
+/* ---------- Секция «На выверке» ---------- */
+.expert { margin-top: 30px; }
+.expert__head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.expert__head::before, .expert__head::after { content: ""; flex: 1; border-top: 4px double var(--line); }
+.expert__head h2 {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 19px;
+  text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap;
+}
+.expert__sub {
+  text-align: center; font-family: 'PT Mono', monospace;
+  font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+.term-card--unverified {
+  background: rgba(250,245,233,0.55);
+  border-style: dashed; border-color: rgba(42,42,36,0.55);
+}
+.term-card--unverified .term-card__en,
+.term-card--unverified .term-card__ru { opacity: 0.85; }
+.term-card--unverified .term-card__def { opacity: 0.8; font-size: 13px; }
+.stamp {
+  display: inline-block;
+  font-family: 'PT Mono', monospace; font-size: 9px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ochre); border: 1px solid var(--ochre);
+  padding: 3px 8px; margin-bottom: 9px;
 }
 
-/* Hidden during search/filter */
-.hidden { display: none; }
-
-/* Highlight search match */
-mark {
-  background: #fff3c0;
-  color: inherit;
-  border-radius: 2px;
-  padding: 0 1px;
+/* ---------- Футер ---------- */
+.site-footer {
+  margin: 32px 16px 0;
+  border-top: 4px double var(--line);
+  padding: 16px 0 36px;
+  text-align: center;
+  font-family: 'PT Mono', monospace; font-size: 10.5px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-soft); line-height: 2.1;
+  position: relative; z-index: 2;
 }
+.site-footer a {
+  color: var(--steel);
+  text-decoration: underline; text-underline-offset: 3px;
+  padding: 4px 2px;
+}
+.site-footer a:hover { color: var(--navy); }

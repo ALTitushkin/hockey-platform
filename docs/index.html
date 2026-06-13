@@ -4,66 +4,62 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Хоккейный словарь · англ → рус</title>
+<meta name="description" content="Англо-русский словарь хоккейных терминов: статистика, тактика, правила, позиции. Приложение к каналу «Хоккейный Овертайм».">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div class="wrap">
 
-  <!-- Header -->
-  <div class="board">
-    <div class="v">v0.1 · спринт 1</div>
-    <div class="tag">Хоккейный словарь</div>
+  <header class="site-header">
+    <div class="rules"></div>
+    <div class="logo">
+      <span class="logo-badge">ХО</span>
+    </div>
     <h1>Хоккейный словарь</h1>
-    <p>Англо-русский справочник по терминологии. Статистика, тактика, позиции — с примерами и сокращениями из реальных таблиц.</p>
-  </div>
+    <p class="tagline">Англо-русский справочник терминов</p>
+    <p class="channel">приложение к каналу «Хоккейный Овертайм»</p>
+  </header>
 
-  <!-- Search -->
-  <div class="search-wrap">
-    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-    </svg>
-    <input
-      type="search"
-      id="search"
-      placeholder="Поиск по-русски или by English..."
-      autocomplete="off"
-      autocorrect="off"
-      spellcheck="false"
-    >
-  </div>
-  <div class="search-count" id="search-count"></div>
+  <main class="content">
 
-  <!-- Filter chips -->
-  <div class="legend">
-    <span class="chip active" data-filter="all"><span class="dot all"></span>Все</span>
-    <span class="chip" data-filter="stat"><span class="dot stat"></span>Статистика</span>
-    <span class="chip" data-filter="tactic"><span class="dot tactic"></span>Тактика</span>
-    <span class="chip" data-filter="rule"><span class="dot rule"></span>Правила</span>
-    <span class="chip" data-filter="position"><span class="dot position"></span>Позиции</span>
-  </div>
+    <div class="search">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input type="search" id="search" placeholder="Поиск: по-русски или in English…" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <p class="search-count" id="search-count">загрузка…</p>
 
-  <!-- Terms (rendered by JS) -->
-  <div id="terms-container"></div>
+    <nav class="filters" aria-label="Фильтр по категориям">
+      <button class="chip is-active" data-filter="all">Все</button>
+      <button class="chip" data-filter="stat">Статистика</button>
+      <button class="chip" data-filter="tactic">Тактика</button>
+      <button class="chip" data-filter="rule">Правила</button>
+      <button class="chip" data-filter="position">Позиции</button>
+    </nav>
 
-  <!-- Expert review section -->
-  <div id="expert-section">
-    <h2>
-      <span class="ic" style="background:var(--gold)">?</span>
-      На выверку с экспертом
-    </h2>
-    <p class="sub">Сленг и спорные термины — версии, которые требуют подтверждения живого специалиста. Не выдаём за факт.</p>
-    <div id="expert-container"></div>
-  </div>
+    <section class="terms-grid" id="terms-container"></section>
 
-  <!-- Footer -->
-  <div class="foot">
-    hockey-platform · спринт 1 · данные в /data/terms.json<br>
-    Нашёл ошибку или знаешь термин лучше? → issues на GitHub
-  </div>
+    <section class="expert" id="expert-section">
+      <div class="expert__head"><h2>На выверке</h2></div>
+      <p class="expert__sub">требует подтверждения эксперта</p>
+      <div class="terms-grid" id="expert-container"></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <a href="https://t.me/hockey_overtime" rel="noopener">Telegram · Хоккейный Овертайм</a><br>
+    <a href="https://github.com/altitushkin/hockey-platform" rel="noopener">GitHub · hockey-platform</a>
+  </footer>
 
 </div>
 
-<!-- Fuse.js for fuzzy search -->
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
 <script src="app.js"></script>
 </body>
