@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0] — 2026-06-14
+
+### Добавлено (Слой данных под концепт S5, Трек B-A)
+- `data/clusters.json` — реестр кластеров терминов (решение: отдельный реестр, не «термины-контейнеры»); сидинг: Броски, Большинство
+- `data/quick_answers.json` — курируемые быстрые ответы для гибрид-движка главной (вопрос → саммари → якорь)
+- `terms.json`: новые поля `profiles[]` (ось Профиль — заполнит контент-чат), `cluster`, `see_also[]`, `anchor`; сидинг кластеров (shots/power-play) и `see_also`
+- `history.json`: `sections[{id,title}]` (якоря разделов) + `published`; id-якоря добавлены к h2 в `docs/history/origins.html`
+- Визуал расширен под видео: `visual="youtube:ID"` + `visual_timecode`/`visual_caption`/`visual_attribution` (контракт в `schema.md`)
+- `tools/validate_data.py` — проверка ссылочной целостности реестров и паритета `data/` ↔ `docs/data/`
+- `data/schema.md` v2.0 + `docs/data/` зеркала всех реестров; `CLAUDE.md` — модель данных S5
+
+### Примечания
+- Уровень: ключи `novice/fan/geek` не трогаем; карта меток `База/Средний/Продвинутый` — в UI
+- Живой сайт не затронут: `app.js` читает только `diagram`/`level`, новые поля игнорирует
+- Вёрстка (Слой B: index→dictionary, новый ответ-вход) — после HTML из Claude Design
+
 ## [0.6.0] — 2026-06-13
 
 ### Добавлено
