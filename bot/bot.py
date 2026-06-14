@@ -131,7 +131,10 @@ def help_search() -> str:
     )
 
 START_KEYBOARD = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")]]
+    [
+        [InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")],
+        [InlineKeyboardButton("📚 История хоккея", url="https://altitushkin.github.io/hockey-platform/#history-section")],
+    ]
 )
 
 # ─── Handlers ─────────────────────────────────────────────────────────────────
