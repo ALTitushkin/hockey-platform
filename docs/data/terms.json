@@ -18,7 +18,16 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "Базовая метрика владения шайбой. Более грубая, чем xG, но надёжнее на малых выборках. На NHL.com называется SAT (Shot Attempts).",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [
+      "fenwick",
+      "expected-goals"
+    ],
+    "anchor": null
   },
   {
     "id": "fenwick",
@@ -39,7 +48,16 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": " На NHL.com называется USAT (Unblocked Shot Attempts).",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [
+      "corsi",
+      "expected-goals"
+    ],
+    "anchor": null
   },
   {
     "id": "expected-goals",
@@ -60,7 +78,16 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "Главная предиктивная метрика в современной аналитике. Лучше SOG и Corsi предсказывает результат на дистанции.",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [
+      "corsi",
+      "high-danger-chances"
+    ],
+    "anchor": null
   },
   {
     "id": "pdo",
@@ -78,7 +105,13 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "Назван в честь пользователя форума behindthenet. Используется для оценки удачи/неудачи в результатах.",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "shots-on-goal",
@@ -97,7 +130,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "high-danger-chances",
@@ -117,7 +157,13 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "fan"
+    "level": "geek",
+    "profiles": [
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "save-percentage",
@@ -136,7 +182,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "goals-saved-above-expected",
@@ -155,7 +208,13 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "forecheck",
@@ -172,7 +231,17 @@
     "added": "2026-06-07",
     "notes": "",
     "level": "fan",
-    "diagram": "diagrams/forecheck.svg"
+    "diagram": "diagrams/forecheck.svg",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [
+      "backcheck"
+    ],
+    "anchor": null
   },
   {
     "id": "backcheck",
@@ -188,7 +257,17 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [
+      "forecheck"
+    ],
+    "anchor": null
   },
   {
     "id": "neutral-zone-trap",
@@ -204,7 +283,15 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "power-play",
@@ -224,7 +311,18 @@
     "added": "2026-06-07",
     "notes": "",
     "level": "novice",
-    "diagram": "diagrams/powerplay.svg"
+    "diagram": "diagrams/powerplay.svg",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [
+      "penalty-kill",
+      "umbrella"
+    ],
+    "anchor": null
   },
   {
     "id": "penalty-kill",
@@ -243,7 +341,18 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [
+      "power-play",
+      "zone-defense"
+    ],
+    "anchor": null
   },
   {
     "id": "zone-entry",
@@ -259,7 +368,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "analyst",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "slot",
@@ -276,7 +392,18 @@
     "added": "2026-06-07",
     "notes": "",
     "level": "novice",
-    "diagram": "diagrams/slot.svg"
+    "diagram": "diagrams/slot.svg",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [
+      "screen",
+      "rebound"
+    ],
+    "anchor": null
   },
   {
     "id": "odd-man-rush",
@@ -292,7 +419,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "goals-against-average",
@@ -310,7 +444,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "plus-minus",
@@ -328,7 +469,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "Часто вводит в заблуждение неопытных зрителей. Полезно знать что это, но не полагаться как на главный показатель.",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "face-off",
@@ -347,7 +495,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "points-per-game",
@@ -366,7 +521,14 @@
     "status": "verified",
     "added": "2026-06-07",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "shutout",
@@ -384,7 +546,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "Из ручного черновика hockey_slovar_v2.html.",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "analyst"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "icing",
@@ -400,7 +569,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "offside",
@@ -416,7 +592,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "center",
@@ -434,7 +617,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "winger",
@@ -453,7 +643,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "defenseman",
@@ -473,7 +670,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "goaltender",
@@ -491,7 +695,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "deke",
@@ -507,7 +718,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "breakaway",
@@ -523,7 +741,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "screen",
@@ -539,7 +764,15 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "rebound",
@@ -555,7 +788,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "novice",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "one-timer",
@@ -571,7 +811,17 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": "shots",
+    "see_also": [
+      "wrist-shot",
+      "slap-shot"
+    ],
+    "anchor": null
   },
   {
     "id": "cycle",
@@ -587,7 +837,15 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "breakout",
@@ -603,7 +861,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "enforcer",
@@ -619,7 +884,14 @@
     "status": "verified",
     "added": "2026-06-12",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "puck",
@@ -629,7 +901,13 @@
     "category": "rule",
     "level": "novice",
     "definition": "Вулканизированный резиновый диск диаметром 76 мм, весом 170 г — основной снаряд игры. Официальные шайбы замораживают перед матчем, чтобы уменьшить отскок и сделать скольжение по льду более предсказуемым.",
-    "ru_slang": "кругляш, таблетка"
+    "ru_slang": "кругляш, таблетка",
+    "profiles": [
+      "general"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "hockey-stick",
@@ -639,7 +917,14 @@
     "category": "rule",
     "level": "novice",
     "definition": "Основной инструмент хоккеиста для управления шайбой. Состоит из рукоятки и крюка. Длина, загиб (lie) и жёсткость подбираются под стиль игрока: защитники предпочитают более жёсткие клюшки, снайперы — крюки с бо́льшим загибом.",
-    "ru_slang": "палка"
+    "ru_slang": "палка",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "forward",
@@ -652,7 +937,14 @@
     "category": "position",
     "level": "novice",
     "definition": "Атакующий игрок. В звене три форварда: центральный (C) и два крайних нападающих (LW, RW). Основная задача — создание голевых моментов и взятие ворот. Форварды первого звена получают большинство времени на льду.",
-    "ru_slang": "нападающий, нападающий первого звена"
+    "ru_slang": "нападающий, нападающий первого звена",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "checker",
@@ -662,7 +954,15 @@
     "category": "position",
     "level": "fan",
     "definition": "Оборонительный нападающий, специализирующийся на нейтрализации лидеров атаки соперника через силовую игру и активный форчек. В отличие от тафгая, чекер — прежде всего хоккеист: его роль тактическая, а не запугивающая. Типичный пример — четвёртое звено с задачей «убить» смену топ-форвардов.",
-    "ru_slang": "гасильщик"
+    "ru_slang": "гасильщик",
+    "profiles": [
+      "general",
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "wrist-shot",
@@ -678,7 +978,18 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": "shots",
+    "see_also": [
+      "slap-shot",
+      "snap-shot",
+      "one-timer"
+    ],
+    "anchor": null
   },
   {
     "id": "slap-shot",
@@ -694,7 +1005,18 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": "shots",
+    "see_also": [
+      "wrist-shot",
+      "snap-shot",
+      "one-timer"
+    ],
+    "anchor": null
   },
   {
     "id": "snap-shot",
@@ -710,7 +1032,16 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "geek"
+    "level": "fan",
+    "profiles": [
+      "player"
+    ],
+    "cluster": "shots",
+    "see_also": [
+      "wrist-shot",
+      "slap-shot"
+    ],
+    "anchor": null
   },
   {
     "id": "zone-defense",
@@ -726,7 +1057,16 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [
+      "penalty-kill"
+    ],
+    "anchor": null
   },
   {
     "id": "umbrella",
@@ -742,7 +1082,16 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "Формация power play.",
-    "level": "geek"
+    "level": "geek",
+    "profiles": [
+      "coach",
+      "player"
+    ],
+    "cluster": "power-play",
+    "see_also": [
+      "power-play"
+    ],
+    "anchor": null
   },
   {
     "id": "box-out",
@@ -758,7 +1107,14 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "geek"
+    "level": "fan",
+    "profiles": [
+      "player",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "neutral-zone",
@@ -774,7 +1130,13 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "novice"
+    "level": "novice",
+    "profiles": [
+      "general"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "cross-check",
@@ -790,7 +1152,14 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "delayed-penalty",
@@ -806,7 +1175,13 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   },
   {
     "id": "empty-net",
@@ -824,6 +1199,13 @@
     "status": "verified",
     "added": "2026-06-13",
     "notes": "",
-    "level": "fan"
+    "level": "fan",
+    "profiles": [
+      "general",
+      "coach"
+    ],
+    "cluster": null,
+    "see_also": [],
+    "anchor": null
   }
 ]

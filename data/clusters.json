@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "shots",
+    "title": "Броски",
+    "category": "tactic",
+    "term_id": null,
+    "order": 1,
+    "summary": "Виды бросков: чем отличаются по технике и когда применяются."
+  },
+  {
+    "slug": "power-play",
+    "title": "Большинство",
+    "category": "tactic",
+    "term_id": "power-play",
+    "order": 2,
+    "summary": "Игра в большинстве: расстановки и розыгрыши при численном перевесе."
+  }
+]
