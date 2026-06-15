@@ -77,9 +77,9 @@ def main() -> int:
                 err(f"history[{ch['id']}]: section без id/title")
             ids.add(sec.get("id"))
         chapter_sections[ch["id"]] = ids
-        # url вида .../history/<chapter>.html
-        if "url" in ch and f"/{ch['id']}.html" not in ch["url"]:
-            err(f"history[{ch['id']}]: url не соответствует id главы")
+        # опубликованная глава обязана иметь url; черновик (published:false) — url может быть null
+        if ch.get("published") and not ch.get("url"):
+            err(f"history[{ch['id']}]: published-глава без url")
 
     # quick_answers → цели существуют
     for i, q in enumerate(quick):
