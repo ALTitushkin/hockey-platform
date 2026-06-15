@@ -226,7 +226,7 @@ function renderEntries(){
   const pub=HISTORY.filter(c=>c.published).length;
   const ENTRIES=[
     {n:"01",title:"Словарь",desc:`${TERMS.length} терминов: статистика, тактика, правила и позиции — по-русски и in English.`,cta:"Открыть",live:true,href:DICT},
-    {n:"02",title:"История",desc:`Образовательные главы-разборы. Первая уже открыта: от поля до коробки.`,cta:"Читать",live:true,href:HIST},
+    {n:"02",title:"История",desc:`Как игра пришла на лёд: ${HISTORY.length} глав от первого матча до КХЛ${pub?` (${pub} опубликована)`:""}.`,cta:"Читать",live:true,href:HIST},
     {n:"03",title:"Обучение",desc:"Разборы, схемы и упражнения. Раздел в разработке.",cta:"Скоро",live:false},
     {n:"04",title:"Сообщество",desc:"Вопросы экспертам и совместная выверка терминов. Раздел в разработке.",cta:"Скоро",live:false}
   ];
