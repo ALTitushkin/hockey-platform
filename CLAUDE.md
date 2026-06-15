@@ -110,7 +110,7 @@ hockey-platform/
 Главная перестала быть словарём. Структура страниц (направление A «Учебник», все self-contained, данные через `fetch ./data/*.json`):
 - `docs/index.html` — **хаб/ответ-вход**: гибрид-движок (курируемые `quick_answers.json` сверху + Fuse.js fallback по `terms.json` и keywords `history.json`) + 4 карточки-входа (Словарь/История/Обучение·слот/Сообщество·слот). Счётчики из данных.
 - `docs/dictionary.html` — **словарь**: `terms.json` + `clusters.json`; три оси фильтров (Уровень/Профиль/Категория), кластеры ⇄ плоский A→Z, карточки с see_also/anchor/визуал-слотом, мобильный drawer.
-- `docs/history.html` — **индекс истории** из `history.json` (эры + `published`→«скоро»); главы — отдельные страницы `docs/history/<id>.html` с id-якорями. ⚠️ Сейчас в `history.json` только сверенная глава `origins`; роадмап 2–9 придержан до сверки с `docs/history/INDEX.md` (research-чат).
+- `docs/history.html` — **индекс истории** из `history.json` (эры + `published`→«скоро»); главы — отдельные страницы `docs/history/<id>.html` с id-якорями. `history.json` синхронизирован с каноном `docs/history/INDEX.md` (9 глав; `id`/`title`/`era`/порядок — зона research-чата, дев не меняет). Опубликована глава 1 `origins`; 2–9 — `published:false`.
 - `docs/assets/wordmark-*.svg` — SVG-вордмарк (не live-текст; У без дескендера, `docs/wordmark_spec.md`).
 
 Карта меток уровня в UI: `novice→База`, `fan→Средний`, `geek→Продвинутый` (ключи в данных не меняем).
