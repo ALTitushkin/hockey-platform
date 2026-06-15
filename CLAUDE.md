@@ -105,6 +105,19 @@ hockey-platform/
 
 ---
 
+## Веб / IA (S5, Шаг 1 концепта `docs/design_concept_s5.md`)
+
+Главная перестала быть словарём. Структура страниц (направление A «Учебник», все self-contained, данные через `fetch ./data/*.json`):
+- `docs/index.html` — **хаб/ответ-вход**: гибрид-движок (курируемые `quick_answers.json` сверху + Fuse.js fallback по `terms.json` и keywords `history.json`) + 4 карточки-входа (Словарь/История/Обучение·слот/Сообщество·слот). Счётчики из данных.
+- `docs/dictionary.html` — **словарь**: `terms.json` + `clusters.json`; три оси фильтров (Уровень/Профиль/Категория), кластеры ⇄ плоский A→Z, карточки с see_also/anchor/визуал-слотом, мобильный drawer.
+- `docs/history.html` — **индекс истории** из `history.json` (эры + `published`→«скоро»); главы — отдельные страницы `docs/history/<id>.html` с id-якорями разделов (цель deep-link).
+- `docs/assets/wordmark-*.svg` — SVG-вордмарк (не live-текст; У без дескендера, `docs/wordmark_spec.md`).
+
+Карта меток уровня в UI: `novice→База`, `fan→Средний`, `geek→Продвинутый` (ключи в данных не меняем).
+Целостность данных перед коммитом: `python tools/validate_data.py`.
+
+---
+
 ## Модель данных платформы (S5, концепт `docs/design_concept_s5.md`)
 
 Три ортогональные оси таксономии термина: **Категория** (`category`, 1 знач.), **Уровень**
