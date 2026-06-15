@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Культура хоккея — словарь</title>
+<meta name="description" content="Хоккейный словарь «Культуры хоккея»: термины с фильтрами по уровню, профилю и категории. Кластеры и плоский список A→Z. При поддержке канала «Хоккейный Овертайм».">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
+<style>
+/* КУЛЬТУРА ХОККЕЯ — СЛОВАРЬ · направление A. Данные из data/terms.json + clusters.json. */
+:root{
+  --paper:#F1EAD8;--card:#FAF4E2;--field:#FBF6E9;
+  --ink:#20242C;--ink-soft:#3C4350;--ink-faint:#7A7763;
+  --line:#20242C;--line-soft:rgba(32,36,44,0.30);
+  --steel:#44698D;--navy:#1B2433;--brick:#9E3B2C;--green:#3E6B4F;--ochre:#A87E34;
+  --grain:0.05;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{-webkit-font-smoothing:antialiased;text-size-adjust:100%;}
+body{background:var(--paper);color:var(--ink);font-family:'PT Serif',serif;line-height:1.55;position:relative;overflow-x:hidden;}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity:var(--grain);mix-blend-mode:multiply;}
+.wrap{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 16px 56px;}
+a{color:var(--steel);}
+.top{position:sticky;top:0;z-index:30;background:var(--paper);display:flex;align-items:baseline;gap:12px;
+  padding:13px 16px;border-bottom:4px double var(--line);max-width:720px;margin:0 auto;}
+.top__home{font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink);text-decoration:none;}
+.top__home:hover{color:var(--steel);}
+.top__nav{margin-left:auto;display:flex;gap:14px;}
+.top__nav a{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);text-decoration:none;}
+.top__nav a:hover,.top__nav a[aria-current]{color:var(--steel);}
+.head{padding:22px 0 4px;}
+.head__over{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);}
+.head h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(30px,9vw,42px);line-height:1.02;text-transform:uppercase;letter-spacing:0.02em;margin:6px 0 8px;}
+.head__sub{font-size:14.5px;color:var(--ink-soft);font-style:italic;border-left:2px solid var(--line-soft);padding-left:12px;max-width:46ch;}
+.search{position:relative;margin:18px 0 14px;}
+.search input{width:100%;height:54px;padding:0 16px 0 46px;border:2px solid var(--line);border-radius:3px;background:var(--field);font-family:'PT Mono',monospace;font-size:14px;color:var(--ink);outline:none;}
+.search input::placeholder{color:var(--ink-faint);}
+.search input:focus{border-color:var(--steel);box-shadow:0 0 0 3px rgba(68,105,141,0.2);}
+.search svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--ink-soft);pointer-events:none;}
+.ftoggle{display:none;width:100%;align-items:center;justify-content:space-between;gap:10px;
+  font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;
+  padding:12px 14px;border:1.5px solid var(--line);border-radius:3px;background:var(--card);color:var(--ink);cursor:pointer;margin-bottom:14px;min-height:46px;}
+.ftoggle .cnt{font-family:'PT Mono',monospace;font-size:11px;background:var(--navy);color:#EDE6D2;border-radius:2px;padding:2px 8px;}
+.fbackdrop{display:none;}
+.filters{border:1.5px solid var(--line-soft);border-radius:3px;background:var(--card);padding:14px;margin-bottom:14px;}
+.faxis{padding:10px 0;border-bottom:1px solid var(--line-soft);}
+.faxis:first-child{padding-top:2px;}
+.faxis:last-child{border-bottom:0;padding-bottom:2px;}
+.faxis__l{font-family:'PT Mono',monospace;font-size:9.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px;}
+.faxis__note{font-family:'PT Mono',monospace;font-size:10px;color:var(--ink-faint);font-style:normal;}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:3px;overflow:hidden;flex-wrap:wrap;}
+.seg button{appearance:none;border:0;border-right:1.5px solid var(--line);background:transparent;cursor:pointer;color:var(--ink);font-family:'Oswald',sans-serif;font-weight:500;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;padding:8px 13px;min-height:42px;transition:.12s;}
+.seg button:last-child{border-right:0;}
+.seg button:hover{background:rgba(32,36,44,0.07);}
+.seg button.on{background:var(--navy);color:#F1EAD8;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{appearance:none;cursor:pointer;font-family:'Oswald',sans-serif;font-weight:500;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;padding:7px 12px;min-height:40px;border:1.5px solid var(--line);border-radius:3px;background:transparent;color:var(--ink);display:inline-flex;align-items:center;gap:7px;transition:.12s;}
+.chip:hover{background:rgba(32,36,44,0.07);}
+.chip .dot{width:8px;height:8px;background:currentColor;flex:0 0 auto;}
+.chip.cat--stat .dot{background:var(--steel);}.chip.cat--tactic .dot{background:var(--brick);}
+.chip.cat--rule .dot{background:var(--green);}.chip.cat--position .dot{background:var(--ochre);}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#F1EAD8;}
+.chip.on .dot{background:#F1EAD8;}
+.active-row{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;font-family:'PT Mono',monospace;font-size:10.5px;color:var(--ink-soft);margin-bottom:18px;line-height:1.7;}
+.active-row .lab{letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);flex:0 0 auto;}
+.active-row .vals{flex:1;min-width:120px;}
+.active-row .reset{appearance:none;border:1.5px solid var(--line-soft);background:transparent;color:var(--brick);font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:6px 10px;border-radius:2px;cursor:pointer;min-height:40px;}
+.active-row .reset:hover{border-color:var(--brick);}
+.viewbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.viewbar__count{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);}
+.vseg{display:inline-flex;border:1.5px solid var(--line);border-radius:3px;overflow:hidden;}
+.vseg button{appearance:none;border:0;border-right:1.5px solid var(--line);background:transparent;cursor:pointer;color:var(--ink);font-family:'Oswald',sans-serif;font-weight:500;font-size:11.5px;letter-spacing:0.05em;text-transform:uppercase;padding:8px 12px;min-height:40px;}
+.vseg button:last-child{border-right:0;}
+.vseg button.on{background:var(--navy);color:#F1EAD8;}
+.group{margin-bottom:14px;border:1.5px solid var(--line);border-radius:3px;background:var(--card);overflow:hidden;}
+.group__head{display:flex;align-items:center;gap:10px;width:100%;text-align:left;appearance:none;border:0;background:transparent;cursor:pointer;padding:13px 14px;color:var(--ink);min-height:48px;}
+.group__chev{font-family:'PT Mono',monospace;font-size:14px;color:var(--ink-faint);transition:transform .15s;flex:0 0 auto;}
+.group.collapsed .group__chev{transform:rotate(-90deg);}
+.group__title{font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;letter-spacing:0.03em;text-transform:uppercase;flex:1;}
+.group__cat{width:9px;height:9px;flex:0 0 auto;}
+.group__cat.stat{background:var(--steel);}.group__cat.tactic{background:var(--brick);}
+.group__cat.rule{background:var(--green);}.group__cat.position{background:var(--ochre);}
+.group__cat.mixed{background:var(--ink-faint);}
+.group__cnt{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--ink-faint);border:1px solid var(--line-soft);border-radius:2px;padding:2px 7px;flex:0 0 auto;}
+.group__items{border-top:1px solid var(--line-soft);}
+.group.collapsed .group__items{display:none;}
+.group__items .term{border-left:3px solid var(--line-soft);margin:10px 12px 10px 14px;}
+.flat{display:none;}
+.flat .term{margin-bottom:10px;}
+.letter{font-family:'Oswald',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.1em;color:var(--ink-faint);border-bottom:1.5px solid var(--line-soft);padding:6px 2px 4px;margin:14px 0 10px;}
+.letter:first-child{margin-top:0;}
+.term{background:var(--card);border:1.5px solid var(--line);border-radius:3px;padding:13px 14px 14px;}
+.group__items .term{background:var(--field);}
+.term__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.term__en{font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;line-height:1.08;text-transform:uppercase;letter-spacing:0.01em;}
+.badge{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-family:'PT Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;padding:4px 8px;border:1px solid currentColor;white-space:nowrap;}
+.badge::before{content:"";width:7px;height:7px;background:currentColor;}
+.badge--stat{color:var(--steel);}.badge--tactic{color:var(--brick);}
+.badge--rule{color:var(--green);}.badge--position{color:var(--ochre);}
+.term__ru{font-size:15px;font-weight:700;font-style:italic;color:var(--steel);margin-top:2px;}
+.term__meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 9px;}
+.lvl{display:inline-flex;align-items:center;gap:6px;font-family:'PT Mono',monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);}
+.lvl::before{content:"";width:8px;height:8px;flex:0 0 auto;}
+.lvl--base::before{background:var(--green);}.lvl--mid::before{background:var(--ochre);}.lvl--adv::before{background:var(--brick);}
+.prof{font-family:'PT Mono',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--line-soft);border-radius:2px;padding:2px 6px;}
+.term__abbrs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.abbr{font-family:'PT Mono',monospace;font-size:10.5px;background:var(--navy);color:#EDE6D2;padding:2px 7px;border-radius:2px;letter-spacing:0.04em;}
+.term__def{font-size:13.5px;color:var(--ink-soft);}
+.term__slang{margin-top:9px;padding-top:8px;border-top:1px dashed var(--line-soft);font-size:12.5px;color:var(--ink-soft);display:flex;gap:8px;align-items:baseline;}
+.term__slang .l{font-family:'PT Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ochre);font-weight:700;flex:0 0 auto;}
+.term__more{appearance:none;background:transparent;border:0;cursor:pointer;margin-top:10px;font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--steel);padding:6px 0;display:inline-flex;align-items:center;gap:6px;min-height:40px;}
+.term__more .ar{transition:transform .15s;}
+.term.open .term__more .ar{transform:rotate(180deg);}
+.term__extra{display:none;margin-top:11px;padding-top:12px;border-top:1.5px solid var(--line-soft);}
+.term.open .term__extra{display:block;}
+.visual{border:1.5px solid var(--line-soft);border-radius:3px;background:repeating-linear-gradient(45deg,rgba(32,36,44,0.05) 0 8px,transparent 8px 16px);padding:18px 14px;text-align:center;position:relative;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:inherit;}
+a.visual:hover{border-color:var(--steel);}
+.visual__tag{font-family:'PT Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);}
+.visual__lab{font-size:12.5px;color:var(--ink-soft);font-style:italic;max-width:34ch;}
+.visual__play{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--ink);}
+.visual__tc{position:absolute;right:10px;bottom:9px;font-family:'PT Mono',monospace;font-size:10px;background:var(--navy);color:#EDE6D2;padding:2px 7px;border-radius:2px;}
+.seealso{margin-top:12px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;}
+.seealso .l{font-family:'PT Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);flex:0 0 auto;}
+.seealso a{font-size:13px;color:var(--steel);text-decoration:underline;text-underline-offset:3px;}
+.seealso .sep{color:var(--ink-faint);}
+.term__hist{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-family:'Oswald',sans-serif;font-weight:600;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:var(--navy);border:1.5px solid var(--navy);border-radius:3px;padding:9px 13px;text-decoration:none;min-height:40px;}
+.term__hist:hover{background:var(--steel);border-color:var(--steel);}
+.empty-note{text-align:center;font-family:'PT Mono',monospace;font-size:11px;letter-spacing:0.06em;color:var(--ink-faint);padding:34px 12px;border:1.5px dashed var(--line-soft);border-radius:3px;}
+.foot{margin-top:30px;border-top:4px double var(--line);padding-top:16px;text-align:center;font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);line-height:2;}
+.foot a{color:var(--steel);text-decoration:underline;text-underline-offset:3px;}
+@media(max-width:719px){
+  .ftoggle{display:flex;}
+  .filters{position:fixed;top:0;right:0;bottom:0;z-index:60;width:min(86vw,360px);
+    margin:0;border-radius:0;border:0;border-left:2px solid var(--line);
+    transform:translateX(102%);transition:transform .25s ease;overflow-y:auto;
+    box-shadow:-8px 0 24px -12px rgba(0,0,0,0.4);padding:18px 16px 30px;}
+  .filters.open{transform:none;}
+  .filters__close{display:flex;width:100%;justify-content:space-between;align-items:center;margin-bottom:8px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;letter-spacing:0.05em;text-transform:uppercase;}
+  .filters__close button{appearance:none;border:0;background:transparent;font-size:26px;line-height:1;cursor:pointer;color:var(--ink);width:44px;height:44px;}
+  .fbackdrop{position:fixed;inset:0;z-index:55;background:rgba(20,24,30,0.4);display:none;}
+  .fbackdrop.open{display:block;}
+}
+@media(min-width:720px){
+  .filters__close{display:none;}
+  .faxis{display:grid;grid-template-columns:120px 1fr;align-items:start;gap:14px;}
+  .faxis__l{margin:6px 0 0;}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="top__home" href="index.html">Культура хоккея</a>
+  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html" aria-current="page">Словарь</a><a href="history.html">История</a></nav>
+</header>
+
+<div class="wrap">
+  <div class="head">
+    <div class="head__over">02 · Словарь</div>
+    <h1>Хоккейный словарь</h1>
+    <p class="head__sub" id="head-sub">Загрузка…</p>
+  </div>
+
+  <div class="search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+    <input type="search" id="q" placeholder="поиск: по-русски, in English или по сокращению…" autocomplete="off" spellcheck="false">
+  </div>
+
+  <button class="ftoggle" id="ftoggle" aria-expanded="false"><span>Фильтры</span><span class="cnt" id="fcount">0</span></button>
+  <div class="fbackdrop" id="fbackdrop"></div>
+
+  <div class="filters" id="filters">
+    <div class="filters__close"><span>Фильтры</span><button id="fclose" aria-label="Закрыть">×</button></div>
+    <div class="faxis">
+      <div class="faxis__l">Уровень</div>
+      <div class="seg" id="seg-level" role="group" aria-label="Уровень">
+        <button data-level="all" class="on">Все</button>
+        <button data-level="novice">База</button>
+        <button data-level="fan">Средний</button>
+        <button data-level="geek">Продвинутый</button>
+      </div>
+    </div>
+    <div class="faxis">
+      <div class="faxis__l">Профиль</div>
+      <div class="chips" id="ch-profile" role="group" aria-label="Профиль"></div>
+    </div>
+    <div class="faxis">
+      <div class="faxis__l">Категория</div>
+      <div class="chips" id="ch-cat" role="group" aria-label="Категория"></div>
+    </div>
+  </div>
+
+  <div class="active-row">
+    <span class="lab">Активно:</span>
+    <span class="vals" id="active-vals">все термины</span>
+    <button class="reset" id="reset">Сброс</button>
+  </div>
+
+  <div class="viewbar">
+    <span class="viewbar__count" id="count">…</span>
+    <div class="vseg" id="vseg" role="group" aria-label="Вид списка">
+      <button data-view="cluster" class="on">Кластеры</button>
+      <button data-view="flat">A→Z</button>
+    </div>
+  </div>
+
+  <section class="clusters" id="clusters" aria-label="Термины по кластерам"></section>
+  <section class="flat" id="flatlist" aria-label="Термины A→Z"></section>
+  <div class="empty-note" id="empty" style="display:none">Ничего не найдено. Попробуйте сбросить фильтры или изменить запрос.</div>
+
+  <footer class="foot">
+    <a href="index.html">← На главную</a> · <a href="history.html">История хоккея →</a><br>
+    Культура хоккея · при поддержке канала «Хоккейный Овертайм»
+  </footer>
+</div>
+
+<script>
+const CATS={stat:"Статистика",tactic:"Тактика",rule:"Правила",position:"Позиции"};
+const LVL={novice:"База",fan:"Средний",geek:"Продвинутый"};
+const LVLCLASS={novice:"base",fan:"mid",geek:"adv"};
+const PROF={general:"Общий",player:"Игрок",coach:"Тренер",analyst:"Аналитик",scout:"Скаут"};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let TERMS=[],CLUSTERS=[],TMAP={},CLUSTER_OF={};
+const NOCLUSTER="__none__";
+
+const state={q:"",level:"all",profiles:new Set(),cats:new Set(),view:"cluster",collapsed:new Set()};
+
+function hay(t){return (t.en+" "+t.ru+" "+(t.abbr||[]).join(" ")+" "+t.definition+" "+(t.ru_slang||"")+" "+t.id).toLowerCase();}
+function passes(t){
+  if(state.level!=="all"&&t.level!==state.level)return false;
+  if(state.cats.size&&!state.cats.has(t.category))return false;
+  if(state.profiles.size&&!(t.profiles||[]).some(p=>state.profiles.has(p)))return false;
+  if(state.q&&!hay(t).includes(state.q.toLowerCase()))return false;
+  return true;
+}
+
+function visualHTML(t){
+  if(t.visual_type==="video"){
+    const tc=t.visual_timecode?`<span class="visual__tc">▶ ${esc(t.visual_timecode)}</span>`:"";
+    return `<div class="visual"><div class="visual__play"><svg width="14" height="16" viewBox="0 0 14 16" fill="currentColor"><path d="M0 0l14 8-14 8z"/></svg></div><div class="visual__tag">Видео · превью</div><div class="visual__lab">${esc(t.visual_caption||"Видеоразбор")}</div>${tc}</div>`;
+  }
+  const src=t.diagram||((t.visual_type==="scheme")?t.visual:null);
+  if(src){
+    return `<a class="visual" href="${esc(src)}" target="_blank" rel="noopener"><div class="visual__tag">Слот визуала · SVG-схема</div><div class="visual__lab">${esc(t.visual_caption||"Открыть схему")}</div></a>`;
+  }
+  return "";
+}
+function termCard(t){
+  const prof=(t.profiles||[]).map(p=>`<span class="prof">${esc(PROF[p]||p)}</span>`).join("");
+  const abbr=(t.abbr&&t.abbr.length)?`<div class="term__abbrs">${t.abbr.map(a=>`<span class="abbr">${esc(a)}</span>`).join("")}</div>`:"";
+  const slang=t.ru_slang?`<div class="term__slang"><span class="l">Сленг</span><span>${esc(t.ru_slang)}</span></div>`:"";
+  const v=visualHTML(t);
+  const see=(t.see_also&&t.see_also.length)?`<div class="seealso"><span class="l">См. также</span>${t.see_also.map((id,i)=>`${i?'<span class="sep">·</span>':''}<a href="#t-${esc(id)}" data-goto="${esc(id)}">${esc(TMAP[id]?TMAP[id].ru:id)}</a>`).join("")}</div>`:"";
+  const a=t.anchor;
+  const hist=(a&&a.target)?`<a class="term__hist" href="${esc(a.target)}${a.anchor_id?'#'+esc(a.anchor_id):''}">${esc(a.label||"Подробнее")} →</a>`:"";
+  let extra="";
+  if(v||see||hist){extra=`<button class="term__more">Подробнее <span class="ar">↓</span></button><div class="term__extra">${v}${see}${hist}</div>`;}
+  const lc=LVLCLASS[t.level]||"base";
+  return `<article class="term" id="t-${esc(t.id)}" data-id="${esc(t.id)}">
+    <div class="term__head"><span class="term__en">${esc(t.en)}</span><span class="badge badge--${t.category}">${esc(CATS[t.category]||t.category)}</span></div>
+    <div class="term__ru">${esc(t.ru)}</div>
+    <div class="term__meta"><span class="lvl lvl--${lc}">${esc(LVL[t.level]||t.level)}</span>${prof}</div>
+    ${abbr}
+    <p class="term__def">${esc(t.definition)}</p>
+    ${slang}
+    ${extra}
+  </article>`;
+}
+
+/* кластеры: реестр + «Вне кластеров» (A→Z) для остального */
+function renderClusters(list){
+  const byC={};list.forEach(t=>{const c=t.cluster||NOCLUSTER;(byC[c]=byC[c]||[]).push(t);});
+  let html="";
+  CLUSTERS.forEach(c=>{
+    const items=byC[c.slug];if(!items||!items.length)return;
+    const col=state.collapsed.has(c.slug);
+    html+=`<div class="group${col?' collapsed':''}" data-g="${esc(c.slug)}">
+      <button class="group__head"><span class="group__chev">▾</span><span class="group__cat ${c.category||'mixed'}"></span><span class="group__title">${esc(c.title)}</span><span class="group__cnt">${items.length}</span></button>
+      <div class="group__items">${items.map(termCard).join("")}</div></div>`;
+  });
+  const rest=(byC[NOCLUSTER]||[]).slice().sort((a,b)=>a.ru.localeCompare(b.ru,"ru"));
+  if(rest.length){
+    const col=state.collapsed.has(NOCLUSTER);
+    html+=`<div class="group${col?' collapsed':''}" data-g="${NOCLUSTER}">
+      <button class="group__head"><span class="group__chev">▾</span><span class="group__cat mixed"></span><span class="group__title">Вне кластеров · A→Z</span><span class="group__cnt">${rest.length}</span></button>
+      <div class="group__items">${rest.map(termCard).join("")}</div></div>`;
+  }
+  return html;
+}
+function renderFlat(list){
+  const sorted=[...list].sort((a,b)=>a.ru.localeCompare(b.ru,"ru"));
+  let html="",letter="";
+  sorted.forEach(t=>{const L=(t.ru[0]||"").toUpperCase();if(L!==letter){letter=L;html+=`<div class="letter">${esc(L)}</div>`;}html+=termCard(t);});
+  return html;
+}
+function plural(n,a,b,c){const m=n%100,d=n%10;if(m>=11&&m<=14)return c;if(d===1)return a;if(d>=2&&d<=4)return b;return c;}
+function activeText(){
+  const parts=[];
+  if(state.level!=="all")parts.push(LVL[state.level]);
+  state.profiles.forEach(p=>parts.push(PROF[p]));
+  state.cats.forEach(c=>parts.push(CATS[c]));
+  if(state.q)parts.push("«"+state.q+"»");
+  return parts.length?parts.join(" · "):"все термины";
+}
+function render(){
+  const list=TERMS.filter(passes);
+  const cl=document.getElementById("clusters"),fl=document.getElementById("flatlist"),emp=document.getElementById("empty");
+  const clusterMode=state.view==="cluster";
+  cl.style.display=(clusterMode&&list.length)?"block":"none";
+  fl.style.display=(!clusterMode&&list.length)?"block":"none";
+  emp.style.display=list.length?"none":"block";
+  if(list.length){if(clusterMode)cl.innerHTML=renderClusters(list);else fl.innerHTML=renderFlat(list);}
+  document.getElementById("count").textContent=list.length+" "+plural(list.length,"термин","термина","терминов");
+  document.getElementById("active-vals").textContent=activeText();
+  document.getElementById("fcount").textContent=(state.level!=="all"?1:0)+state.profiles.size+state.cats.size+(state.q?1:0);
+}
+
+function buildFilters(){
+  const chCat=document.getElementById("ch-cat");
+  const presentCats=[...new Set(TERMS.map(t=>t.category))];
+  chCat.innerHTML=Object.entries(CATS).filter(([k])=>presentCats.includes(k)).map(([k,v])=>`<button class="chip cat--${k}" data-cat="${k}"><span class="dot"></span>${v}</button>`).join("");
+  const chProfile=document.getElementById("ch-profile");
+  const presentProf=[...new Set(TERMS.flatMap(t=>t.profiles||[]))];
+  if(presentProf.length){
+    chProfile.innerHTML=Object.entries(PROF).filter(([k])=>presentProf.includes(k)).map(([k,v])=>`<button class="chip" data-prof="${k}">${v}</button>`).join("");
+  }else{
+    chProfile.innerHTML=`<span class="faxis__note">— размечается, появится позже</span>`;
+  }
+}
+
+function wire(){
+  document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value.trim();render();});
+  document.getElementById("seg-level").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.level=b.dataset.level;document.querySelectorAll("#seg-level button").forEach(x=>x.classList.toggle("on",x===b));render();});
+  document.getElementById("ch-profile").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const p=b.dataset.prof;if(!p)return;state.profiles.has(p)?state.profiles.delete(p):state.profiles.add(p);b.classList.toggle("on");render();});
+  document.getElementById("ch-cat").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const c=b.dataset.cat;state.cats.has(c)?state.cats.delete(c):state.cats.add(c);b.classList.toggle("on");render();});
+  document.getElementById("reset").addEventListener("click",()=>{state.q="";state.level="all";state.profiles.clear();state.cats.clear();document.getElementById("q").value="";document.querySelectorAll("#seg-level button").forEach(x=>x.classList.toggle("on",x.dataset.level==="all"));document.querySelectorAll("#ch-profile .chip,#ch-cat .chip").forEach(x=>x.classList.remove("on"));render();});
+  document.getElementById("vseg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.view=b.dataset.view;document.querySelectorAll("#vseg button").forEach(x=>x.classList.toggle("on",x===b));render();});
+  document.body.addEventListener("click",e=>{
+    const gh=e.target.closest(".group__head");
+    if(gh){const g=gh.parentElement.dataset.g;state.collapsed.has(g)?state.collapsed.delete(g):state.collapsed.add(g);gh.parentElement.classList.toggle("collapsed");return;}
+    const more=e.target.closest(".term__more");
+    if(more){more.closest(".term").classList.toggle("open");return;}
+    const goto=e.target.closest("[data-goto]");
+    if(goto){e.preventDefault();jumpTo(goto.dataset.goto);return;}
+  });
+  const filters=document.getElementById("filters"),backdrop=document.getElementById("fbackdrop");
+  const openF=()=>{filters.classList.add("open");backdrop.classList.add("open");document.getElementById("ftoggle").setAttribute("aria-expanded","true");};
+  const closeF=()=>{filters.classList.remove("open");backdrop.classList.remove("open");document.getElementById("ftoggle").setAttribute("aria-expanded","false");};
+  document.getElementById("ftoggle").addEventListener("click",openF);
+  document.getElementById("fclose").addEventListener("click",closeF);
+  backdrop.addEventListener("click",closeF);
+}
+function jumpTo(id){
+  const t=TMAP[id];if(!t)return;
+  state.q="";document.getElementById("q").value="";
+  if(state.view==="cluster")state.collapsed.delete(t.cluster||NOCLUSTER);
+  render();
+  const el=document.getElementById("t-"+id);
+  if(el){el.classList.add("open");const y=el.getBoundingClientRect().top+window.scrollY-80;window.scrollTo({top:y,behavior:"smooth"});el.style.transition="background .2s";el.style.background="#F3E9CF";setTimeout(()=>el.style.background="",900);}
+}
+
+async function init(){
+  try{
+    const [terms,clusters]=await Promise.all([
+      fetch("./data/terms.json").then(r=>r.json()),
+      fetch("./data/clusters.json").then(r=>r.json())
+    ]);
+    TERMS=terms;CLUSTERS=clusters.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+    TMAP=Object.fromEntries(TERMS.map(t=>[t.id,t]));
+    document.getElementById("head-sub").textContent=`${TERMS.length} терминов: статистика, тактика, правила и позиции. Фильтруйте по уровню, профилю и категории — оси комбинируются.`;
+    buildFilters();wire();render();
+    if(location.hash.startsWith("#t-")){const id=location.hash.slice(3);setTimeout(()=>jumpTo(id),250);}
+  }catch(e){
+    document.getElementById("head-sub").textContent="Не удалось загрузить словарь. Обновите страницу.";
+    console.error(e);
+  }
+}
+init();
+</script>
+</body>
+</html>

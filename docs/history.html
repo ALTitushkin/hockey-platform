@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Культура хоккея — история хоккея</title>
+<meta name="description" content="История хоккея на платформе «Культура хоккея»: главы от рождения игры до современности. Научпоп-разборы. При поддержке канала «Хоккейный Овертайм».">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
+<style>
+/* КУЛЬТУРА ХОККЕЯ — ИНДЕКС ИСТОРИИ · направление A. Данные из data/history.json. */
+:root{
+  --paper:#F1EAD8;--card:#FAF4E2;--field:#FBF6E9;
+  --ink:#20242C;--ink-soft:#3C4350;--ink-faint:#7A7763;
+  --line:#20242C;--line-soft:rgba(32,36,44,0.30);
+  --steel:#44698D;--navy:#1B2433;--brick:#9E3B2C;--green:#3E6B4F;--ochre:#A87E34;
+  --grain:0.05;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{-webkit-font-smoothing:antialiased;text-size-adjust:100%;scroll-behavior:smooth;}
+body{background:var(--paper);color:var(--ink);font-family:'PT Serif',serif;line-height:1.62;position:relative;overflow-x:hidden;}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity:var(--grain);mix-blend-mode:multiply;}
+a{color:var(--steel);}
+.top{position:sticky;top:0;z-index:30;background:var(--paper);display:flex;align-items:baseline;gap:12px;
+  padding:13px 16px;border-bottom:4px double var(--line);max-width:920px;margin:0 auto;}
+.top__home{font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink);text-decoration:none;white-space:nowrap;}
+.top__home:hover{color:var(--steel);}
+.top__nav{margin-left:auto;display:flex;gap:14px;}
+.top__nav a{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);text-decoration:none;}
+.top__nav a:hover,.top__nav a[aria-current]{color:var(--steel);}
+.wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 16px 56px;}
+.idx-head{padding:26px 0 6px;}
+.idx-head .over{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);}
+.idx-head h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(32px,9vw,46px);line-height:1.0;text-transform:uppercase;letter-spacing:0.02em;margin:6px 0 10px;}
+.idx-head .lead{font-size:clamp(15px,2.4vw,17px);color:var(--ink-soft);max-width:54ch;font-style:italic;border-left:2px solid var(--line-soft);padding-left:14px;}
+.era{margin-top:30px;}
+.era__head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;}
+.era__head::before,.era__head::after{content:"";flex:1;border-top:4px double var(--line);align-self:center;}
+.era__head h2{font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(16px,4vw,20px);letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
+.era__head .yrs{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--ink-faint);white-space:nowrap;}
+.ch-grid{display:grid;gap:14px;}
+@media(min-width:680px){.ch-grid{grid-template-columns:1fr 1fr;}}
+.tease{display:flex;flex-direction:column;background:var(--card);border:1.5px solid var(--line);border-radius:3px;padding:16px 16px 15px;text-decoration:none;color:inherit;}
+a.tease:hover{border-color:var(--steel);}
+.tease__over{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;}
+.tease__title{font-family:'Oswald',sans-serif;font-weight:600;font-size:21px;line-height:1.1;letter-spacing:0.01em;margin-bottom:8px;}
+.tease__sum{font-size:14px;color:var(--ink-soft);flex:1;}
+.tease__cta{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;margin-top:13px;font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:var(--navy);border:1.5px solid var(--navy);border-radius:3px;padding:10px 14px;min-height:42px;}
+a.tease:hover .tease__cta{background:var(--steel);border-color:var(--steel);}
+.tease--soon{opacity:0.6;border-style:dashed;}
+.tease--soon .tease__title{font-weight:500;}
+.tease__soon{align-self:flex-start;margin-top:13px;font-family:'PT Mono',monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:var(--ochre);border:1px solid var(--ochre);border-radius:2px;padding:5px 9px;}
+.foot{margin-top:34px;border-top:4px double var(--line);padding-top:16px;text-align:center;font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);line-height:2;}
+.foot a{color:var(--steel);text-decoration:underline;text-underline-offset:3px;}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="top__home" href="index.html">Культура хоккея</a>
+  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html">Словарь</a><a href="history.html" aria-current="page">История</a></nav>
+</header>
+
+<div class="wrap">
+  <div class="idx-head">
+    <div class="over">03 · История хоккея</div>
+    <h1>История хоккея</h1>
+    <p class="lead">Как игра пришла на лёд и стала такой, какой мы её знаем. Главы-разборы от первого матча до больших данных — читать по порядку или с любого места.</p>
+  </div>
+  <div id="eras"></div>
+  <footer class="foot">
+    <a href="index.html">← На главную</a> · <a href="dictionary.html">Словарь →</a><br>
+    Культура хоккея · при поддержке канала «Хоккейный Овертайм»
+  </footer>
+</div>
+
+<script>
+const ERAS=[
+  {id:"birth",title:"Рождение",yrs:"1875–1940"},
+  {id:"soviet",title:"Советский хоккей",yrs:"1946–1991"},
+  {id:"modern",title:"Современный",yrs:"1992 — наст."}
+];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function teaser(c){
+  const over=`Глава ${esc(c.n)} · ${esc(c.kicker||"")}`;
+  if(!c.published||!c.url){
+    return `<article class="tease tease--soon">
+      <div class="tease__over">${over}</div>
+      <h3 class="tease__title">${esc(c.title)}</h3>
+      <p class="tease__sum">${esc(c.summary)}</p>
+      <span class="tease__soon">Скоро</span></article>`;
+  }
+  return `<a class="tease" href="${esc(c.url)}">
+    <div class="tease__over">${over}</div>
+    <h3 class="tease__title">${esc(c.title)}</h3>
+    <p class="tease__sum">${esc(c.summary)}</p>
+    <span class="tease__cta">Читать →</span></a>`;
+}
+function render(chapters){
+  const host=document.getElementById("eras");
+  const byEra={};chapters.forEach(c=>{(byEra[c.era]=byEra[c.era]||[]).push(c);});
+  host.innerHTML=ERAS.map(era=>{
+    const chs=(byEra[era.id]||[]).sort((a,b)=>a.n-b.n);
+    if(!chs.length)return"";
+    return `<section class="era">
+      <div class="era__head"><h2>${esc(era.title)}</h2><span class="yrs">${esc(era.yrs)}</span></div>
+      <div class="ch-grid">${chs.map(teaser).join("")}</div></section>`;
+  }).join("");
+}
+async function init(){
+  try{
+    const chapters=await fetch("./data/history.json").then(r=>r.json());
+    chapters.sort((a,b)=>(a.n||0)-(b.n||0));
+    render(chapters);
+  }catch(e){console.error(e);document.getElementById("eras").innerHTML='<p style="color:var(--ink-soft)">Не удалось загрузить главы. Обновите страницу.</p>';}
+}
+init();
+</script>
+</body>
+</html>
