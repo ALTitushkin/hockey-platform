@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.1] — 2026-06-19
+
+### Добавлено (Sprint 6 · Трек 2 — глава 2 опубликована)
+- `docs/history/golden-age-canada.html` — глава 2 «Золотой век Канады: первые суперзвёзды и Большая шестёрка», свёрстана по шаблону `origins.html`: breadcrumb (Главная › История › Золотой век Канады), chapter-label «Глава 2», 6 разделов h2 с id-якорями (`original-six`, `montreal-vs-toronto`, `howie-morenz`, `rocket-richard`, `richard-riot-1955`, `gordie-howe`), 3 fact-box, таймлайн (7 дат), блок «Источники» (9 ссылок), nav-footer (← origins; soviet-origins задизейблена), видимый `dateModified`
+- JSON-LD на главе: `Article` (`datePublished`/`dateModified` = 2026-06-19, `author`/`publisher` = Организация с `logo`, `inLanguage`=ru, `mainEntityOfPage`) + `BreadcrumbList`
+- `data/history.json` и `docs/data/history.json`: `golden-age-canada` → `published:true`, `url`, `summary` (из «Краткого резюме»), `sections[]` по 6 якорям; порядок/era/kicker не тронуты
+- `sitemap.xml` пересобран `build_seo.py` — теперь 5 URL (2 опубликованные главы)
+
+### Примечания
+- Текст главы принят контентом и не переписывался; вёрстка распарсила готовый markdown. Минор-правка по ТЗ: «Монреального форума» → «Монреальского форума» (2×)
+- `validate_data.py` зелёный; `data/ ↔ docs/data/` идентичны
+
 ## [0.9.0] — 2026-06-19
 
 ### Добавлено (Sprint 6 · Трек 1 — SEO / AI-SEO фундамент)
