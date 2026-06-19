@@ -5,6 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Культура хоккея — словарь</title>
 <meta name="description" content="Хоккейный словарь «Культуры хоккея»: термины с фильтрами по уровню, профилю и категории. Кластеры и плоский список A→Z. При поддержке канала «Хоккейный Овертайм».">
+<link rel="canonical" href="https://altitushkin.github.io/hockey-platform/dictionary.html">
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Культура хоккея">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Хоккейный словарь — Культура хоккея">
+<meta property="og:description" content="Термины англ→рус с фильтрами по уровню, профилю и категории. Кластеры и список A→Z.">
+<meta property="og:url" content="https://altitushkin.github.io/hockey-platform/dictionary.html">
+<meta property="og:image" content="https://altitushkin.github.io/hockey-platform/logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Хоккейный словарь — Культура хоккея">
+<meta name="twitter:description" content="Термины англ→рус с фильтрами по уровню, профилю и категории. Кластеры и список A→Z.">
+<meta name="twitter:image" content="https://altitushkin.github.io/hockey-platform/logo.png">
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://altitushkin.github.io/hockey-platform/#org",
+      "name": "Культура хоккея",
+      "url": "https://altitushkin.github.io/hockey-platform/",
+      "logo": "https://altitushkin.github.io/hockey-platform/logo.png",
+      "sameAs": [
+        "https://t.me/lifeinovertime",
+        "https://github.com/altitushkin/hockey-platform"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://altitushkin.github.io/hockey-platform/#website",
+      "name": "Культура хоккея",
+      "url": "https://altitushkin.github.io/hockey-platform/",
+      "inLanguage": "ru",
+      "publisher": {
+        "@id": "https://altitushkin.github.io/hockey-platform/#org"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Главная",
+          "item": "https://altitushkin.github.io/hockey-platform/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Словарь",
+          "item": "https://altitushkin.github.io/hockey-platform/dictionary.html"
+        }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
@@ -382,5 +441,493 @@ async function init(){
 }
 init();
 </script>
+<!-- SEO:DEFINEDTERMS:START (генерится tools/build_seo.py — вручную не править) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "DefinedTermSet",
+  "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset",
+  "name": "Хоккейный словарь «Культуры хоккея»",
+  "url": "https://altitushkin.github.io/hockey-platform/dictionary.html",
+  "inLanguage": "ru",
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-corsi",
+      "name": "Корси",
+      "alternateName": [
+        "Corsi",
+        "CF",
+        "CA",
+        "CF%",
+        "SAT"
+      ],
+      "description": "Считает все попытки броска за смену: в створ, мимо и заблокированные. CF% выше 50% — команда контролирует шайбу больше, чем соперник. Назван в честь Джима Корси, вратарского тренера «Баффало».",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-fenwick",
+      "name": "Фенвик",
+      "alternateName": [
+        "Fenwick",
+        "FF",
+        "FA",
+        "FF%",
+        "USAT"
+      ],
+      "description": "Как Корси, но без заблокированных бросков. Считает только броски в створ и мимо. Считается чуть точнее Корси, потому что блоки частично зависят от тактики соперника.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-expected-goals",
+      "name": "Ожидаемые голы",
+      "alternateName": [
+        "Expected Goals",
+        "xG",
+        "xGF",
+        "xGA",
+        "xGF%"
+      ],
+      "description": "Вероятность гола с данной позиции. Учитывает тип броска, дистанцию, угол, предшествующие пасы. Бросок с пятака = высокий xG, бросок с синей линии = низкий xG. xGF% — доля ожидаемых голов команды от общего xG в матче.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-pdo",
+      "name": "ПДО",
+      "alternateName": "PDO",
+      "description": "Процент попаданий (Sh%) плюс процент отражений вратаря (Sv%). Среднее по лиге всегда близко к 100. PDO значительно выше 100 — команда переживает удачную полосу, ниже 100 — неудачную. На дистанции PDO стремится к среднему.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-shots-on-goal",
+      "name": "Броски в створ",
+      "alternateName": [
+        "Shots on Goal",
+        "SOG",
+        "S"
+      ],
+      "description": "Броски, которые либо достигли вратаря, либо стали голом. Мимо ворот или заблокированные — не считаются. Самая базовая метрика атаки, но слабо предсказывает будущие результаты.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-high-danger-chances",
+      "name": "Моменты высокой опасности",
+      "alternateName": [
+        "High Danger Chances",
+        "HDC",
+        "HDCF",
+        "HDCA"
+      ],
+      "description": "Броски с наиболее опасных позиций: пятак, «слот» перед воротами, добивания. Часть xG-аналитики. HDCF% — доля опасных моментов команды. Лучше отражает реальное давление, чем просто количество бросков.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-save-percentage",
+      "name": "Процент отражений",
+      "alternateName": [
+        "Save Percentage",
+        "Sv%",
+        "SV%"
+      ],
+      "description": "Доля бросков в створ, которые вратарь отразил. Sv% = (Броски - Голы) / Броски. Лига в среднем: ~0.910. Элитные вратари: 0.920+. Сильно зависит от качества бросков против — поэтому смотрят вместе с xG against.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-goals-saved-above-expected",
+      "name": "Голы, сэкономленные сверх ожидаемого",
+      "alternateName": [
+        "Goals Saved Above Expected",
+        "GSAx",
+        "GSAE"
+      ],
+      "description": "Разница между ожидаемыми голами против (xGA) и реально пропущенными. Положительное значение — вратарь играет лучше среднего. Лучшая метрика оценки вратарей, так как учитывает качество бросков против.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-forecheck",
+      "name": "Форчек",
+      "alternateName": "Forecheck",
+      "description": "Давление на соперника в его зоне — сразу после потери или с выходом вперёд. Цель: не дать вынести шайбу, создать ошибку. Бывает агрессивный (1-2-2, 2-1-2) и консервативный (1-2-2 нейтральная зона).",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-backcheck",
+      "name": "Бэкчек",
+      "alternateName": "Backcheck",
+      "description": "Возврат назад в оборону после потери шайбы в атаке или средней зоне. Быстрые бэкчекеры — критически важны против контратак. Противоположность форчеку.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-neutral-zone-trap",
+      "name": "Ловушка в нейтральной зоне",
+      "alternateName": "Neutral Zone Trap",
+      "description": "Оборонительная тактика: 4–5 игроков блокируют нейтральную зону, вынуждая соперника бросать шайбу вперёд или делать ошибки. Убивает темп игры, снижает количество бросков обеих команд. Популяризирована сборной Франции и «Нью-Джерси» в 90-е.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-power-play",
+      "name": "Большинство",
+      "alternateName": [
+        "Power Play",
+        "PP",
+        "PP%"
+      ],
+      "description": "Игра при численном преимуществе — когда у соперника один или два игрока удалены. PP% = голы в большинстве / время в большинстве × 100. Лига в среднем: 18–20%. Большинство с пяти точек (фланги + синяя линия) — классическая схема.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-penalty-kill",
+      "name": "Меньшинство",
+      "alternateName": [
+        "Penalty Kill",
+        "PK",
+        "PK%"
+      ],
+      "description": "Игра при численном меньшинстве — когда кто-то из своих удалён. PK% = 100 минус процент пропущенных в меньшинстве. Лига в среднем: 79–82%. Успешный PK — один из важнейших показателей командной игры.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-zone-entry",
+      "name": "Вход в зону",
+      "alternateName": "Zone Entry",
+      "description": "Способ, которым команда входит в зону атаки. Три варианта: с контролем шайбы (carry-in), с пасом за линию (pass-in) и вброс (dump-in). Входы с контролем создают значительно больше опасных моментов.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-slot",
+      "name": "Пятак / Слот",
+      "alternateName": "Slot",
+      "description": "Опасная зона прямо перед воротами — примерно от вбрасывания до линии ворот, между кругами. Большинство голов в хоккее забивается со слота. Контроль этой зоны — ключ к обороне.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-odd-man-rush",
+      "name": "Выход в численном преимуществе",
+      "alternateName": "Odd-Man Rush",
+      "description": "Контратака, когда атакующих больше, чем обороняющихся: 2-в-1, 3-в-1, 3-в-2. Один из самых опасных моментов в хоккее — вратарь вынужден выбирать между передачей и бросковой угрозой.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-goals-against-average",
+      "name": "Среднее число пропущенных голов",
+      "alternateName": [
+        "Goals Against Average",
+        "GAA"
+      ],
+      "description": "Среднее количество голов, пропускаемых вратарём за 60 минут игры. GAA = (голы пропущенные / минуты сыграно) × 60. Ниже — лучше. Зависит от игры команды, поэтому читается вместе с Sv% и xGA.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-plus-minus",
+      "name": "Показатель плюс/минус",
+      "alternateName": [
+        "Plus/Minus",
+        "+/-"
+      ],
+      "description": "+1 когда игрок на льду при голе своей команды в равных составах или большинстве. -1 при пропущенном голе. Широко критикуется как метрика: зависит от качества партнёров и соперников. Более честная замена — Corsi и xGF% при равных составах.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-face-off",
+      "name": "Вбрасывание",
+      "alternateName": [
+        "Face-off",
+        "FO",
+        "FO%"
+      ],
+      "description": "Розыгрыш шайбы двумя центральными нападающими после остановки игры. FO% — процент выигранных вбрасываний. Критично для большинства/меньшинства и нейтральной зоны. Специалист по вбрасываниям — «dot man» на сленге.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-points-per-game",
+      "name": "Очки за игру",
+      "alternateName": [
+        "Points Per Game",
+        "P/GP",
+        "PPG"
+      ],
+      "description": "Среднее количество очков (голы + передачи) за сыгранную игру. Позволяет сравнивать игроков с разным количеством сыгранных матчей. P/GP выше 1.0 — уровень звезды, выше 1.5 — уровень MVP.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-shutout",
+      "name": "Шатаут",
+      "alternateName": [
+        "Shutout",
+        "SHO"
+      ],
+      "description": "Матч, в котором вратарь не пропустил ни одной шайбы. Засчитывается, только если вратарь отыграл всю игру целиком. Одна из главных строчек вратарской статистики.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-icing",
+      "name": "Проброс",
+      "alternateName": "Icing",
+      "description": "Шайба выброшена из своей половины за линию ворот соперника без касания кого-либо. Игра останавливается, вбрасывание — в зоне провинившейся команды, и ей запрещена смена состава. Команде в меньшинстве пробрасывать можно.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-offside",
+      "name": "Офсайд",
+      "alternateName": "Offside",
+      "description": "Игрок атаки пересёк синюю линию зоны соперника раньше шайбы. Игра останавливается, вбрасывание — в нейтральной зоне. Определяется по положению коньков: оба конька за линией до шайбы — офсайд.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-center",
+      "name": "Центральный нападающий",
+      "alternateName": [
+        "Center",
+        "C"
+      ],
+      "description": "Нападающий центральной оси: берёт вбрасывания, связывает оборону с атакой, отвечает за центр льда в своей зоне. Обычно самый универсальный игрок звена.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-winger",
+      "name": "Крайний нападающий",
+      "alternateName": [
+        "Winger",
+        "LW",
+        "RW"
+      ],
+      "description": "Нападающий фланга — левый (LW) или правый (RW). Работает по борту: входы в зону, борьба в углах, бросковые позиции на фланге. В обороне закрывает защитника соперника на синей линии.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-defenseman",
+      "name": "Защитник",
+      "alternateName": [
+        "Defenseman",
+        "D",
+        "LD",
+        "RD"
+      ],
+      "description": "Игрок обороны. Пара защитников действует позади нападающих: разрушение атак, первый пас, контроль пятака. Атакующие защитники подключаются к атаке и дежурят на синей линии.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-goaltender",
+      "name": "Вратарь",
+      "alternateName": [
+        "Goaltender",
+        "G"
+      ],
+      "description": "Последний рубеж. Единственный игрок, которому можно накрывать шайбу в своей площади. Стили: баттерфляй (игра на коленях, закрывая низ) и гибридный.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-deke",
+      "name": "Финт",
+      "alternateName": "Deke",
+      "description": "Обманное движение с шайбой, чтобы убрать соперника или вратаря с пути. От слова decoy — приманка. Классика: ложный замах, перекладка с форхенда на бэкхенд.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-breakaway",
+      "name": "Выход один на один",
+      "alternateName": "Breakaway",
+      "description": "Игрок с шайбой убегает на вратаря без единого защитника между ними. Чистейший голевой момент. Фол на убегающем игроке = буллит.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-screen",
+      "name": "Заслон",
+      "alternateName": "Screen",
+      "description": "Игрок стоит перед вратарём и закрывает ему обзор при броске — вратарь реагирует с опозданием или не видит шайбу вовсе. Ключевой элемент розыгрыша большинства.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-rebound",
+      "name": "Отскок",
+      "alternateName": "Rebound",
+      "description": "Шайба, отбитая вратарём обратно в игру. Добивание с отскока — один из главных источников голов. Хорошие вратари гасят отскоки в углы или накрывают шайбу.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-one-timer",
+      "name": "Бросок в касание",
+      "alternateName": "One-Timer",
+      "description": "Бросок сразу с передачи, без приёма и обработки шайбы. Вратарь не успевает переместиться за поперечным пасом. Коронный приём снайперов в большинстве (Овечкин из «своего офиса»).",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-cycle",
+      "name": "Карусель",
+      "alternateName": "Cycle",
+      "description": "Удержание шайбы в зоне атаки перепасовкой по борту и за воротами: игроки по очереди меняются позициями, выматывая оборону, пока не откроется бросок. Основа позиционной атаки.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-breakout",
+      "name": "Выход из зоны",
+      "alternateName": "Breakout",
+      "description": "Организованный выход из своей зоны после отбора шайбы: защитник за воротами, фланги по бортам, центр в поддержке. Качество брейкаута определяет, как часто команда вообще доходит до атаки.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-enforcer",
+      "name": "Тафгай",
+      "alternateName": "Enforcer",
+      "description": "Игрок, чья роль — защищать партнёров кулаками и физической игрой. Драки, силовое давление, ответ на грязную игру соперника. В современном хоккее роль почти исчезла: лимит на состав слишком дорог.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-puck",
+      "name": "Шайба",
+      "alternateName": "Puck",
+      "description": "Вулканизированный резиновый диск диаметром 76 мм, весом 170 г — основной снаряд игры. Официальные шайбы замораживают перед матчем, чтобы уменьшить отскок и сделать скольжение по льду более предсказуемым.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-hockey-stick",
+      "name": "Клюшка",
+      "alternateName": "Hockey Stick",
+      "description": "Основной инструмент хоккеиста для управления шайбой. Состоит из рукоятки и крюка. Длина, загиб (lie) и жёсткость подбираются под стиль игрока: защитники предпочитают более жёсткие клюшки, снайперы — крюки с бо́льшим загибом.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-forward",
+      "name": "Форвард",
+      "alternateName": [
+        "Forward",
+        "F",
+        "FWD"
+      ],
+      "description": "Атакующий игрок. В звене три форварда: центральный (C) и два крайних нападающих (LW, RW). Основная задача — создание голевых моментов и взятие ворот. Форварды первого звена получают большинство времени на льду.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-checker",
+      "name": "Чекер",
+      "alternateName": "Checker",
+      "description": "Оборонительный нападающий, специализирующийся на нейтрализации лидеров атаки соперника через силовую игру и активный форчек. В отличие от тафгая, чекер — прежде всего хоккеист: его роль тактическая, а не запугивающая. Типичный пример — четвёртое звено с задачей «убить» смену топ-форвардов.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-wrist-shot",
+      "name": "Кистевой бросок",
+      "alternateName": "Wrist shot",
+      "description": "Бросок движением кисти и предплечья без замаха — шайба «выкатывается» с крюка. Не самый сильный, зато точный и быстрый; главное оружие в ближнем бою у ворот.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-slap-shot",
+      "name": "Щелчок",
+      "alternateName": "Slap shot",
+      "description": "Самый мощный бросок: замах выше плеча, клюшка бьёт лёд перед шайбой и распрямляется как пружина. Долго готовится и легко блокируется — поэтому чаще от синей линии.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-snap-shot",
+      "name": "Кистевой щелчок",
+      "alternateName": "Snap shot",
+      "description": "Гибрид кистевого и щелчка: короткий резкий замах без полного размаха. Быстрее щелчка и сильнее кистевого — компромисс скорости и мощи.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-zone-defense",
+      "name": "Зонная оборона",
+      "alternateName": "Zone defense",
+      "description": "Оборона, где каждый отвечает за свою зону льда, а не за конкретного соперника (в отличие от персональной опеки). Чаще применяется в меньшинстве.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-umbrella",
+      "name": "Зонтик",
+      "alternateName": "Umbrella",
+      "description": "Расстановка в большинстве «зонтиком»: трое у синей линии полукругом, двое ниже. Раскрывает коридоры для броска от точки и передач на пятак.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-box-out",
+      "name": "Боксаут",
+      "alternateName": "Box out",
+      "description": "Оттереть соперника корпусом от пятака, заняв позицию между ним и воротами. Базовый приём защитников при борьбе у ворот и на добиваниях.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-neutral-zone",
+      "name": "Нейтральная зона",
+      "alternateName": "Neutral zone",
+      "description": "Средняя треть площадки между синими линиями. Здесь начинаются атаки и ставятся ловушки; «игра в средней зоне» — про контроль этого участка.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-cross-check",
+      "name": "Кроссчек",
+      "alternateName": "Cross-check",
+      "description": "Толчок соперника клюшкой, которую держат двумя руками на весу (без касания льда). Нарушение — малый или большой штраф в зависимости от тяжести.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-delayed-penalty",
+      "name": "Отложенный штраф",
+      "alternateName": "Delayed penalty",
+      "description": "Судья заметил нарушение, но не останавливает игру, пока шайбой владеет пострадавшая команда: поднимает руку и ждёт. Та обычно снимает вратаря ради лишнего игрока до свистка.",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-empty-net",
+      "name": "Пустые ворота",
+      "alternateName": [
+        "Empty net",
+        "ENG"
+      ],
+      "description": "Ворота без вратаря: его меняют на шестого полевого ради давления — в концовке при отставании или при отложенном штрафе. Риск — гол в пустые (empty-net goal, ENG).",
+      "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
+    }
+  ]
+}
+</script>
+<!-- SEO:DEFINEDTERMS:END -->
 </body>
 </html>

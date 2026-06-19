@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.9.0] — 2026-06-19
+
+### Добавлено (Sprint 6 · Трек 1 — SEO / AI-SEO фундамент)
+- Технический SEO на всех 4 страницах (`index`/`dictionary`/`history`/`history/origins`): `<link rel="canonical">` (абс. URL; у главной — корень), Open Graph + Twitter Card (`summary_large_image`, картинка `logo.png`), приведена иерархия заголовков к одному `<h1>` на страницу
+- `<h1>` на главной (был только SVG-вордмарк) — visually-hidden, для семантики/SEO
+- JSON-LD `Organization` + `WebSite` — статически в `<head>` каждой страницы (имя «Культура хоккея», `logo`, `sameAs`: канал + GitHub)
+- JSON-LD `BreadcrumbList` — на словаре, индексе истории и главе
+- JSON-LD `DefinedTermSet` + 49 `DefinedTerm` — в `dictionary.html` **статически** (не через fetch: краулеры/LLM не исполняют JS); `name`=рус, `alternateName`=англ+сокращения, `description`=определение
+- JSON-LD `Article` на `origins.html` (`headline`/`author`/`publisher`/`datePublished`/`dateModified`/`inLanguage`/`mainEntityOfPage`) + видимый `dateModified` («Обновлено: 13 июня 2026»)
+- `docs/robots.txt` — разрешены AI-краулеры (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, OAI-SearchBot) + обычные; строка `Sitemap:`
+- `docs/sitemap.xml` — страницы + только `published:true` главы (сейчас `origins`), с `lastmod`
+- `tools/build_seo.py` — генератор: пересобирает `sitemap.xml` и инжектит `DefinedTerm` в словарь между маркерами `SEO:DEFINEDTERMS`. Читает только `data/`, без зависимостей (по образцу `validate_data.py`)
+- `CLAUDE.md`: раздел «SEO / AI-SEO (GEO)» + правило GEO-гигиены контента для контент/research-чатов
+
+### Изменено
+- `origins.html`: дублирующий `<h1>Хоккейный словарь</h1>` в шапке-бренде понижен до `<p class="site-name">` (единственный `<h1>` = заголовок главы)
+
+### Примечания
+- Schema везде совпадает с видимым текстом; все блоки JSON-LD проходят `json.loads`. Финальная валидация — Rich Results Test по прод-URL после деплоя
+- FAQ-rich намеренно не закладывали (Google убрал FAQ-сниппеты 05.2026) — Q&A держим ради цитируемости LLM
+- `data/ ↔ docs/data/` не трогали; `validate_data.py` зелёный
+- Трек 2 (глава «Золотой век Канады») — отдельно, чат-исследователь; дев верстает по готовому markdown
+
 ## [0.8.0] — 2026-06-14
 
 ### Добавлено (Слой B · вёрстка под концепт S5, направление A «Учебник»)

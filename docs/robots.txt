@@ -1,0 +1,41 @@
+# robots.txt — Культура хоккея (GitHub Pages, source = docs/)
+# Цель S6: пускаем и обычные поисковики, и AI-краулеров (GEO — чтобы нас
+# цитировали ChatGPT / Claude / Perplexity / Google AI Overviews).
+
+# ── AI-краулеры (явно разрешены) ──
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# ── Обычные поисковики ──
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# ── Все остальные ──
+User-agent: *
+Allow: /
+
+Sitemap: https://altitushkin.github.io/hockey-platform/sitemap.xml

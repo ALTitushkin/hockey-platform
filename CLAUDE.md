@@ -2,7 +2,7 @@
 
 > Этот файл читается Claude Code в начале каждой сессии.
 > Обновляй его при каждом значимом изменении архитектуры или решений.
-> Последнее обновление: 14.06.2026 · v0.5
+> Последнее обновление: 19.06.2026 · v0.9
 
 ---
 
@@ -141,6 +141,46 @@ hockey-platform/
 
 ⚠️ **Граница ролей:** дев заводит поля и структурные связи (`cluster/see_also`); разметку
 `profiles` по рубрикатору делает контент-чат; тексты истории и `sections`-контент — контент/research.
+
+---
+
+## SEO / AI-SEO (GEO) — фундамент видимости (S6, Трек 1)
+
+Цель: платформу можно **найти** в поиске и **процитировать** в AI-выдаче
+(ChatGPT, Claude, Perplexity, Google AI Overviews).
+
+**На всех 4 страницах** (`index`/`dictionary`/`history`/`history/origins`): уникальные
+`title`/`description`, `<link rel="canonical">` (абс. URL; у главной — корень без `index.html`),
+Open Graph + Twitter Card (`summary_large_image`, картинка `logo.png` абс. URL), один `<h1>`.
+JSON-LD `Organization` + `WebSite` встроены статически в `<head>` каждой страницы
+(имя «Культура хоккея», `@id`-граф переиспользуется).
+
+**Разметка по страницам:** `BreadcrumbList` — на словаре/истории/главе; `DefinedTermSet`
++ `DefinedTerm` (49) — в словаре, **статически** (краулеры/LLM не исполняют JS);
+`Article` — на `origins.html` (+ видимый `dateModified`). Schema обязана совпадать с
+видимым текстом.
+
+**`docs/robots.txt`** разрешает AI-краулеров (GPTBot, ClaudeBot, PerplexityBot,
+Google-Extended, Applebot-Extended, OAI-SearchBot и др.) + обычные; строка `Sitemap:`.
+**`docs/sitemap.xml`** — страницы + только `published:true` главы.
+
+**Регенерация:** `python tools/build_seo.py` пересобирает `sitemap.xml` и инжектит
+блок `DefinedTerm` в `dictionary.html` между маркерами `SEO:DEFINEDTERMS`. Читает
+только `data/` — паритет `data/ ↔ docs/data/` и `validate_data.py` не задеты.
+Запускать после изменений в `terms.json` или `history.json` (новые published-главы).
+
+⚠️ **FAQ-rich не закладываем** (Google убрал FAQ-сниппеты в 05.2026) — Q&A-структуру
+держим ради цитируемости LLM, не ради звёздочек в выдаче.
+
+### GEO-гигиена контента (правило для контент/research-чатов)
+
+Чтобы нас цитировали AI-движки: писать **машиночитаемо** и естественно (без
+артефактов машинного перевода); **факты — с источниками**; **самодостаточные
+секции** с `id`-якорями (каждая отвечает на конкретный вопрос — это цель deep-link
+и единица цитирования); держать **свежесть** (видимый `dateModified` на главах).
+Новую главу дев верстает по шаблону `origins.html`: ставит `published:true` +
+`url` в `history.json`, вешает `Article`-разметку, прогоняет `build_seo.py`
+(глава попадёт в sitemap), проверяет в Rich Results Test.
 
 ---
 
