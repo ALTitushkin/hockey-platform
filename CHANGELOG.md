@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.3] — 2026-06-20
+
+### Добавлено (Sprint 6 · Трек 2 — глава 3 опубликована)
+- `docs/history/soviet-origins.html` — глава 3 «С чистого льда» (рождение советского хоккея), свёрстана `tools/build_chapter.py`: 6 разделов с id-якорями (`country-without-hockey`, `russkiy-stil`, `bobrov-tarasov-chernyshev`, `stockholm-1954`, `cortina-1956`, `how-so-fast`), 3 fact-box, таймлайн (4 даты), «Источники» (8 ссылок), nav-footer (← Золотой век Канады; tarasov-system задизейблена), видимый `dateModified`
+- JSON-LD `Article` (`datePublished`/`dateModified` = `2026-06-20T12:00:00+03:00`, сразу ISO) + `BreadcrumbList`
+- `data/history.json` и `docs/data/history.json`: `soviet-origins` → `published:true`, `url`, `summary` (из «Краткого резюме»), `sections[]`; порядок/era(`soviet`)/kicker не тронуты
+- `sitemap.xml` — 6 URL (3 опубликованные главы)
+
+### Исправлено (Трек D — deep-link-якоря)
+- `docs/style.css` (главы) и `docs/dictionary.html` (липкая шапка): `scroll-margin-top: 80px` заголовкам с id и карточкам `.term`, `scroll-behavior: smooth` — якорь больше не прячется под верхним отступом/липкой шапкой. Проверено на `#russkiy-stil` и `#rocket-richard`
+- Даты Article на `origins`/`golden-age` уже в полном ISO с TZ (из v0.9.2) — 4 warning Rich Results сняты ещё там
+
+### Примечания
+- Текст главы принят контентом и не переписывался (builder распарсил готовый markdown)
+- `validate_data.py` зелёный; `data/ ↔ docs/data/` идентичны
+
 ## [0.9.2] — 2026-06-19
 
 ### Исправлено (Rich Results · даты Article)

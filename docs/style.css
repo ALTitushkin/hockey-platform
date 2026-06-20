@@ -23,6 +23,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html { -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; }
+/* Трек D: deep-link-якоря не должны прятаться под верхним отступом/липкой шапкой */
+:where(h1, h2, h3, h4)[id] { scroll-margin-top: 80px; }
 
 body {
   background: var(--paper);
