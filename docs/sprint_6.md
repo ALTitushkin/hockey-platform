@@ -2,7 +2,7 @@
 ## Видимость: SEO + AI-SEO (GEO) + следующая глава истории
 
 > **Версия:** v0.1 · 14.06.2026
-> **Статус:** 🟡 Планирование. Объём — средний/узкий: технический SEO + AI-SEO фундамент + один контент-якорь (глава 2 «Золотой век Канады» — идём по порядку, без дыр во фронтире).
+> **Статус:** ✅ ЗАКРЫТ 20.06.2026. Объём — средний/узкий: технический SEO + AI-SEO фундамент + контент-якорь (глава 2 «Золотой век Канады»). Search Console → бэклог (для пет-проекта не обязателен; robots+sitemap на проде).
 > **Результат спринта:** платформу можно найти в поиске и процитировать в AI-выдаче, и есть сильная глава, ради которой туда придут.
 
 ---
@@ -66,11 +66,12 @@ SEO без контента слабоват — ранжировать/цити
 
 ## Definition of Done
 
-- [ ] У каждой страницы уникальные title/description, canonical, OG-превью.
-- [ ] `sitemap.xml` + `robots.txt` (AI-краулеры разрешены) на проде.
-- [ ] JSON-LD: WebSite/Organization везде, DefinedTerm в словаре, Article в главах — валидны в Rich Results Test.
-- [ ] Глава «Золотой век Канады» опубликована (HTML + `published:true` + якоря + Article-разметка).
-- [ ] sitemap отправлен в Google Search Console; CLAUDE.md/CHANGELOG обновлены.
+- [x] У каждой страницы уникальные title/description, canonical, OG-превью. ✓ (OG проверен в Telegram: главная + глава 2)
+- [x] `sitemap.xml` + `robots.txt` (AI-краулеры разрешены) на проде. ✓ (sitemap 5 URL)
+- [x] JSON-LD: WebSite/Organization везде, DefinedTerm в словаре, Article в главах — валидны. ✓ (Rich Results: Article + Breadcrumb «без ошибок»; ISO-даты пофикшены, warning сняты)
+- [x] Глава «Золотой век Канады» опубликована (HTML + `published:true` + якоря + Article-разметка). ✓
+- [x] CLAUDE.md/CHANGELOG обновлены (v0.9.x). ✓
+- [→] sitemap отправлен в Google Search Console → **БЭКЛОГ** (не обязателен для пет-проекта; индексация идёт через robots+sitemap).
 
 ---
 
