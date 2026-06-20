@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2] — 2026-06-19
+
+### Исправлено (Rich Results · даты Article)
+- `Article` JSON-LD на `origins.html` и `golden-age-canada.html`: `datePublished`/`dateModified` переведены в полный ISO 8601 с поясом Europe/Moscow (`…T12:00:00+03:00`) — убирает warning Rich Results про «date without time». Заодно так же нормализованы `og:article:*_time`. Видимая дата «Обновлено: …» не менялась (остаётся date-only в `<time datetime>`)
+- `tools/build_chapter.py` — вынесен в репо как переиспользуемый сборщик главы из markdown-черновика (по шаблону `origins.html`): формат ISO-дат заложен в `iso()`, видимая дата — через `human_date()`. Будущие главы сразу с чистыми датами; под новую главу меняется только блок `CONFIG`
+- Только `docs/` + `tools/` — `data/`/`bot/` не тронуты, автодеплой бота не триггерится
+
 ## [0.9.1] — 2026-06-19
 
 ### Добавлено (Sprint 6 · Трек 2 — глава 2 опубликована)

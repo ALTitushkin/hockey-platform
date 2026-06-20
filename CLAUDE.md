@@ -157,8 +157,15 @@ JSON-LD `Organization` + `WebSite` встроены статически в `<he
 
 **Разметка по страницам:** `BreadcrumbList` — на словаре/истории/главе; `DefinedTermSet`
 + `DefinedTerm` (49) — в словаре, **статически** (краулеры/LLM не исполняют JS);
-`Article` — на `origins.html` (+ видимый `dateModified`). Schema обязана совпадать с
+`Article` — на главах истории (+ видимый `dateModified`). Schema обязана совпадать с
 видимым текстом.
+
+**Формат дат `Article`:** `datePublished`/`dateModified` и `og:article:*_time` —
+полный ISO 8601 с поясом Europe/Moscow (`2026-06-19T12:00:00+03:00`), иначе Rich
+Results выдаёт warning «date without time». Видимый `<time datetime>` — date-only.
+Главы истории собираются `tools/build_chapter.py` из markdown-черновика
+(`docs/history/drafts/<id>.md`) по шаблону `origins.html` — формат ISO-дат заложен
+в `iso()`, под новую главу меняется блок `CONFIG`; затем `build_seo.py` для sitemap.
 
 **`docs/robots.txt`** разрешает AI-краулеров (GPTBot, ClaudeBot, PerplexityBot,
 Google-Extended, Applebot-Extended, OAI-SearchBot и др.) + обычные; строка `Sitemap:`.
