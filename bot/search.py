@@ -17,6 +17,8 @@ CATEGORY_RU = {
     "tactic": "Тактика",
     "position": "Позиция",
     "rule": "Правила",
+    "basics": "Базовое / техника",
+    "org": "Лиги / организации",
 }
 
 
@@ -27,6 +29,12 @@ def load_terms() -> list[dict]:
     if review_path.exists():
         terms += json.loads(review_path.read_text(encoding="utf-8"))
     return terms
+
+
+def load_review() -> list[dict]:
+    """Грузит только unverified-сленг (expert_review.json) — для счётчиков."""
+    path = DATA_DIR / "expert_review.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
 
 
 def _keys(term: dict) -> list[str]:
@@ -82,6 +90,8 @@ CATEGORY_EMOJI = {
     "tactic": "🧩",
     "rule": "📏",
     "position": "⛸",
+    "basics": "🏒",
+    "org": "🏛",
 }
 
 

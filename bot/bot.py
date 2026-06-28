@@ -38,6 +38,7 @@ from search import (
     find_history_chapter,
     format_card,
     load_history,
+    load_review,
     load_terms,
     search,
     suggest,
@@ -57,6 +58,9 @@ log = logging.getLogger("hockey-bot")
 TERMS = load_terms()
 HISTORY = load_history()
 CALENDAR = load_calendar()
+# Счётчики по файлам (вариант 1): база = terms.json, «на выверке» = expert_review.json.
+N_REVIEW = len(load_review())
+N_BASE = len(TERMS) - N_REVIEW
 MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
 QUERIES_LOG = Path(__file__).resolve().parent / "queries.log"
 
@@ -118,7 +122,7 @@ def help_text() -> str:
         "  📊 <code>xG</code>, <code>CF%</code>, <code>PDO</code>\n"
         "  🧩 <code>форчек</code>, <code>слот</code>, <code>цикл</code>\n"
         "  🇬🇧 <code>breakaway</code>, <code>one-timer</code>\n\n"
-        f"В базе {len(TERMS)} терминов, пополняется от ваших запросов: "
+        f"В базе {N_BASE} терминов, пополняется от ваших запросов: "
         "не нашёл — всё равно отправь, добавим.\n\n"
         "📅 А ещё нажми «В этот день» или пришли дату "
         "(<code>14 марта</code>, <code>/day 14-03</code>) — расскажу, что случилось "
@@ -345,10 +349,9 @@ async def _post_init(app: Application) -> None:
     me = await app.bot.get_me()
     if me.username:
         BOT_USERNAME = me.username
-    n_unverified = sum(1 for t in TERMS if t.get("status") != "verified")
     log.info(
         "Бот запущен v0.7 (@%s), терминов: %d (+%d на выверке), глав истории: %d, дней календаря: %d",
-        BOT_USERNAME, len(TERMS) - n_unverified, n_unverified, len(HISTORY), len(CALENDAR),
+        BOT_USERNAME, N_BASE, N_REVIEW, len(HISTORY), len(CALENDAR),
     )
 
 

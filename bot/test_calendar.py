@@ -38,6 +38,21 @@ def test_parse_valid() -> None:
         check_parse(t, exp)
 
 
+def test_parse_relative() -> None:
+    print("parse_date — относительные слова (Москва):")
+    from datetime import datetime, timedelta, timezone
+    msk = timezone(timedelta(hours=3))
+    today = datetime.now(msk)
+    cases = {
+        "сегодня": today.strftime("%m-%d"),
+        "завтра": (today + timedelta(days=1)).strftime("%m-%d"),
+        "вчера": (today - timedelta(days=1)).strftime("%m-%d"),
+        "что было вчера": (today - timedelta(days=1)).strftime("%m-%d"),
+    }
+    for t, exp in cases.items():
+        check_parse(t, exp)
+
+
 def test_parse_rejects() -> None:
     print("parse_date — антиколлизия (должны быть None):")
     for t in ["март", "14", "xG", "форчек", "one-timer", "5 на 3",
@@ -84,6 +99,7 @@ def test_today_format() -> None:
 
 if __name__ == "__main__":
     test_parse_valid()
+    test_parse_relative()
     test_parse_rejects()
     test_events_sorted()
     test_empty_date()
