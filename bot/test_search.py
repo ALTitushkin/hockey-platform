@@ -63,7 +63,7 @@ def main() -> None:
     print("  ok: плашка unverified работает")
 
     # Подпись сленга: «Сленг:», и скрытие пустого ru_slang (Трек C)
-    card = format_card(search("пятак", TERMS)[0])
+    card = format_card(search("форчек", TERMS)[0])  # forecheck: ru_slang «прессинг, пресс» (не дубль названия)
     assert "Сленг:" in card and "У нас говорят" not in card, "подпись сленга не обновлена"
     card = format_card(search("шайба", TERMS)[0])
     assert "Сленг:" not in card, "пустой ru_slang не должен показывать строку сленга"
