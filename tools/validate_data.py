@@ -46,6 +46,8 @@ def main() -> int:
         tid = t["id"]
         if not isinstance(t.get("profiles"), list):
             err(f"terms[{tid}]: profiles должен быть списком")
+        if t.get("status") not in ("verified", "unverified"):
+            err(f"terms[{tid}]: status должен быть verified/unverified (сейчас {t.get('status')!r})")
         cl = t.get("cluster")
         if cl is not None and cl not in cluster_slugs:
             err(f"terms[{tid}]: cluster '{cl}' нет в clusters.json")
