@@ -902,6 +902,7 @@
     "level": "novice",
     "definition": "Вулканизированный резиновый диск диаметром 76 мм, весом 170 г — основной снаряд игры. Официальные шайбы замораживают перед матчем, чтобы уменьшить отскок и сделать скольжение по льду более предсказуемым.",
     "ru_slang": "кругляш, таблетка",
+    "status": "verified",
     "profiles": [
       "general"
     ],
@@ -918,6 +919,7 @@
     "level": "novice",
     "definition": "Основной инструмент хоккеиста для управления шайбой. Состоит из рукоятки и крюка. Длина, загиб (lie) и жёсткость подбираются под стиль игрока: защитники предпочитают более жёсткие клюшки, снайперы — крюки с бо́льшим загибом.",
     "ru_slang": "палка",
+    "status": "verified",
     "profiles": [
       "general",
       "player"
@@ -938,6 +940,7 @@
     "level": "novice",
     "definition": "Атакующий игрок. В звене три форварда: центральный (C) и два крайних нападающих (LW, RW). Основная задача — создание голевых моментов и взятие ворот. Форварды первого звена получают большинство времени на льду.",
     "ru_slang": "нападающий, нападающий первого звена",
+    "status": "verified",
     "profiles": [
       "general",
       "player"
@@ -955,6 +958,7 @@
     "level": "fan",
     "definition": "Оборонительный нападающий, специализирующийся на нейтрализации лидеров атаки соперника через силовую игру и активный форчек. В отличие от тафгая, чекер — прежде всего хоккеист: его роль тактическая, а не запугивающая. Типичный пример — четвёртое звено с задачей «убить» смену топ-форвардов.",
     "ru_slang": "гасильщик",
+    "status": "verified",
     "profiles": [
       "general",
       "player",
@@ -1206,6 +1210,344 @@
     ],
     "cluster": null,
     "see_also": [],
+    "anchor": null
+  },
+  {
+    "id": "handedness",
+    "en": "Handedness",
+    "ru": "Хват",
+    "category": "basics",
+    "abbr": [
+      "L",
+      "R"
+    ],
+    "definition": "Каким хватом игрок держит клюшку — левым или правым. Определяет удобную сторону для приёма и броска: у «левши» крюк клюшки слева, нижняя рука левая. В НХЛ обозначают как shoots L/R (левый/правый хват). Под хват подбирают загиб крюка и выбирают фланг.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "wrist-shot",
+      "slap-shot"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "body-check",
+    "en": "Body check",
+    "ru": "Силовой приём",
+    "category": "basics",
+    "abbr": [],
+    "definition": "Разрешённый способ отобрать пространство и шайбу у соперника, играя в него корпусом — плечом или бедром. Легален только против игрока, владеющего шайбой, и в рамках правил: атака сзади, в борт, локтём, коленом или в голову караются штрафом. EN: body check / hit.",
+    "ru_slang": "хит",
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com (Rule 41 — Body Checking)",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "cross-check",
+      "enforcer"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "draft",
+    "en": "Draft",
+    "ru": "Драфт",
+    "category": "org",
+    "abbr": [],
+    "definition": "Ежегодная процедура, на которой клубы НХЛ по очереди закрепляют права на молодых игроков (как правило, 18 лет и старше). Порядок выбора обратный таблице — слабейшие команды выбирают раньше, через лотерею. EN: NHL Entry Draft.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com/draft",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "fan",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "nhl"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "penalty-box",
+    "en": "Penalty box",
+    "ru": "Штраф-бокс",
+    "category": "rule",
+    "abbr": [],
+    "definition": "Огороженная скамейка, где удалённый игрок отбывает штрафное время отдельно от своей скамейки. Пока он там, команда играет в меньшинстве; по истечении времени (или после пропущенной шайбы при малом штрафе) игрок возвращается на лёд. EN: penalty box.",
+    "ru_slang": "скамейка штрафников",
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "penalty-kill",
+      "delayed-penalty"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "deflection",
+    "en": "Deflection",
+    "ru": "Подправление",
+    "category": "tactic",
+    "abbr": [],
+    "definition": "Изменение направления летящей шайбы лёгким касанием клюшки у ворот, чтобы вратарю не хватило времени среагировать на новую траекторию. Часто бросок осознанно идёт на партнёра, стоящего на пятаке. EN: deflection / tip-in.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "fan",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "screen",
+      "rebound",
+      "slot"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "1-on-1",
+    "en": "1-on-1",
+    "ru": "Один в один",
+    "category": "tactic",
+    "abbr": [],
+    "definition": "Единоборство одного нападающего против одного защитника без поддержки. Нападающий пытается обыграть или открыть угол для броска, защитник — оттеснить к борту и отобрать шайбу, не дав пройти на ворота. EN: 1-on-1.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "breakaway",
+      "odd-man-rush"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "defenseman-types",
+    "en": "Defenseman types",
+    "ru": "Типы защитников",
+    "category": "position",
+    "abbr": [],
+    "definition": "Три типовые роли защитника: атакующий (offensive / puck-moving) — подключается в атаку и начинает её первым пасом; оборонительный (defensive / stay-at-home) — играет у своей синей, силовой, блокирует броски; универсальный (two-way) — сочетает обе функции. EN: offensive / defensive / two-way defenseman.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "fan",
+    "profiles": [],
+    "cluster": null,
+    "see_also": [
+      "defenseman"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "nhl",
+    "en": "NHL",
+    "ru": "НХЛ",
+    "category": "org",
+    "abbr": [
+      "НХЛ",
+      "NHL"
+    ],
+    "definition": "Национальная хоккейная лига — сильнейшая профессиональная хоккейная лига мира (США и Канада), 32 клуба. Главный трофей — Кубок Стэнли. EN: National Hockey League.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "nhl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": "leagues",
+    "see_also": [
+      "khl",
+      "mhl",
+      "vhl",
+      "echl",
+      "rhl"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "khl",
+    "en": "KHL",
+    "ru": "КХЛ",
+    "category": "org",
+    "abbr": [
+      "КХЛ",
+      "KHL"
+    ],
+    "definition": "Континентальная хоккейная лига — топ-дивизион профессионального хоккея России и ряда стран Евразии, основана в 2008 году. Главный трофей — Кубок Гагарина. EN: Kontinental Hockey League.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "khl.ru",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": "leagues",
+    "see_also": [
+      "nhl",
+      "mhl",
+      "vhl",
+      "echl",
+      "rhl"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "mhl",
+    "en": "MHL",
+    "ru": "МХЛ",
+    "category": "org",
+    "abbr": [
+      "МХЛ",
+      "MHL"
+    ],
+    "definition": "Молодёжная хоккейная лига — молодёжный дивизион российского хоккея (примерно 16–21 год), где выступают в основном фарм-команды клубов КХЛ. Ступень развития перед взрослым хоккеем. EN: Junior Hockey League (MHL).",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "mhl.khl.ru",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": "leagues",
+    "see_also": [
+      "nhl",
+      "khl",
+      "vhl",
+      "echl",
+      "rhl"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "vhl",
+    "en": "VHL",
+    "ru": "ВХЛ",
+    "category": "org",
+    "abbr": [
+      "ВХЛ",
+      "VHL"
+    ],
+    "definition": "Всероссийская хоккейная лига (до сентября 2022 — Высшая) — второй по силе дивизион профессионального хоккея России после КХЛ. Включает как самостоятельные клубы, так и фарм-команды КХЛ. EN: VHL.",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "vhlru.ru",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": "leagues",
+    "see_also": [
+      "nhl",
+      "khl",
+      "mhl",
+      "echl",
+      "rhl"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "echl",
+    "en": "ECHL",
+    "ru": "ECHL",
+    "category": "org",
+    "abbr": [
+      "ECHL"
+    ],
+    "definition": "Североамериканская профессиональная лига, третий по силе уровень после НХЛ и АХЛ. Служит фарм-системой для АХЛ и НХЛ: большинство клубов имеют прямую аффилиацию с командами НХЛ. EN: ECHL (ранее East Coast Hockey League).",
+    "ru_slang": null,
+    "visual": null,
+    "visual_type": null,
+    "source": "echl.com",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "",
+    "level": "novice",
+    "profiles": [],
+    "cluster": "leagues",
+    "see_also": [
+      "nhl",
+      "khl",
+      "mhl",
+      "vhl",
+      "rhl"
+    ],
+    "anchor": null
+  },
+  {
+    "id": "rhl",
+    "en": "RHL",
+    "ru": "РХЛ",
+    "category": "org",
+    "abbr": [
+      "РХЛ",
+      "RHL",
+      "НМХЛ",
+      "NMHL"
+    ],
+    "definition": "Российская хоккейная лига — молодёжное первенство России (до 20 лет) под эгидой ФХР. С 17 апреля 2026 года — официальное название лиги, преобразованной из НМХЛ (Национальной молодёжной хоккейной лиги, правопреемницы Первенства МХЛ). Первый сезон под именем РХЛ — 2026/2027. EN: RHL (бывш. NMHL).",
+    "ru_slang": "НМХЛ",
+    "visual": null,
+    "visual_type": null,
+    "source": "fhr.ru",
+    "status": "verified",
+    "added": "2026-06-28",
+    "notes": "Лига преобразована из НМХЛ в РХЛ 17.04.2026 (fhr.ru, championat.com). Карточка ведёт официальным именем РХЛ; НМХЛ — бывшее название и частый запрос, заведено алиасом (abbr + ru_slang). Сайт nmhl.fhr.ru пока активен.",
+    "level": "novice",
+    "profiles": [],
+    "cluster": "leagues",
+    "see_also": [
+      "nhl",
+      "khl",
+      "mhl",
+      "vhl",
+      "echl"
+    ],
     "anchor": null
   }
 ]
