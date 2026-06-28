@@ -13,6 +13,12 @@ TERMS = load_terms()
 HISTORY = load_history()
 
 
+def check_not_in(query: str, not_id: str) -> None:
+    ids = [r["id"] for r in search(query, TERMS)]
+    assert not_id not in ids, f"'{query}': {not_id} не должен попадать (получил {ids})"
+    print(f"  ok: '{query}' → {ids} (без {not_id})")
+
+
 def check(query: str, expected_id: str) -> None:
     results = search(query, TERMS)
     assert results, f"'{query}': ничего не найдено"
@@ -55,6 +61,18 @@ def main() -> None:
     card = format_card(search("corsi", TERMS)[0])
     assert "на выверке" not in card, "verified с плашкой!"
     print("  ok: плашка unverified работает")
+
+    print("Поиск — новые термины S7 + антиложные совпадения:")
+    check("хват", "handedness")
+    check("правый хват", "handedness")
+    check("левый хват", "handedness")
+    check("хит", "body-check")
+    check("силовой", "body-check")
+    check("драфт", "draft")
+    check("рхл", "rhl")
+    check("нмхл", "rhl")
+    check_not_in("нмхл", "nhl")   # «нмхл» не должен тащить «нхл» нечётко
+    check("нхл", "nhl")
 
     print("История (find_history_chapter):")
     check_history("история хоккея", "origins")

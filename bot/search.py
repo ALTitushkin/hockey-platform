@@ -69,7 +69,9 @@ def search(query: str, terms: list[dict], limit: int = 3) -> list[dict]:
                 fuzzy.append((best, term))
 
     fuzzy.sort(key=lambda x: -x[0])
-    results = exact + prefix + [t for _, t in fuzzy]
+    # Нечёткие совпадения подключаем ТОЛЬКО если нет точных/префиксных —
+    # иначе близкие по буквам термины лезут как ложные (напр. «нмхл» → «нхл»).
+    results = exact + prefix if (exact or prefix) else [t for _, t in fuzzy]
     # убрать дубликаты, сохранив порядок
     seen, out = set(), []
     for t in results:
