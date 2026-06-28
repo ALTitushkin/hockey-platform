@@ -7,6 +7,7 @@
 v0.5: добавлен inline-режим (@bot термин в любом чате)
 v0.6: inline отдаёт и главы истории при miss по словарю;
       username бота больше не захардкожен (берётся из bot.username).
+v0.7: рубрика «В этот день» — кнопка/команды /today, /day, parse_date, data/calendar.json.
 """
 
 import logging
@@ -25,6 +26,7 @@ from telegram import (
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     InlineQueryHandler,
@@ -40,12 +42,21 @@ from search import (
     search,
     suggest,
 )
+from calendar_feature import (
+    events_for_date,
+    format_day_card,
+    load_calendar,
+    parse_date,
+    random_day,
+    today_mmdd,
+)
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
 log = logging.getLogger("hockey-bot")
 
 TERMS = load_terms()
 HISTORY = load_history()
+CALENDAR = load_calendar()
 MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
 QUERIES_LOG = Path(__file__).resolve().parent / "queries.log"
 
@@ -109,6 +120,9 @@ def help_text() -> str:
         "  🇬🇧 <code>breakaway</code>, <code>one-timer</code>\n\n"
         f"В базе {len(TERMS)} терминов, пополняется от ваших запросов: "
         "не нашёл — всё равно отправь, добавим.\n\n"
+        "📅 А ещё нажми «В этот день» или пришли дату "
+        "(<code>14 марта</code>, <code>/day 14-03</code>) — расскажу, что случилось "
+        "в этот день в истории хоккея.\n\n"
         f"💡 <b>Inline:</b> набери <code>@{BOT_USERNAME} форчек</code> в любом чате — "
         "и поделись карточкой прямо там."
     )
@@ -132,6 +146,7 @@ def help_search() -> str:
 
 START_KEYBOARD = InlineKeyboardMarkup(
     [
+        [InlineKeyboardButton("📅 В этот день", callback_data="onthisday:today")],
         [InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")],
         [InlineKeyboardButton("📚 История хоккея", url="https://altitushkin.github.io/hockey-platform/#history-section")],
     ]
@@ -149,11 +164,64 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(help_search(), parse_mode=ParseMode.HTML)
 
 
+def _day_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("📅 Случайный день", callback_data="onthisday:random")]]
+    )
+
+
+async def _send_day(message, mmdd: str) -> None:
+    """Отправляет карточку дня MM-DD в чат."""
+    events = events_for_date(mmdd, CALENDAR)
+    await message.reply_text(
+        format_day_card(mmdd, events),
+        parse_mode=ParseMode.HTML,
+        reply_markup=_day_keyboard(),
+        disable_web_page_preview=True,
+    )
+
+
+async def cmd_today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await _send_day(update.message, today_mmdd())
+
+
+async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    arg = " ".join(context.args).strip() if context.args else ""
+    if not arg:
+        await _send_day(update.message, today_mmdd())
+        return
+    mmdd = parse_date(arg)
+    if not mmdd:
+        await update.message.reply_text(
+            "Не понял дату. Примеры: <code>/day 14 марта</code> или <code>/day 14-03</code>.",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+    await _send_day(update.message, mmdd)
+
+
+async def on_calendar_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Кнопки рубрики: «В этот день» (today) и «Случайный день» (random)."""
+    q = update.callback_query
+    await q.answer()
+    mmdd = (random_day(CALENDAR) or today_mmdd()) if q.data == "onthisday:random" else today_mmdd()
+    await _send_day(q.message, mmdd)
+
+
 async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Игнорируем эхо собственных inline-карточек и сообщения, отправленные «через бота».
     if update.message.via_bot is not None:
         return
     query = update.message.text
+
+    # Рубрика «В этот день»: явный дате-паттерн перехватываем ДО словаря и
+    # НЕ засоряем missing_queries.log.
+    mmdd = parse_date(query)
+    if mmdd:
+        log_query(query, hit=True)
+        await _send_day(update.message, mmdd)
+        return
+
     results = search(query, TERMS)
 
     if results:
@@ -277,9 +345,10 @@ async def _post_init(app: Application) -> None:
     me = await app.bot.get_me()
     if me.username:
         BOT_USERNAME = me.username
+    n_unverified = sum(1 for t in TERMS if t.get("status") != "verified")
     log.info(
-        "Бот запущен v0.6 (@%s), терминов: %d, глав истории: %d",
-        BOT_USERNAME, len(TERMS), len(HISTORY),
+        "Бот запущен v0.7 (@%s), терминов: %d (+%d на выверке), глав истории: %d, дней календаря: %d",
+        BOT_USERNAME, len(TERMS) - n_unverified, n_unverified, len(HISTORY), len(CALENDAR),
     )
 
 
@@ -292,6 +361,9 @@ def main() -> None:
     app = Application.builder().token(token).post_init(_post_init).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("today", cmd_today))
+    app.add_handler(CommandHandler("day", cmd_day))
+    app.add_handler(CallbackQueryHandler(on_calendar_cb, pattern="^onthisday:"))
     app.add_handler(InlineQueryHandler(handle_inline))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
 
