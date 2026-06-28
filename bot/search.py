@@ -108,7 +108,7 @@ def format_card(term: dict) -> str:
     lines.append("")
     lines.append(term["definition"])
     if term.get("ru_slang"):
-        lines.append(f"\n💬 <i>У нас говорят:</i> {term['ru_slang']}")
+        lines.append(f"\n💬 <i>Сленг:</i> {term['ru_slang']}")
     if term.get("status") != "verified":
         lines.append("\n⚠️ <i>Термин на выверке у эксперта — возможны неточности.</i>")
     return "\n".join(lines)
