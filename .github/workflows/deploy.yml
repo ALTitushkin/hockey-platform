@@ -1,10 +1,10 @@
-# Деплой бота на VPS при пуше в main.
-# Требует secrets в репо (Settings → Secrets and variables → Actions):
+# CI/CD бота: тесты → деплой на VPS при пуше в main.
+# Требует secrets (Settings → Secrets and variables → Actions):
 #   VPS_HOST     — IP или домен VPS
-#   VPS_USER     — пользователь ssh (например, hockey)
+#   VPS_USER     — ssh-пользователь (напр. hockey)
 #   VPS_SSH_KEY  — приватный ключ (отдельный deploy-ключ, не личный!)
 
-name: Deploy bot to VPS
+name: CI/CD bot
 
 on:
   push:
@@ -15,10 +15,30 @@ on:
       - ".github/workflows/deploy.yml"
 
 jobs:
-  deploy:
+  # ── Гейт: без зелёных тестов деплоя не будет ──
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy over SSH
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install -q -r bot/requirements.txt
+      - name: Validate data (целостность реестров + паритет зеркал + status)
+        run: python tools/validate_data.py
+      - name: Bot tests (без токена)
+        run: |
+          cd bot
+          python test_search.py
+          python test_calendar.py
+
+  # ── Деплой только после зелёных тестов ──
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH + healthcheck
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -30,5 +50,13 @@ jobs:
             git pull --ff-only origin main
             bot/venv/bin/pip install -q -r bot/requirements.txt
             sudo systemctl restart hockey-bot
-            sleep 3
-            systemctl is-active hockey-bot
+            sleep 5
+            # Healthcheck: не только is-active, но и строка запуска в логах
+            # (грабля: процесс стартует и тихо выходит — is-active это не ловит).
+            if sudo journalctl -u hockey-bot --since "30 seconds ago" | grep -q "Бот запущен"; then
+              echo "✅ Healthcheck OK: бот запущен"
+            else
+              echo "❌ Healthcheck FAILED: нет строки запуска в journalctl"
+              sudo journalctl -u hockey-bot --since "40 seconds ago" | tail -30
+              exit 1
+            fi
