@@ -72,7 +72,8 @@ hockey-platform/
 │   ├── design/                # концепт, дизайн-брифы, вордмарк-спека
 │   ├── content/               # гайд наполнения, рубрикатор, анонс канала
 │   ├── process/               # ops_notes (грабли/VPS/ритуалы), team_process, architecture
-│   └── handoff/               # брифы PM→дев/исследователь по трекам
+│   │   └── handoff/               # брифы PM→дев/исследователь по трекам
+│   # стандарты процесса: project/process/documentation-standard.md
 │
 └── .gitignore
 ```

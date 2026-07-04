@@ -30,6 +30,9 @@
 - [ops_notes.md](process/ops_notes.md) — **операционка: грабли, VPS, деплой, ритуал разбора логов, процесс главы**
 - [team_process.md](process/team_process.md) — роли и разделение по чатам
 - [architecture.md](process/architecture.md) — архитектурные решения и почему
+- [documentation-standard.md](process/documentation-standard.md) — **стандарт ведения документации**
+- [infra-audit.md](process/infra-audit.md) — аудит CI/VPS/деплоя + приоритеты фиксов
+- [requirements-and-scaling.md](process/requirements-and-scaling.md) — **требования и триггеры масштабирования** (когда GitHub+VPS хватает, когда нет)
 
 ### 🤝 [handoff/](handoff/) — брифы-передачи
 Готовые ТЗ PM → дев/исследователь по трекам спринтов (шаблоны для будущих задач).
