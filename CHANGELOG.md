@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0] — 2026-06-28
+
+### Добавлено (Sprint 7 · глава 4 опубликована)
+- `docs/history/tarasov-system.html` — глава 4 «Тарасов и большая система» (метод советского хоккея), собрана `tools/build_chapter.py`: 6 разделов с id-якорями (`engineer`, `five-as-one`, `year-round`, `cross-training`, `legends-vs-facts`, `tandem`), 2 fact-box, таймлайн (8 дат), «Источники» (5 ссылок с описаниями), nav-footer (← С чистого льда; summit-1972 задизейблена), видимый `dateModified`
+- JSON-LD `Article` (даты `2026-06-28T12:00:00+03:00`) + `BreadcrumbList`
+- `data/history.json` и `docs/data/history.json`: `tarasov-system` → `published:true`, `url`, `summary`, `sections[]`; `era`(soviet)/порядок/`kicker` не тронуты
+- `sitemap.xml` — 7 URL (4 опубликованные главы)
+
+### Изменено (тулинг)
+- `tools/build_chapter.py`: парсер «Источники» принимает описание после ссылки (`[текст](url) — описание`) и рендерит его в карточке источника
+
 ## [0.11.3] — 2026-06-28
 
 ### Изменено (Sprint 7 · Трек C — дубль названия в ru_slang)
