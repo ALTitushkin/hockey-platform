@@ -51,8 +51,8 @@
 ### Трек B · UX / платформа (старт)
 
 #### Задача 4. Дизайн-концепт (через чат UX/UI-дизайнера)
-- [x] ТЗ дизайнеру — `docs/design_brief_s5.md`
-- [x] Концепт сдан и **утверждён 14.06** — `docs/design_concept_s5.md` (IA, вайрфреймы, таксономия Уровень×Профиль×Категория, паттерн визуала, 3 Claude Design-промпта, заметка по данным)
+- [x] ТЗ дизайнеру — `project/design/design_brief_s5.md`
+- [x] Концепт сдан и **утверждён 14.06** — `project/design/design_concept_s5.md` (IA, вайрфреймы, таксономия Уровень×Профиль×Категория, паттерн визуала, 3 Claude Design-промпта, заметка по данным)
 - [x] Контент: рубрикатор уровней + `profiles[]` на 49 терминов + 5 фиксов level
 - [x] Дев слой A: поля данных (cluster/see_also/anchor/profiles), реестры clusters/quick_answers, history sections/published, schema v2.0
 - [x] Claude Design: 3 направления → выбрана идентичность **A «Учебник»**; вордмарк-SVG (У по базовой линии)
