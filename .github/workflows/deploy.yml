@@ -25,6 +25,11 @@ jobs:
           python-version: "3.11"
       - name: Install deps
         run: pip install -q -r bot/requirements.txt
+      - name: Lint (ruff) — warn-only на старте (снять continue-on-error, когда чисто)
+        continue-on-error: true
+        run: |
+          pip install -q ruff
+          ruff check bot/ tools/
       - name: Validate data (целостность реестров + паритет зеркал + status)
         run: python tools/validate_data.py
       - name: Bot tests (без токена)
@@ -53,10 +58,10 @@ jobs:
             sleep 5
             # Healthcheck: не только is-active, но и строка запуска в логах
             # (грабля: процесс стартует и тихо выходит — is-active это не ловит).
-            if sudo journalctl -u hockey-bot --since "30 seconds ago" | grep -q "Бот запущен"; then
+            if journalctl -u hockey-bot --since "30 seconds ago" | grep -q "Бот запущен"; then
               echo "✅ Healthcheck OK: бот запущен"
             else
               echo "❌ Healthcheck FAILED: нет строки запуска в journalctl"
-              sudo journalctl -u hockey-bot --since "40 seconds ago" | tail -30
+              journalctl -u hockey-bot --since "40 seconds ago" | tail -30
               exit 1
             fi

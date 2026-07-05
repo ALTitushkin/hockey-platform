@@ -355,6 +355,18 @@ async def _post_init(app: Application) -> None:
     )
 
 
+async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Глобальный обработчик ошибок: логируем и, если можем, отвечаем пользователю."""
+    log.error("Необработанное исключение в хендлере", exc_info=context.error)
+    if isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "Что-то пошло не так. Попробуйте ещё раз чуть позже."
+            )
+        except Exception:  # ответ мог не пройти (чат закрыт и т.п.) — не роняем обработчик
+            pass
+
+
 def main() -> None:
     _load_dotenv()
     token = os.environ.get("BOT_TOKEN")
@@ -362,6 +374,7 @@ def main() -> None:
         raise SystemExit("Нет токена: задай переменную окружения BOT_TOKEN или создай bot/.env")
 
     app = Application.builder().token(token).post_init(_post_init).build()
+    app.add_error_handler(on_error)
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("today", cmd_today))
