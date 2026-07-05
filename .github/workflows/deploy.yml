@@ -25,8 +25,7 @@ jobs:
           python-version: "3.11"
       - name: Install deps
         run: pip install -q -r bot/requirements.txt
-      - name: Lint (ruff) — warn-only на старте (снять continue-on-error, когда чисто)
-        continue-on-error: true
+      - name: Lint (ruff)
         run: |
           pip install -q ruff
           ruff check bot/ tools/

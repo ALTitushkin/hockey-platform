@@ -16,7 +16,8 @@ JSON-LD (Article + BreadcrumbList) и обновляет `data/history.json` +
 полный ISO 8601 с поясом Europe/Moscow (см. iso()). Видимая дата «Обновлено»
 остаётся date-only в атрибуте <time datetime>. Так Rich Results не ругается.
 """
-import json, re
+import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent

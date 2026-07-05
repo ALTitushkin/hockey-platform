@@ -97,7 +97,7 @@ def format_inline_text(term: dict) -> str:
     lines.append(term["definition"])
     if term.get("ru_slang"):
         lines.append(f"\n<i>Сленг: {term['ru_slang']}</i>")
-    lines.append(f"\n🔗 <a href='https://altitushkin.github.io/hockey-platform/'>Весь словарь</a>")
+    lines.append("\n🔗 <a href='https://altitushkin.github.io/hockey-platform/'>Весь словарь</a>")
     return "\n".join(lines)
 
 
@@ -152,7 +152,10 @@ START_KEYBOARD = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton("📅 В этот день", callback_data="onthisday:today")],
         [InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")],
-        [InlineKeyboardButton("📚 История хоккея", url="https://altitushkin.github.io/hockey-platform/#history-section")],
+        [InlineKeyboardButton(
+            "📚 История хоккея",
+            url="https://altitushkin.github.io/hockey-platform/#history-section",
+        )],
     ]
 )
 
