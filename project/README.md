@@ -32,7 +32,8 @@
 - [architecture.md](process/architecture.md) — архитектурные решения и почему
 - [documentation-standard.md](process/documentation-standard.md) — **стандарт ведения документации**
 - [infra-audit.md](process/infra-audit.md) — аудит CI/VPS/деплоя + приоритеты фиксов
-- [requirements-and-scaling.md](process/requirements-and-scaling.md) — **требования и триггеры масштабирования** (когда GitHub+VPS хватает, когда нет)
+- [requirements-and-scaling.md](process/requirements-and-scaling.md) — **требования и триггеры масштабирования**
+- [dev-audit.md](process/dev-audit.md) — аудит кода (bot/tools) + приоритеты
 
 ### 🤝 [handoff/](handoff/) — брифы-передачи
 Готовые ТЗ PM → дев/исследователь по трекам спринтов (шаблоны для будущих задач).
