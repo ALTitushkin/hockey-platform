@@ -11,7 +11,7 @@
 
 ### 📋 [planning/](planning/) — спринты
 ТЗ каждого спринта и итоги. Начни с последнего.
-- Активные/прошлые ТЗ: [sprint_1](planning/sprint_1.md) · [2](planning/sprint_2.md) · [3](planning/sprint_3.md) · [4](planning/sprint_4.md) · [5](planning/sprint_5.md) · [6](planning/sprint_6.md) · [7](planning/sprint_7.md)
+- Активные/прошлые ТЗ: [sprint_1](planning/sprint_1.md) · [2](planning/sprint_2.md) · [3](planning/sprint_3.md) · [4](planning/sprint_4.md) · [5](planning/sprint_5.md) · [6](planning/sprint_6.md) · [7](planning/sprint_7.md) · **[8 — в работе](planning/sprint_8.md)**
 - Ретро/итоги: [planning/results/](planning/results/) (sprint_1, 6, 7)
 
 ### 🎨 [design/](design/) — дизайн и концепт
