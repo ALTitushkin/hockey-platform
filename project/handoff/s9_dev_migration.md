@@ -31,8 +31,8 @@
 - Проверка: `docker compose up --build` локально, бот стартует, в логе строка «Бот запущен …».
 
 **Шаг 2 · CI.**
-- Job `test`: `pip install -r bot/requirements.txt`, `ruff check`, `pytest`, `python tools/validate_data.py`.
-- Job `deploy`: `needs: test`, только `main`, только `push`, path-фильтры прежние (`bot/**`, `data/**`, `.github/**`).
+- **Job `test` уже написан и работает** — ruff → `validate_data.py` → `test_search.py` + `test_calendar.py`. Не переписывать, не «улучшать заодно». Трогаем только job `deploy`.
+- Job `deploy`: `needs: test` (как сейчас), только `main`, только `push`, path-фильтры прежние (`bot/**`, `data/**`, `.github/workflows/deploy.yml`).
 - Хост/юзер/ключ — из GitHub Secrets (владелец переставит на app-VPS, см. ниже).
 - Healthcheck: после `deploy.sh` — `docker compose logs --since 30s bot | grep -q 'Бот запущен'`, иначе `exit 1`. `journalctl` больше не используем.
 - **Флаг деплоя.** Как у донора: `vars.DEPLOY_ENABLED == 'true'`. Пока идёт переезд — `false`, чтобы CI не выкатил второй инстанс в момент, когда старый ещё жив.
