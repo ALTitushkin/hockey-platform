@@ -1,8 +1,11 @@
-# CI/CD бота: тесты → деплой на VPS при пуше в main.
+# CI/CD бота: тесты → деплой на app-VPS при пуше в main.
 # Требует secrets (Settings → Secrets and variables → Actions):
-#   VPS_HOST     — IP или домен VPS
-#   VPS_USER     — ssh-пользователь (напр. hockey)
+#   VPS_HOST     — IP app-VPS (88.218.250.212)
+#   VPS_USER     — ssh-пользователь (deploy)
 #   VPS_SSH_KEY  — приватный ключ (отдельный deploy-ключ, не личный!)
+# И repo variable:
+#   DEPLOY_ENABLED — 'true' включает выкат. На время переезда держим 'false',
+#                    иначе случайный пуш поднимет второй инстанс → 409 Conflict.
 
 name: CI/CD bot
 
@@ -12,6 +15,9 @@ on:
     paths:
       - "bot/**"
       - "data/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "deploy/**"
       - ".github/workflows/deploy.yml"
 
 jobs:
@@ -22,7 +28,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # Держим ту же версию, что в контейнере (Dockerfile: python:3.12-slim),
+          # иначе тесты зелёные на одной версии, а прод падает на другой.
+          python-version: "3.12"
       - name: Install deps
         run: pip install -q -r bot/requirements.txt
       - name: Lint (ruff)
@@ -37,30 +45,20 @@ jobs:
           python test_search.py
           python test_calendar.py
 
-  # ── Деплой только после зелёных тестов ──
+  # ── Деплой только после зелёных тестов и только при включённом флаге ──
   deploy:
     needs: test
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy over SSH + healthcheck
+      - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/hockey-platform
-            git pull --ff-only origin main
-            bot/venv/bin/pip install -q -r bot/requirements.txt
-            sudo systemctl restart hockey-bot
-            sleep 5
-            # Healthcheck: не только is-active, но и строка запуска в логах
-            # (грабля: процесс стартует и тихо выходит — is-active это не ловит).
-            if journalctl -u hockey-bot --since "30 seconds ago" | grep -q "Бот запущен"; then
-              echo "✅ Healthcheck OK: бот запущен"
-            else
-              echo "❌ Healthcheck FAILED: нет строки запуска в journalctl"
-              journalctl -u hockey-bot --since "40 seconds ago" | tail -30
-              exit 1
-            fi
+          # Через `bash`, а не напрямую — не зависим от exec-бита файла:
+          # git на Windows его не трекает, иначе SSH падает с 126 Permission denied.
+          # Healthcheck («Бот запущен» в логах контейнера) внутри deploy.sh —
+          # так ручной деплой защищён тем же гейтом, что и автоматический.
+          script: bash /opt/hockey-platform/deploy/deploy.sh

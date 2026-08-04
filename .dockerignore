@@ -1,0 +1,14 @@
+.git
+.github
+docs/
+project/
+tools/
+*.md
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+bot/.env
+bot/venv/
+*.log
+runtime/

@@ -65,8 +65,12 @@ CALENDAR = load_calendar()
 # Счётчики по файлам (вариант 1): база = terms.json, «на выверке» = expert_review.json.
 N_REVIEW = len(load_review())
 N_BASE = len(TERMS) - N_REVIEW
-MISSING_LOG = Path(__file__).resolve().parent / "missing_queries.log"
-QUERIES_LOG = Path(__file__).resolve().parent / "queries.log"
+# Логи спроса. В контейнере пишем в том (RUNTIME_DIR=/app/runtime), иначе пересборка
+# образа стирает историю запросов и ритуал разбора логов теряет смысл. Без переменной —
+# прежнее поведение: рядом с bot.py (локальный запуск, старый systemd-стенд).
+RUNTIME_DIR = Path(os.environ.get("RUNTIME_DIR") or Path(__file__).resolve().parent)
+MISSING_LOG = RUNTIME_DIR / "missing_queries.log"
+QUERIES_LOG = RUNTIME_DIR / "queries.log"
 
 # Username бота. Дефолт — реальный @hockey_platform_bot; на старте перезаписывается
 # фактическим значением из Telegram (см. _post_init), можно задать через env BOT_USERNAME.

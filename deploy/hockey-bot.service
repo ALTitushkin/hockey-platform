@@ -1,3 +1,6 @@
+# АРХИВ. Стенд на личном VPS, заменён Docker-деплоем на app-VPS (S9, 04.08.2026).
+# Держим до конца окна отката — 09.08.2026. Актуальная схема: deploy/README.md
+
 # systemd-юнит для хоккейного бота
 # Установка (один раз, на VPS):
 #   sudo cp deploy/hockey-bot.service /etc/systemd/system/

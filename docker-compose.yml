@@ -1,0 +1,36 @@
+# Хоккей-бот на app-VPS. Long polling, домен и Caddy не нужны.
+#
+# ВАЖНО: ровно ОДИН инстанс. Два потребителя getUpdates на один токен →
+# Telegram отдаёт 409 Conflict, бот начинает «мигать», и ломается это тихо.
+# Никаких replicas/scale. Перед первым стартом убедиться, что старый systemd-юнит
+# на личном сервере остановлен и disabled (см. deploy/README.md).
+services:
+  bot:
+    build: .
+    image: hockey-bot:latest
+    container_name: hockey-bot
+    restart: unless-stopped
+
+    # Секреты — из .env на сервере (в репо не коммитим, он в .gitignore).
+    # .env — БЕЗ инлайн-комментариев в строках значений: роняло прод у PrizeDrawing.
+    # Нужна строка BOT_TOKEN=... целиком, голый токен не парсится.
+    env_file: .env
+
+    # tini как PID 1: форвардит SIGTERM в python и жнёт зомби — чистый рестарт.
+    init: true
+
+    # Логи спроса переживают пересборку образа. Каталог ./runtime на хосте
+    # должен принадлежать UID 1000 (см. deploy/README.md).
+    volumes:
+      - ./runtime:/app/runtime
+
+    # Эквивалент systemd MemoryMax. Боту хватает с запасом: на старом стенде
+    # процесс занимал ~27 МБ.
+    mem_limit: 256m
+
+    # Иначе json-file растёт без предела и съедает диск.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
