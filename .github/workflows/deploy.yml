@@ -4,8 +4,9 @@
 #   VPS_USER     — ssh-пользователь (deploy)
 #   VPS_SSH_KEY  — приватный ключ (отдельный deploy-ключ, не личный!)
 # И repo variable:
-#   DEPLOY_ENABLED — 'true' включает выкат. На время переезда держим 'false',
-#                    иначе случайный пуш поднимет второй инстанс → 409 Conflict.
+#   DEPLOY_ENABLED — 'true' включает выкат (включён с 30.08.2026). Ставить 'false'
+#                    на время любого переезда бота: иначе случайный пуш поднимет
+#                    второй инстанс → 409 Conflict на getUpdates.
 
 name: CI/CD bot
 
@@ -25,8 +26,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           # Держим ту же версию, что в контейнере (Dockerfile: python:3.12-slim),
           # иначе тесты зелёные на одной версии, а прод падает на другой.

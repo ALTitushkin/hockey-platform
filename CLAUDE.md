@@ -259,5 +259,5 @@ refactor: переработка без изменения функционал�
 - Inline-режим: включается в @BotFather (`/setinline`); при miss по словарю inline и текст предлагают главу истории через `find_history_chapter` (`data/history.json`)
 - Рубрика «В этот день» (бот v0.7, S7 Трек A): кнопка «📅 В этот день» + `/today` + `/day <дата>`; логика `bot/calendar_feature.py` (`parse_date` день-первым, `events_for_date`, `format_day_card`, TZ Europe/Moscow `+03:00`). Данные `data/calendar.json` (`MM-DD`; `year/text/cat/reg/conf/video?`), **только в `data/`** (сайт не читает, паритета нет). `parse_date` идёт ДО словаря, даты не пишутся в `missing_queries.log`. Наполнение/`video` — поток исследователя, коммит ручной
 - Токен бота: в `bot/.env` (локально и на VPS), в git не попадает
-- Прод: британский VPS Саши, systemd `hockey-bot`, автодеплой через GitHub Actions (`deploy/`, `.github/workflows/deploy.yml`)
+- Прод: с 30.08.2026 — Docker-контейнер `hockey-bot` на app-VPS (`88.218.250.212`), автодеплой через GitHub Actions при пуше в `main` (`deploy/`, `.github/workflows/deploy.yml`, флаг `DEPLOY_ENABLED`). Прежний systemd-стенд на личном сервере снесён
 - Наполнение базы: от спроса — разбирать `bot/missing_queries.log`
