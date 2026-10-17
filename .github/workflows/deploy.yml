@@ -16,6 +16,19 @@ on:
     paths:
       - "bot/**"
       - "data/**"
+      - "tools/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "deploy/**"
+      - ".github/workflows/deploy.yml"
+  # PR в main гоняет только тесты — деплоя из PR нет (см. if у job deploy).
+  # Так битый коммит проверяется гейтом, не рискуя продом.
+  pull_request:
+    branches: [main]
+    paths:
+      - "bot/**"
+      - "data/**"
+      - "tools/**"
       - "Dockerfile"
       - "docker-compose.yml"
       - "deploy/**"
@@ -51,7 +64,7 @@ jobs:
   # ── Деплой только после зелёных тестов и только при включённом флаге ──
   deploy:
     needs: test
-    if: vars.DEPLOY_ENABLED == 'true'
+    if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy over SSH
