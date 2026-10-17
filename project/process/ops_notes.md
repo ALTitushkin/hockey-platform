@@ -32,7 +32,7 @@
 ## Процесс главы истории
 1. Исследователь → полный markdown-черновик → `docs/history/drafts/ИМЯ.md` (сдавать ПОЛНЫЙ текст, не резюме).
 2. PM → QA (канон `docs/history/INDEX.md`, RU-качество, границы между главами, помечено ли спорное).
-3. Дев (Cowork) → вёрстка `docs/history/ИМЯ.html` по конвейеру `tools/build_chapter.py` (меняется блок CONFIG) → `published:true`+url+summary+sections в `history.json` (оба зеркала) → Article+Breadcrumb JSON-LD (ISO-даты +03:00) → `build_seo.py` (sitemap) → пуш.
+3. Дев (Cowork) → вёрстка `docs/history/ИМЯ.html` по конвейеру `python tools/build_chapter.py <id>` (мета — во frontmatter черновика; скрипт сам ставит `published:true`+url+summary+sections+keywords в оба `history.json`, Article+Breadcrumb JSON-LD с ISO-датами +03:00 и перешивает навигацию между главами) → `build_seo.py` (sitemap) → пуш.
 4. PM → приёмка на проде (страница, якоря, индекс, Article, sitemap).
 
 ## Данные и валидация

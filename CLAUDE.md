@@ -2,7 +2,7 @@
 
 > Этот файл читается Claude Code в начале каждой сессии.
 > Обновляй его при каждом значимом изменении архитектуры или решений.
-> Последнее обновление: 28.06.2026 · v0.11
+> Последнее обновление: 17.10.2026 · v0.12
 
 ---
 
@@ -57,7 +57,14 @@ hockey-platform/
 │
 ├── tools/                     # утилиты
 │   ├── add_term.py            # CLI добавления термина (пишет в оба terms.json)
-│   └── validate_data.py       # проверка целостности реестров + паритета зеркал
+│   ├── validate_data.py       # проверка целостности реестров + паритета зеркал
+│   ├── validate_calendar.py   # проверка calendar.json + покрытие; --sync — батч исследователя → data/
+│   ├── build_chapter.py       # сборка главы истории из черновика с frontmatter
+│   ├── build_seo.py           # sitemap.xml + DefinedTerm в dictionary.html
+│   └── calendar-build/        # кухня исследователя календаря (батч hockey_calendar.json, ruff exclude)
+│
+├── deploy/                    # прод бота: deploy.sh (healthcheck), watchdog.sh (алерт), README (runbook)
+├── Dockerfile, docker-compose.yml  # контейнер бота на app-VPS
 │
 ├── docs/                      # САЙТ (GitHub Pages раздаёт отсюда) — НЕ документация
 │   ├── index.html / dictionary.html / history.html / style.css / logo.png
@@ -124,7 +131,7 @@ hockey-platform/
 Главная перестала быть словарём. Структура страниц (направление A «Учебник», все self-contained, данные через `fetch ./data/*.json`):
 - `docs/index.html` — **хаб/ответ-вход**: гибрид-движок (курируемые `quick_answers.json` сверху + Fuse.js fallback по `terms.json` и keywords `history.json`) + 4 карточки-входа (Словарь/История/Обучение·слот/Сообщество·слот). Счётчики из данных.
 - `docs/dictionary.html` — **словарь**: `terms.json` + `clusters.json`; три оси фильтров (Уровень/Профиль/Категория), кластеры ⇄ плоский A→Z, карточки с see_also/anchor/визуал-слотом, мобильный drawer.
-- `docs/history.html` — **индекс истории** из `history.json` (эры + `published`→«скоро»); главы — отдельные страницы `docs/history/<id>.html` с id-якорями. `history.json` синхронизирован с каноном `docs/history/INDEX.md` (9 глав; `id`/`title`/`era`/порядок — зона research-чата, дев не меняет). Опубликована глава 1 `origins`; 2–9 — `published:false`.
+- `docs/history.html` — **индекс истории** из `history.json` (эры + `published`→«скоро»); главы — отдельные страницы `docs/history/<id>.html` с id-якорями. `history.json` синхронизирован с каноном `docs/history/INDEX.md` (9 глав; `id`/`title`/`era`/порядок — зона research-чата, дев не меняет). Опубликованы все 9 глав — раздел закрыт 17.10.2026.
 - `docs/assets/wordmark-*.svg` — SVG-вордмарк (не live-текст; У без дескендера, `project/design/wordmark_spec.md`).
 
 Карта меток уровня в UI: `novice→База`, `fan→Средний`, `geek→Продвинутый` (ключи в данных не меняем).
@@ -170,16 +177,18 @@ JSON-LD `Organization` + `WebSite` встроены статически в `<he
 (имя «Культура хоккея», `@id`-граф переиспользуется).
 
 **Разметка по страницам:** `BreadcrumbList` — на словаре/истории/главе; `DefinedTermSet`
-+ `DefinedTerm` (49) — в словаре, **статически** (краулеры/LLM не исполняют JS);
++ `DefinedTerm` (62) — в словаре, **статически** (краулеры/LLM не исполняют JS);
 `Article` — на главах истории (+ видимый `dateModified`). Schema обязана совпадать с
 видимым текстом.
 
 **Формат дат `Article`:** `datePublished`/`dateModified` и `og:article:*_time` —
 полный ISO 8601 с поясом Europe/Moscow (`2026-06-19T12:00:00+03:00`), иначе Rich
 Results выдаёт warning «date without time». Видимый `<time datetime>` — date-only.
-Главы истории собираются `tools/build_chapter.py` из markdown-черновика
-(`docs/history/drafts/<id>.md`) по шаблону `origins.html` — формат ISO-дат заложен
-в `iso()`, под новую главу меняется блок `CONFIG`; затем `build_seo.py` для sitemap.
+Главы истории собираются `python tools/build_chapter.py <id>` (или `--all`) из
+markdown-черновика `docs/history/drafts/<id>.md` по шаблону `origins.html`. Мета главы
+(даты `published`/`modified`, subtitle, og/meta-описания, `sections`, `keywords` для бота) —
+во frontmatter черновика, скрипт не правится. Навигация «← / →» между главами
+перешивается автоматически. Затем `build_seo.py` для sitemap.
 
 **`docs/robots.txt`** разрешает AI-краулеров (GPTBot, ClaudeBot, PerplexityBot,
 Google-Extended, Applebot-Extended, OAI-SearchBot и др.) + обычные; строка `Sitemap:`.
@@ -214,7 +223,7 @@ Google-Extended, Applebot-Extended, OAI-SearchBot и др.) + обычные; с
 | Поиск (спринт 1) | Fuse.js (CDN) | Нечёткий поиск на клиенте, 0 серверов |
 | Хостинг (спринт 1) | GitHub Pages | Бесплатно, деплой из репо |
 | Бот (спринт 2) | Python + python-telegram-bot | Простой стек, много примеров |
-| Хостинг бота (спринт 2) | Railway / Render (free tier) | 0 ₽ для старта |
+| Хостинг бота | Docker на app-VPS (с 30.08.2026) | Изоляция от личной инфры, деплой пушем в `main` |
 
 **Когда пересматривать стек:** когда JSON-файл превысит ~500 терминов или появится нужда в серверной фильтрации. До этого — не менять.
 
@@ -254,10 +263,10 @@ refactor: переработка без изменения функционал�
 - Канал для теста аудитории: Telegram-канал по хоккею (есть живая аудитория)
 - Кандидат в эксперты по сленгу: аналитик из СКА
 - Концепция: `project/design/koncept_platforma.md`
-- Текущий спринт: `project/planning/sprint_5.md` (бот «во весь рост»: inline + история, старт UX). Закрытые: `project/planning/results/sprint_1_results.md`, `project/planning/sprint_2.md`
+- Спринты: последний закрытый — S9 (`project/planning/results/sprint_9_results.md`); новый не открыт. Вся история — `project/planning/`
 - Бот: **@hockey_platform_bot** (username не хардкодим — берётся из `bot.username`)
 - Inline-режим: включается в @BotFather (`/setinline`); при miss по словарю inline и текст предлагают главу истории через `find_history_chapter` (`data/history.json`)
-- Рубрика «В этот день» (бот v0.7, S7 Трек A): кнопка «📅 В этот день» + `/today` + `/day <дата>`; логика `bot/calendar_feature.py` (`parse_date` день-первым, `events_for_date`, `format_day_card`, TZ Europe/Moscow `+03:00`). Данные `data/calendar.json` (`MM-DD`; `year/text/cat/reg/conf/video?`), **только в `data/`** (сайт не читает, паритета нет). `parse_date` идёт ДО словаря, даты не пишутся в `missing_queries.log`. Наполнение/`video` — поток исследователя, коммит ручной
+- Рубрика «В этот день» (бот v0.7, S7 Трек A): кнопка «📅 В этот день» + `/today` + `/day <дата>`; логика `bot/calendar_feature.py` (`parse_date` день-первым, `events_for_date`, `format_day_card`, TZ Europe/Moscow `+03:00`). Данные `data/calendar.json` (`MM-DD`; `year/text/cat/reg/conf/video?`), **только в `data/`** (сайт не читает, паритета нет). `parse_date` идёт ДО словаря, даты не пишутся в `missing_queries.log`. Наполнение/`video` — поток исследователя в `tools/calendar-build/hockey_calendar.json`; в бота доезжает `python tools/validate_calendar.py --sync` (тот же валидатор гейтит CI). Бот v0.8 понимает «послезавтра/позавчера», на «56 мая» отвечает «нет такой даты», чинит английскую раскладку и пишет покрытие календаря в строку запуска
 - Токен бота: в `bot/.env` (локально и на VPS), в git не попадает
 - Прод: с 30.08.2026 — Docker-контейнер `hockey-bot` на app-VPS (`88.218.250.212`), автодеплой через GitHub Actions при пуше в `main` (`deploy/`, `.github/workflows/deploy.yml`, флаг `DEPLOY_ENABLED`). Прежний systemd-стенд на личном сервере снесён
 - Наполнение базы: от спроса — разбирать `bot/missing_queries.log`

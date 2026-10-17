@@ -11,8 +11,8 @@
 
 ### 📋 [planning/](planning/) — спринты
 ТЗ каждого спринта и итоги. Начни с последнего.
-- Активные/прошлые ТЗ: [sprint_1](planning/sprint_1.md) · [2](planning/sprint_2.md) · [3](planning/sprint_3.md) · [4](planning/sprint_4.md) · [5](planning/sprint_5.md) · [6](planning/sprint_6.md) · [7](planning/sprint_7.md) · **[8 — в работе](planning/sprint_8.md)**
-- Ретро/итоги: [planning/results/](planning/results/) (sprint_1, 6, 7)
+- ТЗ: [sprint_1](planning/sprint_1.md) · [2](planning/sprint_2.md) · [3](planning/sprint_3.md) · [4](planning/sprint_4.md) · [5](planning/sprint_5.md) · [6](planning/sprint_6.md) · [7](planning/sprint_7.md) · [8](planning/sprint_8.md) · [9](planning/sprint_9.md) — все закрыты, новый не открыт
+- Ретро/итоги: [planning/results/](planning/results/) (sprint_1, 6, 7, 8, 9)
 
 ### 🎨 [design/](design/) — дизайн и концепт
 - [koncept_platforma.md](design/koncept_platforma.md) — концепт платформы
@@ -24,7 +24,7 @@
 - [content_guide.md](content/content_guide.md) — как наполнять базу терминов
 - [rubricator_terms.md](content/rubricator_terms.md) — рубрикатор (уровни/профили/категории)
 - [channel-announcement.md](content/channel-announcement.md) — черновик анонса бота в канал
-- Канон истории (9 глав, формат черновика): [`../docs/history/INDEX.md`](../docs/history/INDEX.md) *(лежит рядом с пайплайном сборки глав)*
+- Канон истории (9 глав — все опубликованы, формат черновика): [`../docs/history/INDEX.md`](../docs/history/INDEX.md) *(лежит рядом с пайплайном сборки глав)*
 
 ### ⚙️ [process/](process/) — как работаем
 - [ops_notes.md](process/ops_notes.md) — **операционка: грабли, VPS, деплой, ритуал разбора логов, процесс главы**

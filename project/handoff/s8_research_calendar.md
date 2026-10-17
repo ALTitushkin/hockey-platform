@@ -88,7 +88,7 @@
 
 ## Формат сдачи батча
 
-Дописывать прямо в `hockey_calendar/hockey_calendar.json` по ключу `MM-DD`.
+Дописывать прямо в `tools/calendar-build/hockey_calendar.json` по ключу `MM-DD` (с 26.07 файл живёт в репо). В бота батч доезжает командой `python tools/validate_calendar.py --sync` — она же проверяет формат.
 
 ```json
 "08-15": [

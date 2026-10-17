@@ -27,7 +27,7 @@
 docs/       — сайт (GitHub Pages): HTML/CSS, data/ (зеркало), history/ (главы)
 data/       — источник правды: terms/history/calendar/clusters/quick_answers (+ schema)
 bot/        — Telegram-бот + тесты (search.py, calendar_feature.py, bot.py)
-tools/      — утилиты: add_term.py, validate_data.py, build_seo.py, build_chapter.py
+tools/      — утилиты: add_term.py, validate_data.py, validate_calendar.py, build_seo.py, build_chapter.py
 project/    — проектная документация (старт: project/README.md)
 CLAUDE.md   — контекст и архитектура · CHANGELOG.md — история версий
 ```
