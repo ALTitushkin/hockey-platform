@@ -1,0 +1,43 @@
+<svg viewBox="0 0 420 302" xmlns="http://www.w3.org/2000/svg" font-family="'PT Mono', monospace">
+  <rect width="420" height="302" fill="#F1EAD9"/>
+  <text x="210" y="18" text-anchor="middle" font-family="'Oswald', sans-serif" font-size="13" font-weight="700" fill="#233048" letter-spacing="2">BREAKOUT · ВЫХОД ИЗ ЗОНЫ</text>
+  <text x="210" y="33" text-anchor="middle" font-size="7.5" fill="#2A2A24" opacity="0.75">защитник за воротами → крайний у борта → центр в разгоне</text>
+  <defs><marker id="arr-A14A33" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#A14A33"/></marker></defs>
+  <rect x="20" y="38" width="380" height="245" rx="18" fill="#EAF2F8" stroke="#2A2A24" stroke-width="1.5"/>
+  <rect x="46" y="148" width="14" height="25" rx="2" fill="#233048" fill-opacity="0.15" stroke="#233048" stroke-width="1.8"/>
+  <line x1="252" y1="38" x2="252" y2="283" stroke="#4A6E92" stroke-width="2.5"/>
+  <text x="256" y="52" font-size="8" fill="#4A6E92" font-weight="700" text-anchor="start">СИНЯЯ</text>
+  <line x1="60" y1="38" x2="60" y2="283" stroke="#A14A33" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <circle cx="110" cy="115" r="22" fill="none" stroke="#A14A33" stroke-width="0.8" opacity="0.5"/>
+  <circle cx="110" cy="115" r="3" fill="#A14A33"/>
+  <circle cx="110" cy="206" r="22" fill="none" stroke="#A14A33" stroke-width="0.8" opacity="0.5"/>
+  <circle cx="110" cy="206" r="3" fill="#A14A33"/>
+  <rect x="60" y="122" width="70" height="77" rx="4" fill="#B08234" opacity="0.10" stroke="#B08234" stroke-width="0.8" stroke-dasharray="3,3"/>
+  <circle cx="36" cy="190" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="36" y="193.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">D</text>
+  <circle cx="48" cy="196" r="4.5" fill="#2A2A24"/>
+  <circle cx="95" cy="240" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="95" y="243.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">D</text>
+  <circle cx="150" cy="262" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="150" y="265.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">W</text>
+  <circle cx="150" cy="58" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="150" y="61.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">W</text>
+  <circle cx="120" cy="160" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="120" y="163.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">C</text>
+  <path d="M48,200 Q88.7,237.5 140,258" fill="none" stroke="#A14A33" stroke-width="1.6" stroke-dasharray="5,3" marker-end="url(#arr-A14A33)"/>
+  <path d="M160,256 L210,205" fill="none" stroke="#A14A33" stroke-width="1.6" stroke-dasharray="5,3" marker-end="url(#arr-A14A33)"/>
+  <path d="M128,168 Q173.8,170.6 212,196" fill="none" stroke="#A14A33" stroke-width="1.6" marker-end="url(#arr-A14A33)"/>
+  <path d="M212,196 L290,196" fill="none" stroke="#A14A33" stroke-width="1.6" marker-end="url(#arr-A14A33)"/>
+  <path d="M160,58 L285,70" fill="none" stroke="#A14A33" stroke-width="1.6" marker-end="url(#arr-A14A33)"/>
+  <text x="250" y="214" text-anchor="middle" font-size="7" fill="#A14A33" font-weight="700">центр подхватывает</text>
+  <circle cx="230" cy="120" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="230" y="123.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
+  <circle cx="205" cy="260" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="205" y="263.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
+  <circle cx="32" cy="290" r="5.5" fill="#A14A33" opacity="0.92"/>
+  <text x="41" y="293" font-size="8" fill="#2A2A24">Выходят из своей зоны</text>
+  <circle cx="156.9" cy="290" r="5.5" fill="#4A6E92" opacity="0.92"/>
+  <text x="165.9" y="293" font-size="8" fill="#2A2A24">Форчек соперника</text>
+  <circle cx="257.3" cy="290" r="4" fill="#2A2A24"/>
+  <text x="266.3" y="293" font-size="8" fill="#2A2A24">Шайба</text>
+</svg>

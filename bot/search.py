@@ -11,6 +11,8 @@ import re
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+# Сайт платформы: ссылки из карточки ведут в словарь, на схему и в главу истории.
+SITE_URL = "https://altitushkin.github.io/hockey-platform/"
 
 CATEGORY_RU = {
     "stat": "Статистика",
@@ -47,6 +49,17 @@ def _keys(term: dict) -> list[str]:
     return [k.lower() for k in keys if k]
 
 
+def _digit_typo(q: str, k: str) -> bool:
+    """«н0л» → «нхл»: та же длина, отличие ровно в одной позиции, и там в запросе цифра.
+    Короткие аббревиатуры по SequenceMatcher так не ловятся (2/3 букв = 0.67 < порога),
+    а снижать порог нельзя — полезут ложные совпадения. Цифра посреди букв — почти
+    всегда промах по клавише, поэтому правило узкое и безопасное."""
+    if len(q) != len(k) or len(q) < 3:
+        return False
+    diff = [i for i, (a, b) in enumerate(zip(q, k)) if a != b]
+    return len(diff) == 1 and q[diff[0]].isdigit() and not k[diff[0]].isdigit()
+
+
 def search(query: str, terms: list[dict], limit: int = 3) -> list[dict]:
     """Возвращает до `limit` терминов: точные совпадения, затем нечёткие."""
     q = query.strip().lower()
@@ -65,6 +78,8 @@ def search(query: str, terms: list[dict], limit: int = 3) -> list[dict]:
                 (difflib.SequenceMatcher(None, q, k).ratio() for k in keys),
                 default=0,
             )
+            if best < 0.75 and any(_digit_typo(q, k) for k in keys):
+                best = 0.75
             if best >= 0.75:
                 fuzzy.append((best, term))
 
@@ -124,7 +139,28 @@ def format_card(term: dict) -> str:
         lines.append(f"\n💬 <i>Сленг:</i> {term['ru_slang']}")
     if term.get("status") != "verified":
         lines.append("\n⚠️ <i>Термин на выверке у эксперта — возможны неточности.</i>")
+    links = term_links(term)
+    if links:
+        lines.append("\n" + " · ".join(links))
     return "\n".join(lines)
+
+
+def term_links(term: dict) -> list[str]:
+    """Ссылки карточки на сайт: схема, глава истории, сам термин в словаре.
+
+    Термины на выверке (expert_review) на сайте не публикуются — им ссылок не даём.
+    """
+    if term.get("status") != "verified":
+        return []
+    links = []
+    if term.get("visual_type") == "scheme" and term.get("visual"):
+        links.append(f'🗺 <a href="{SITE_URL}{term["visual"]}">Схема</a>')
+    anchor = term.get("anchor")
+    if anchor and anchor.get("target"):
+        frag = f'#{anchor["anchor_id"]}' if anchor.get("anchor_id") else ""
+        links.append(f'📚 <a href="{SITE_URL}{anchor["target"]}{frag}">{anchor.get("label") or "История"}</a>')
+    links.append(f'📖 <a href="{SITE_URL}dictionary.html#t-{term["id"]}">В словаре</a>')
+    return links
 
 
 # ─── История ────────────────────────────────────────────────────────────────

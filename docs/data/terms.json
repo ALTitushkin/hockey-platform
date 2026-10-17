@@ -10,7 +10,7 @@
       "CF%",
       "SAT"
     ],
-    "definition": "Считает все попытки броска за смену: в створ, мимо и заблокированные. CF% выше 50% — команда контролирует шайбу больше, чем соперник. Назван в честь Джима Корси, вратарского тренера «Баффало».",
+    "definition": "Считает все попытки броска, пока игрок (или команда) на льду: в створ, мимо и заблокированные — свои против чужих. CF% выше 50% — команда чаще владеет шайбой, чем соперник. Назван в честь Джима Корси, вратарского тренера «Баффало».",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -22,12 +22,16 @@
     "profiles": [
       "analyst"
     ],
-    "cluster": null,
+    "cluster": "advanced-stats",
     "see_also": [
       "fenwick",
       "expected-goals"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "counting-shots",
+      "label": "История — гл. 8 «Революция аналитики»"
+    }
   },
   {
     "id": "fenwick",
@@ -52,12 +56,16 @@
     "profiles": [
       "analyst"
     ],
-    "cluster": null,
+    "cluster": "advanced-stats",
     "see_also": [
       "corsi",
       "expected-goals"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "counting-shots",
+      "label": "История — гл. 8 «Революция аналитики»"
+    }
   },
   {
     "id": "expected-goals",
@@ -70,7 +78,7 @@
       "xGA",
       "xGF%"
     ],
-    "definition": "Вероятность гола с данной позиции. Учитывает тип броска, дистанцию, угол, предшествующие пасы. Бросок с пятака = высокий xG, бросок с синей линии = низкий xG. xGF% — доля ожидаемых голов команды от общего xG в матче.",
+    "definition": "Вероятность того, что конкретный бросок станет голом. Модель учитывает тип броска, дистанцию, угол, передачу перед ним и добивание. Бросок с пятака — высокий xG, бросок от синей линии — низкий. xGF% — доля ожидаемых голов команды от суммы xG обеих команд.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -82,12 +90,16 @@
     "profiles": [
       "analyst"
     ],
-    "cluster": null,
+    "cluster": "advanced-stats",
     "see_also": [
       "corsi",
       "high-danger-chances"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "expected-goals",
+      "label": "История — гл. 8 «Революция аналитики»"
+    }
   },
   {
     "id": "pdo",
@@ -97,7 +109,7 @@
     "abbr": [
       "PDO"
     ],
-    "definition": "Процент попаданий (Sh%) плюс процент отражений вратаря (Sv%). Среднее по лиге всегда близко к 100. PDO значительно выше 100 — команда переживает удачную полосу, ниже 100 — неудачную. На дистанции PDO стремится к среднему.",
+    "definition": "Процент реализации бросков (Sh%) плюс процент отражений вратаря (Sv%). Среднее по лиге — около 100 (или 1.000). PDO заметно выше 100 — команде везёт, ниже — не везёт. На длинной дистанции PDO возвращается к среднему, поэтому по нему видно, чьи результаты держатся на удаче.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -109,9 +121,16 @@
     "profiles": [
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "advanced-stats",
+    "see_also": [
+      "save-percentage",
+      "shots-on-goal"
+    ],
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "expected-goals",
+      "label": "История — гл. 8 «Революция аналитики»"
+    }
   },
   {
     "id": "shots-on-goal",
@@ -135,8 +154,11 @@
       "general",
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "basic-stats",
+    "see_also": [
+      "corsi",
+      "save-percentage"
+    ],
     "anchor": null
   },
   {
@@ -161,8 +183,11 @@
     "profiles": [
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "advanced-stats",
+    "see_also": [
+      "expected-goals",
+      "slot"
+    ],
     "anchor": null
   },
   {
@@ -174,7 +199,7 @@
       "Sv%",
       "SV%"
     ],
-    "definition": "Доля бросков в створ, которые вратарь отразил. Sv% = (Броски - Голы) / Броски. Лига в среднем: ~0.910. Элитные вратари: 0.920+. Сильно зависит от качества бросков против — поэтому смотрят вместе с xG against.",
+    "definition": "Доля бросков в створ, которые вратарь отразил: Sv% = (броски − голы) / броски. В среднем по лиге — около .905–.910, у элитных вратарей — .920 и выше. Сильно зависит от качества бросков, поэтому его смотрят вместе с xGA и GSAx.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -187,8 +212,11 @@
       "general",
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "basic-stats",
+    "see_also": [
+      "goals-saved-above-expected",
+      "goals-against-average"
+    ],
     "anchor": null
   },
   {
@@ -212,8 +240,11 @@
     "profiles": [
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "advanced-stats",
+    "see_also": [
+      "save-percentage",
+      "expected-goals"
+    ],
     "anchor": null
   },
   {
@@ -224,7 +255,7 @@
     "abbr": [],
     "definition": "Давление на соперника в его зоне — сразу после потери или с выходом вперёд. Цель: не дать вынести шайбу, создать ошибку. Бывает агрессивный (1-2-2, 2-1-2) и консервативный (1-2-2 нейтральная зона).",
     "ru_slang": "прессинг, пресс",
-    "visual": null,
+    "visual": "diagrams/forecheck.svg",
     "visual_type": "scheme",
     "source": "coachesclipboard.ca",
     "status": "verified",
@@ -237,11 +268,12 @@
       "player",
       "coach"
     ],
-    "cluster": null,
+    "cluster": "attack",
     "see_also": [
       "backcheck"
     ],
-    "anchor": null
+    "anchor": null,
+    "visual_caption": "Схема форчека: давление тройкой нападающих"
   },
   {
     "id": "backcheck",
@@ -263,7 +295,7 @@
       "player",
       "coach"
     ],
-    "cluster": null,
+    "cluster": "defense",
     "see_also": [
       "forecheck"
     ],
@@ -275,9 +307,9 @@
     "ru": "Ловушка в нейтральной зоне",
     "category": "tactic",
     "abbr": [],
-    "definition": "Оборонительная тактика: 4–5 игроков блокируют нейтральную зону, вынуждая соперника бросать шайбу вперёд или делать ошибки. Убивает темп игры, снижает количество бросков обеих команд. Популяризирована сборной Франции и «Нью-Джерси» в 90-е.",
+    "definition": "Оборонительная тактика: команда отходит и перекрывает среднюю зону, вынуждая соперника отдавать шайбу или забрасывать её вперёд — и ловит его на ошибке. Убивает темп и сокращает число бросков с обеих сторон. Прославилась в 1990-х благодаря «Нью-Джерси» Жака Лемера; борьба с ней стала одной из причин реформы правил 2005 года.",
     "ru_slang": "трап, капкан",
-    "visual": null,
+    "visual": "diagrams/neutral-zone-trap.svg",
     "visual_type": "scheme",
     "source": "hockey-reference.com",
     "status": "verified",
@@ -289,9 +321,17 @@
       "player",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "defense",
+    "see_also": [
+      "neutral-zone",
+      "zone-defense"
+    ],
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "lockout",
+      "label": "История — гл. 8 «Революция аналитики»"
+    },
+    "visual_caption": "Ловушка 1-2-2: один форчекер гонит к борту, четверо перекрывают нейтральную зону"
   },
   {
     "id": "power-play",
@@ -302,9 +342,9 @@
       "PP",
       "PP%"
     ],
-    "definition": "Игра при численном преимуществе — когда у соперника один или два игрока удалены. PP% = голы в большинстве / время в большинстве × 100. Лига в среднем: 18–20%. Большинство с пяти точек (фланги + синяя линия) — классическая схема.",
+    "definition": "Игра в численном большинстве — когда у соперника один или два игрока удалены. PP% — доля реализованных большинств: голы в большинстве / число большинств × 100. В среднем по лиге — около 20%. Классическая расстановка — «зонтик» или «1-3-1».",
     "ru_slang": null,
-    "visual": null,
+    "visual": "diagrams/powerplay.svg",
     "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
@@ -317,12 +357,13 @@
       "player",
       "coach"
     ],
-    "cluster": null,
+    "cluster": "power-play",
     "see_also": [
       "penalty-kill",
       "umbrella"
     ],
-    "anchor": null
+    "anchor": null,
+    "visual_caption": "Расстановка в большинстве 5 на 4"
   },
   {
     "id": "penalty-kill",
@@ -333,7 +374,7 @@
       "PK",
       "PK%"
     ],
-    "definition": "Игра при численном меньшинстве — когда кто-то из своих удалён. PK% = 100 минус процент пропущенных в меньшинстве. Лига в среднем: 79–82%. Успешный PK — один из важнейших показателей командной игры.",
+    "definition": "Игра в численном меньшинстве — когда кто-то из своих удалён. PK% — доля отбитых меньшинств: 100 − (пропущенные в меньшинстве / число меньшинств × 100). В среднем по лиге — около 80%. Надёжное меньшинство — признак дисциплинированной команды.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -347,7 +388,7 @@
       "player",
       "coach"
     ],
-    "cluster": null,
+    "cluster": "power-play",
     "see_also": [
       "power-play",
       "zone-defense"
@@ -362,8 +403,8 @@
     "abbr": [],
     "definition": "Способ, которым команда входит в зону атаки. Три варианта: с контролем шайбы (carry-in), с пасом за линию (pass-in) и вброс (dump-in). Входы с контролем создают значительно больше опасных моментов.",
     "ru_slang": "вброс, заброс (dump-in)",
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/zone-entry.svg",
+    "visual_type": "scheme",
     "source": "coachingkidshockey.com",
     "status": "verified",
     "added": "2026-06-07",
@@ -373,9 +414,13 @@
       "analyst",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "attack",
+    "see_also": [
+      "breakout",
+      "forecheck"
+    ],
+    "anchor": null,
+    "visual_caption": "Три способа войти в зону: с контролем, пасом, забросом"
   },
   {
     "id": "slot",
@@ -385,7 +430,7 @@
     "abbr": [],
     "definition": "Опасная зона прямо перед воротами — примерно от вбрасывания до линии ворот, между кругами. Большинство голов в хоккее забивается со слота. Контроль этой зоны — ключ к обороне.",
     "ru_slang": null,
-    "visual": null,
+    "visual": "diagrams/slot.svg",
     "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
@@ -398,12 +443,13 @@
       "player",
       "coach"
     ],
-    "cluster": null,
+    "cluster": "rink",
     "see_also": [
       "screen",
       "rebound"
     ],
-    "anchor": null
+    "anchor": null,
+    "visual_caption": "Где находится пятак"
   },
   {
     "id": "odd-man-rush",
@@ -412,9 +458,9 @@
     "category": "tactic",
     "abbr": [],
     "definition": "Контратака, когда атакующих больше, чем обороняющихся: 2-в-1, 3-в-1, 3-в-2. Один из самых опасных моментов в хоккее — вратарь вынужден выбирать между передачей и бросковой угрозой.",
-    "ru_slang": "выход один-в-ноль, два-в-один",
-    "visual": null,
-    "visual_type": null,
+    "ru_slang": "два в одного, три в двух",
+    "visual": "diagrams/odd-man-rush.svg",
+    "visual_type": "scheme",
     "source": "coachesclipboard.ca",
     "status": "verified",
     "added": "2026-06-07",
@@ -424,9 +470,13 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "attack",
+    "see_also": [
+      "breakaway",
+      "1-on-1"
+    ],
+    "anchor": null,
+    "visual_caption": "Выход 2 в 1: защитник держит середину, вратарь берёт бросок"
   },
   {
     "id": "goals-against-average",
@@ -449,8 +499,11 @@
       "general",
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "basic-stats",
+    "see_also": [
+      "save-percentage",
+      "shutout"
+    ],
     "anchor": null
   },
   {
@@ -461,7 +514,7 @@
     "abbr": [
       "+/-"
     ],
-    "definition": "+1 когда игрок на льду при голе своей команды в равных составах или большинстве. -1 при пропущенном голе. Широко критикуется как метрика: зависит от качества партнёров и соперников. Более честная замена — Corsi и xGF% при равных составах.",
+    "definition": "+1 игроку, если он был на льду, когда его команда забила в равных составах или в меньшинстве; −1 — если пропустила в равных составах или в своём большинстве. Голы в большинстве своей команды не учитываются. Метрику критикуют: она зависит от партнёров, соперников и вратаря. Точнее — Корси и xGF% в равных составах.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -474,9 +527,16 @@
       "general",
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "basic-stats",
+    "see_also": [
+      "corsi",
+      "expected-goals"
+    ],
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "new-speed",
+      "label": "История — гл. 8 «Революция аналитики»"
+    }
   },
   {
     "id": "face-off",
@@ -487,8 +547,8 @@
       "FO",
       "FO%"
     ],
-    "definition": "Розыгрыш шайбы двумя центральными нападающими после остановки игры. FO% — процент выигранных вбрасываний. Критично для большинства/меньшинства и нейтральной зоны. Специалист по вбрасываниям — «dot man» на сленге.",
-    "ru_slang": "точка",
+    "definition": "Розыгрыш шайбы после остановки игры: судья бросает её между двумя игроками, чаще всего центральными нападающими. FO% — доля выигранных вбрасываний. Особенно важны вбрасывания в своей зоне и при игре в большинстве и меньшинстве.",
+    "ru_slang": null,
     "visual": null,
     "visual_type": null,
     "source": "nhl.com",
@@ -500,8 +560,10 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "rules",
+    "see_also": [
+      "center"
+    ],
     "anchor": null
   },
   {
@@ -526,8 +588,10 @@
       "general",
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "basic-stats",
+    "see_also": [
+      "plus-minus"
+    ],
     "anchor": null
   },
   {
@@ -551,8 +615,11 @@
       "general",
       "analyst"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "basic-stats",
+    "see_also": [
+      "goals-against-average",
+      "save-percentage"
+    ],
     "anchor": null
   },
   {
@@ -563,8 +630,8 @@
     "abbr": [],
     "definition": "Шайба выброшена из своей половины за линию ворот соперника без касания кого-либо. Игра останавливается, вбрасывание — в зоне провинившейся команды, и ей запрещена смена состава. Команде в меньшинстве пробрасывать можно.",
     "ru_slang": null,
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/icing.svg",
+    "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
@@ -574,9 +641,13 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "rules",
+    "see_also": [
+      "offside",
+      "penalty-kill"
+    ],
+    "anchor": null,
+    "visual_caption": "Проброс: шайба из своей половины пересекла чужую линию ворот"
   },
   {
     "id": "offside",
@@ -586,8 +657,8 @@
     "abbr": [],
     "definition": "Игрок атаки пересёк синюю линию зоны соперника раньше шайбы. Игра останавливается, вбрасывание — в нейтральной зоне. Определяется по положению коньков: оба конька за линией до шайбы — офсайд.",
     "ru_slang": null,
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/offside.svg",
+    "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
@@ -597,9 +668,17 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "rules",
+    "see_also": [
+      "icing",
+      "zone-entry"
+    ],
+    "anchor": {
+      "target": "history/origins.html",
+      "anchor_id": "rules-and-leagues",
+      "label": "История — гл. 1 «Истоки»"
+    },
+    "visual_caption": "Офсайд: в зону атаки шайба входит раньше игрока"
   },
   {
     "id": "center",
@@ -622,8 +701,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "positions",
+    "see_also": [
+      "face-off",
+      "winger"
+    ],
     "anchor": null
   },
   {
@@ -648,8 +730,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "positions",
+    "see_also": [
+      "center",
+      "forward"
+    ],
     "anchor": null
   },
   {
@@ -675,8 +760,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "positions",
+    "see_also": [
+      "defenseman-types",
+      "box-out"
+    ],
     "anchor": null
   },
   {
@@ -700,8 +788,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "positions",
+    "see_also": [
+      "save-percentage",
+      "empty-net"
+    ],
     "anchor": null
   },
   {
@@ -723,8 +814,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "attack",
+    "see_also": [
+      "breakaway",
+      "1-on-1"
+    ],
     "anchor": null
   },
   {
@@ -733,7 +827,7 @@
     "ru": "Выход один на один",
     "category": "tactic",
     "abbr": [],
-    "definition": "Игрок с шайбой убегает на вратаря без единого защитника между ними. Чистейший голевой момент. Фол на убегающем игроке = буллит.",
+    "definition": "Игрок с шайбой уходит на вратаря без единого защитника между ними — самый чистый голевой момент. Если такого игрока сбивают сзади и лишают явного шанса забить, судья назначает буллит.",
     "ru_slang": "выход один в ноль",
     "visual": null,
     "visual_type": null,
@@ -746,8 +840,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "attack",
+    "see_also": [
+      "odd-man-rush",
+      "deke"
+    ],
     "anchor": null
   },
   {
@@ -758,8 +855,8 @@
     "abbr": [],
     "definition": "Игрок стоит перед вратарём и закрывает ему обзор при броске — вратарь реагирует с опозданием или не видит шайбу вовсе. Ключевой элемент розыгрыша большинства.",
     "ru_slang": "трафик, экран",
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/screen.svg",
+    "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
@@ -770,9 +867,13 @@
       "player",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "attack",
+    "see_also": [
+      "deflection",
+      "slot"
+    ],
+    "anchor": null,
+    "visual_caption": "Заслон: нападающий закрывает вратарю обзор"
   },
   {
     "id": "rebound",
@@ -793,8 +894,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "attack",
+    "see_also": [
+      "slot",
+      "box-out"
+    ],
     "anchor": null
   },
   {
@@ -831,8 +935,8 @@
     "abbr": [],
     "definition": "Удержание шайбы в зоне атаки перепасовкой по борту и за воротами: игроки по очереди меняются позициями, выматывая оборону, пока не откроется бросок. Основа позиционной атаки.",
     "ru_slang": "катать карусель, возить",
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/cycle.svg",
+    "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
@@ -843,9 +947,13 @@
       "player",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "attack",
+    "see_also": [
+      "forecheck",
+      "zone-entry"
+    ],
+    "anchor": null,
+    "visual_caption": "Карусель: шайбу оставляют у борта, игроки меняются местами"
   },
   {
     "id": "breakout",
@@ -855,8 +963,8 @@
     "abbr": [],
     "definition": "Организованный выход из своей зоны после отбора шайбы: защитник за воротами, фланги по бортам, центр в поддержке. Качество брейкаута определяет, как часто команда вообще доходит до атаки.",
     "ru_slang": null,
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/breakout.svg",
+    "visual_type": "scheme",
     "source": "nhl.com",
     "status": "verified",
     "added": "2026-06-12",
@@ -866,9 +974,13 @@
       "player",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "attack",
+    "see_also": [
+      "zone-entry",
+      "defenseman"
+    ],
+    "anchor": null,
+    "visual_caption": "Выход из зоны: защитник → крайний у борта → центр в разгоне"
   },
   {
     "id": "enforcer",
@@ -876,7 +988,7 @@
     "ru": "Тафгай",
     "category": "position",
     "abbr": [],
-    "definition": "Игрок, чья роль — защищать партнёров кулаками и физической игрой. Драки, силовое давление, ответ на грязную игру соперника. В современном хоккее роль почти исчезла: лимит на состав слишком дорог.",
+    "definition": "Игрок, чья главная роль — защищать партнёров силовой игрой и кулаками: драки, давление, ответ на грубость соперника. В современном хоккее роль почти исчезла: место в составе слишком ценно, чтобы отдавать его игроку одной функции.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -889,9 +1001,16 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "positions",
+    "see_also": [
+      "checker",
+      "body-check"
+    ],
+    "anchor": {
+      "target": "history/modern-game.html",
+      "anchor_id": "new-speed",
+      "label": "История — гл. 8 «Революция аналитики»"
+    }
   },
   {
     "id": "puck",
@@ -906,9 +1025,15 @@
     "profiles": [
       "general"
     ],
-    "cluster": null,
-    "see_also": [],
-    "anchor": null
+    "cluster": "rink",
+    "see_also": [
+      "hockey-stick"
+    ],
+    "anchor": {
+      "target": "history/origins.html",
+      "anchor_id": "montreal-1875",
+      "label": "История — гл. 1 «Истоки»"
+    }
   },
   {
     "id": "hockey-stick",
@@ -924,8 +1049,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "rink",
+    "see_also": [
+      "handedness",
+      "puck"
+    ],
     "anchor": null
   },
   {
@@ -934,19 +1062,23 @@
     "ru": "Форвард",
     "abbr": [
       "F",
-      "FWD"
+      "FWD",
+      "нападающий"
     ],
     "category": "position",
     "level": "novice",
     "definition": "Атакующий игрок. В звене три форварда: центральный (C) и два крайних нападающих (LW, RW). Основная задача — создание голевых моментов и взятие ворот. Форварды первого звена получают большинство времени на льду.",
-    "ru_slang": "нападающий, нападающий первого звена",
+    "ru_slang": null,
     "status": "verified",
     "profiles": [
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "positions",
+    "see_also": [
+      "center",
+      "winger"
+    ],
     "anchor": null
   },
   {
@@ -964,8 +1096,11 @@
       "player",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "positions",
+    "see_also": [
+      "enforcer",
+      "forecheck"
+    ],
     "anchor": null
   },
   {
@@ -1053,7 +1188,7 @@
     "ru": "Зонная оборона",
     "category": "tactic",
     "abbr": [],
-    "definition": "Оборона, где каждый отвечает за свою зону льда, а не за конкретного соперника (в отличие от персональной опеки). Чаще применяется в меньшинстве.",
+    "definition": "Оборона, в которой каждый отвечает за свой участок льда, а не за конкретного соперника (в отличие от персональной опеки). Основа игры в своей зоне и особенно в меньшинстве.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -1066,7 +1201,7 @@
       "player",
       "coach"
     ],
-    "cluster": null,
+    "cluster": "defense",
     "see_also": [
       "penalty-kill"
     ],
@@ -1080,8 +1215,8 @@
     "abbr": [],
     "definition": "Расстановка в большинстве «зонтиком»: трое у синей линии полукругом, двое ниже. Раскрывает коридоры для броска от точки и передач на пятак.",
     "ru_slang": null,
-    "visual": null,
-    "visual_type": null,
+    "visual": "diagrams/umbrella.svg",
+    "visual_type": "scheme",
     "source": "coachesclipboard.ca",
     "status": "verified",
     "added": "2026-06-13",
@@ -1095,7 +1230,8 @@
     "see_also": [
       "power-play"
     ],
-    "anchor": null
+    "anchor": null,
+    "visual_caption": "Зонтик в большинстве: трое дугой у синей линии, двое у ворот"
   },
   {
     "id": "box-out",
@@ -1116,8 +1252,11 @@
       "player",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "defense",
+    "see_also": [
+      "slot",
+      "rebound"
+    ],
     "anchor": null
   },
   {
@@ -1138,8 +1277,11 @@
     "profiles": [
       "general"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "rink",
+    "see_also": [
+      "neutral-zone-trap",
+      "offside"
+    ],
     "anchor": null
   },
   {
@@ -1161,8 +1303,11 @@
       "general",
       "player"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "rules",
+    "see_also": [
+      "body-check",
+      "penalty-box"
+    ],
     "anchor": null
   },
   {
@@ -1183,8 +1328,11 @@
     "profiles": [
       "general"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "rules",
+    "see_also": [
+      "empty-net",
+      "penalty-box"
+    ],
     "anchor": null
   },
   {
@@ -1208,8 +1356,11 @@
       "general",
       "coach"
     ],
-    "cluster": null,
-    "see_also": [],
+    "cluster": "power-play",
+    "see_also": [
+      "goaltender",
+      "delayed-penalty"
+    ],
     "anchor": null
   },
   {
@@ -1232,8 +1383,11 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": "rink",
     "see_also": [
       "wrist-shot",
       "slap-shot"
@@ -1255,8 +1409,11 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": "defense",
     "see_also": [
       "cross-check",
       "enforcer"
@@ -1269,7 +1426,7 @@
     "ru": "Драфт",
     "category": "org",
     "abbr": [],
-    "definition": "Ежегодная процедура, на которой клубы НХЛ по очереди закрепляют права на молодых игроков (как правило, 18 лет и старше). Порядок выбора обратный таблице — слабейшие команды выбирают раньше, через лотерею. EN: NHL Entry Draft.",
+    "definition": "Ежегодная процедура, на которой клубы НХЛ по очереди закрепляют права на молодых игроков (как правило, 18 лет и старше). Слабейшие команды выбирают раньше, порядок первых выборов определяет лотерея. EN: NHL Entry Draft.",
     "ru_slang": null,
     "visual": null,
     "visual_type": null,
@@ -1278,12 +1435,19 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "fan",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "general",
+      "scout"
+    ],
+    "cluster": "leagues",
     "see_also": [
       "nhl"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/exodus.html",
+      "anchor_id": "closed-system",
+      "label": "История — гл. 7 «Когда занавес упал»"
+    }
   },
   {
     "id": "penalty-box",
@@ -1300,8 +1464,10 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "general"
+    ],
+    "cluster": "rules",
     "see_also": [
       "penalty-kill",
       "delayed-penalty"
@@ -1323,8 +1489,11 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "fan",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "general",
+      "player"
+    ],
+    "cluster": "shots",
     "see_also": [
       "screen",
       "rebound",
@@ -1347,8 +1516,11 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "player",
+      "coach"
+    ],
+    "cluster": "attack",
     "see_also": [
       "breakaway",
       "odd-man-rush"
@@ -1370,8 +1542,12 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "fan",
-    "profiles": [],
-    "cluster": null,
+    "profiles": [
+      "player",
+      "coach",
+      "scout"
+    ],
+    "cluster": "positions",
     "see_also": [
       "defenseman"
     ],
@@ -1395,7 +1571,9 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
+    "profiles": [
+      "general"
+    ],
     "cluster": "leagues",
     "see_also": [
       "khl",
@@ -1404,7 +1582,11 @@
       "echl",
       "rhl"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/origins.html",
+      "anchor_id": "professionals",
+      "label": "История — гл. 1 «Истоки»"
+    }
   },
   {
     "id": "khl",
@@ -1424,7 +1606,9 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
+    "profiles": [
+      "general"
+    ],
     "cluster": "leagues",
     "see_also": [
       "nhl",
@@ -1433,7 +1617,11 @@
       "echl",
       "rhl"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/russia-future.html",
+      "anchor_id": "khl",
+      "label": "История — гл. 9 «Россия после СССР»"
+    }
   },
   {
     "id": "mhl",
@@ -1453,7 +1641,10 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
+    "profiles": [
+      "general",
+      "scout"
+    ],
     "cluster": "leagues",
     "see_also": [
       "nhl",
@@ -1462,7 +1653,11 @@
       "echl",
       "rhl"
     ],
-    "anchor": null
+    "anchor": {
+      "target": "history/russia-future.html",
+      "anchor_id": "khl",
+      "label": "История — гл. 9 «Россия после СССР»"
+    }
   },
   {
     "id": "vhl",
@@ -1482,7 +1677,10 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
+    "profiles": [
+      "general",
+      "scout"
+    ],
     "cluster": "leagues",
     "see_also": [
       "nhl",
@@ -1510,7 +1708,9 @@
     "added": "2026-06-28",
     "notes": "",
     "level": "novice",
-    "profiles": [],
+    "profiles": [
+      "general"
+    ],
     "cluster": "leagues",
     "see_also": [
       "nhl",
@@ -1541,7 +1741,10 @@
     "added": "2026-06-28",
     "notes": "Лига преобразована из НМХЛ в РХЛ 17.04.2026 (fhr.ru, championat.com). Карточка ведёт официальным именем РХЛ; НМХЛ — бывшее название и частый запрос, заведено алиасом (abbr + ru_slang). Сайт nmhl.fhr.ru пока активен.",
     "level": "novice",
-    "profiles": [],
+    "profiles": [
+      "general",
+      "scout"
+    ],
     "cluster": "leagues",
     "see_also": [
       "nhl",

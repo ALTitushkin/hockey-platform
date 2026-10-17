@@ -6,7 +6,7 @@
 
 ## Что уже хорошо (не трогаем)
 - **Секреты — чисто.** `.env` в `.gitignore`, в индексе секретов нет, деплой-ключ отдельный (не личный), VPS-креды в GitHub Secrets. ✅
-- **CI path-filtered:** деплой триггерится только на `bot/**`, `data/**`, сам workflow. Правки `docs/`/`project/` бота не трогают. ✅
+- **CI path-filtered:** деплой триггерится только на `bot/**`, `data/**`, `tools/**`, `deploy/**`, сам workflow. Правки `docs/`/`project/` бота не трогают. PR в `main` гоняет только тесты; гейт проверен битым коммитом 17.10.2026 (PR #1: `test: failure` → `deploy: skipped`). ✅
 - **systemd закалён:** `Restart=on-failure`, `RestartSec=10`, `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, отдельный юзер `hockey`, `After=network-online`. ✅
 - **Деплой безопасен:** `set -e`, `git pull --ff-only`, установка зависимостей, рестарт. ✅
 - **Данные = бэкап:** база в git (terms/history/calendar.json), бот стейтлесс → потеря VPS не теряет данные. ✅

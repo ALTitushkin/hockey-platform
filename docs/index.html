@@ -189,7 +189,7 @@ a.entry:hover{transform:translateY(-2px);box-shadow:3px 3px 0 rgba(32,36,44,0.18
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
 <script>
 const CATS={stat:"Статистика",tactic:"Тактика",rule:"Правила",position:"Позиции"};
-const DICT="dictionary.html",HIST="history.html";
+const DICT="dictionary.html",HIST="history.html",LEARN="learn.html";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const norm=s=>String(s||"").toLowerCase().replace(/[ё]/g,"е").replace(/[^a-zа-я0-9 ]/gi," ").replace(/\s+/g," ").trim();
 
@@ -203,9 +203,12 @@ const CHIPS=[
 ];
 
 /* быстрый ответ из quick_answers.json */
+/* сравниваем по значимым словам: иначе «что такое» или «как» совпадёт с первым же вопросом */
+const QSTOP=new Set(["что","такое","такой","такая","это","как","кто","где","когда","почему","зачем","читать","считать","значит","означает","в","и","а","на","ли","же"]);
+const qcore=s=>norm(s).split(" ").filter(w=>w&&!QSTOP.has(w)).join(" ");
 function quickMatch(q){
-  const n=norm(q);if(n.length<3)return null;
-  for(const a of QUICK){const aq=norm(a.q);if(aq===n||aq.includes(n)||n.includes(aq))return a;}
+  const n=qcore(q);if(n.length<2)return null;
+  for(const a of QUICK){const aq=qcore(a.q);if(aq===n||(n.length>=3&&aq.includes(n))||n.includes(aq))return a;}
   return null;
 }
 /* история: по ключевым словам/заголовку (только опубликованные) */
@@ -269,8 +272,8 @@ function renderEntries(){
   const pub=HISTORY.filter(c=>c.published).length;
   const ENTRIES=[
     {n:"01",title:"Словарь",desc:`${TERMS.length} терминов: статистика, тактика, правила и позиции — по-русски и in English.`,cta:"Открыть",live:true,href:DICT},
-    {n:"02",title:"История",desc:`Как игра пришла на лёд: ${HISTORY.length} глав от первого матча до КХЛ${pub?` (${pub} опубликована)`:""}.`,cta:"Читать",live:true,href:HIST},
-    {n:"03",title:"Обучение",desc:"Разборы, схемы и упражнения. Раздел в разработке.",cta:"Скоро",live:false},
+    {n:"02",title:"История",desc:`Как игра пришла на лёд: ${HISTORY.length} глав от первого матча до КХЛ${pub&&pub<HISTORY.length?` (опубликовано: ${pub})`:""}.`,cta:"Читать",live:true,href:HIST},
+    {n:"03",title:"Обучение",desc:"Маршруты по шагам: тактика с нуля и продвинутая статистика — со схемами и самопроверкой.",cta:"Начать",live:true,href:LEARN},
     {n:"04",title:"Сообщество",desc:"Вопросы экспертам и совместная выверка терминов. Раздел в разработке.",cta:"Скоро",live:false}
   ];
   document.getElementById("entries").innerHTML=ENTRIES.map(e=>{

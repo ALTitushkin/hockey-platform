@@ -59,6 +59,8 @@
 
 Один слот, два типа (`visual_type`):
 - **scheme** — своя SVG. `visual` = путь (`diagrams/forecheck.svg`), стиль из `docs/diagrams/` держим.
+  Новые схемы — через генератор `tools/build_diagrams.py`; `visual_caption` — подпись (alt и текст под
+  картинкой). Наличие файла проверяет `validate_data.py`.
 - **video** — встраиваемое. `visual` = `youtube:VIDEO_ID`, `visual_timecode` = якорь, `visual_attribution` обязателен. Паттерн «фасад»: превью + ▶, iframe по клику.
 
 ### Категории
@@ -134,6 +136,26 @@
 
 ---
 
+## learning.json — учебные маршруты (раздел «Обучение»)
+
+Маршрут — упорядоченные шаги из существующих терминов, схем и глав. Страница `docs/learn.html`.
+
+| Поле | Тип | Описание |
+|------|-----|---------|
+| `id` | string | slug маршрута; он же hash в URL (`learn.html#tactics-basics`) |
+| `title` / `summary` | string | Название и 1–2 строки описания |
+| `level` | string | `novice` / `fan` / `geek` (как у терминов) |
+| `profiles` | string[] | Профили из рубрикатора |
+| `minutes` | int | Оценка времени прохождения |
+| `steps[]` | object[] | Шаги по порядку |
+
+Шаг: `id` (slug, deep-link `#<маршрут>-<шаг>`), `title`, `text` (своё объяснение, без копий из
+источников), `terms[]` (id из `terms.json` — мини-карточки со схемами), `history`
+(`{target, anchor_id, label}` или `null`), `check` (`{q, options[], answer, explain}` —
+`answer` — индекс верного варианта). Ссылки и `answer` проверяет `validate_data.py`.
+
+---
+
 ## expert_review.json
 
 Та же схема, что `terms.json`. Разница:
@@ -157,3 +179,4 @@
 - v2.0 — 14.06.2026 (S5). Поля `profiles/cluster/see_also/anchor`, video-контракт визуала,
   карта меток уровня. Новые реестры `clusters.json`, `quick_answers.json`; `history.json` +
   `sections/published`. Проверка целостности — `tools/validate_data.py`.
+- v2.1 — 17.10.2026. Реестр `learning.json`; `visual_caption` заполняется у схем; 10 кластеров.

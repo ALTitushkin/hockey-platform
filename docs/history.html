@@ -87,9 +87,11 @@ a{color:var(--steel);}
   padding:13px 16px;border-bottom:4px double var(--line);max-width:920px;margin:0 auto;}
 .top__home{font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink);text-decoration:none;white-space:nowrap;}
 .top__home:hover{color:var(--steel);}
-.top__nav{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.top__nav{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
 .top__nav a{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);text-decoration:none;display:inline-flex;align-items:center;min-height:44px;padding:0 6px;}
 .top__nav a:hover,.top__nav a[aria-current]{color:var(--steel);}
+/* узкий экран: «Главная» дублирует логотип — прячем, чтобы меню влезло в одну строку */
+@media(max-width:480px){.top__nav{gap:2px;}.top__nav a{padding:0 4px;letter-spacing:0.08em;}.top__nav a:first-child{display:none;}}
 .wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 16px 56px;}
 .idx-head{padding:26px 0 6px;}
 .idx-head .over{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);}
@@ -119,12 +121,12 @@ a.tease:hover .tease__cta{background:var(--steel);border-color:var(--steel);}
 <body>
 <header class="top">
   <a class="top__home" href="index.html">Культура хоккея</a>
-  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html">Словарь</a><a href="history.html" aria-current="page">История</a></nav>
+  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html">Словарь</a><a href="history.html" aria-current="page">История</a><a href="learn.html">Обучение</a></nav>
 </header>
 
 <div class="wrap">
   <div class="idx-head">
-    <div class="over">03 · История хоккея</div>
+    <div class="over">02 · История хоккея</div>
     <h1>История хоккея</h1>
     <p class="lead">Как игра пришла на лёд и стала такой, какой мы её знаем. Главы-разборы от первого матча до больших данных — читать по порядку или с любого места.</p>
   </div>

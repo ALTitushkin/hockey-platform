@@ -1,0 +1,49 @@
+<svg viewBox="0 0 420 302" xmlns="http://www.w3.org/2000/svg" font-family="'PT Mono', monospace">
+  <rect width="420" height="302" fill="#F1EAD9"/>
+  <text x="210" y="18" text-anchor="middle" font-family="'Oswald', sans-serif" font-size="13" font-weight="700" fill="#233048" letter-spacing="2">NEUTRAL ZONE TRAP · ЛОВУШКА 1-2-2</text>
+  <text x="210" y="33" text-anchor="middle" font-size="7.5" fill="#2A2A24" opacity="0.75">один давит в чужой зоне, четверо перекрывают середину</text>
+  <defs><marker id="arr-4A6E92" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#4A6E92"/></marker><marker id="arr-A14A33" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#A14A33"/></marker></defs>
+  <rect x="20" y="38" width="380" height="245" rx="18" fill="#EAF2F8" stroke="#2A2A24" stroke-width="1.5"/>
+  <line x1="162" y1="38" x2="162" y2="283" stroke="#4A6E92" stroke-width="2.5"/>
+  <line x1="258" y1="38" x2="258" y2="283" stroke="#4A6E92" stroke-width="2.5"/>
+  <line x1="210" y1="38" x2="210" y2="283" stroke="#A14A33" stroke-width="2.5"/>
+  <circle cx="210" cy="160.5" r="22" fill="none" stroke="#4A6E92" stroke-width="0.8" opacity="0.6"/>
+  <line x1="41" y1="46" x2="41" y2="275" stroke="#A14A33" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="379" y1="46" x2="379" y2="275" stroke="#A14A33" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <rect x="27" y="148" width="14" height="25" rx="2" fill="#233048" fill-opacity="0.15" stroke="#233048" stroke-width="1.8"/>
+  <rect x="379" y="148" width="14" height="25" rx="2" fill="#233048" fill-opacity="0.15" stroke="#233048" stroke-width="1.8"/>
+  <circle cx="80" cy="110" r="2.5" fill="#A14A33"/>
+  <circle cx="80" cy="211" r="2.5" fill="#A14A33"/>
+  <circle cx="340" cy="110" r="2.5" fill="#A14A33"/>
+  <circle cx="340" cy="211" r="2.5" fill="#A14A33"/>
+  <rect x="162" y="38" width="96" height="245" fill="#B08234" opacity="0.13"/>
+  <text x="210" y="52" text-anchor="middle" font-size="7.5" fill="#B08234" font-weight="700">НЕЙТРАЛЬНАЯ ЗОНА</text>
+  <circle cx="52" cy="196" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="52" y="199.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">D</text>
+  <circle cx="64" cy="190" r="4.5" fill="#2A2A24"/>
+  <path d="M64,196 Q96.6,209.5 120,236" fill="none" stroke="#A14A33" stroke-width="1.6" marker-end="url(#arr-A14A33)"/>
+  <circle cx="135" cy="92" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="135" y="95.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
+  <circle cx="140" cy="228" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="140" y="231.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
+  <circle cx="110" cy="178" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="110" y="181.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F1</text>
+  <path d="M110,189 L112,226" fill="none" stroke="#4A6E92" stroke-width="1.6" marker-end="url(#arr-4A6E92)"/>
+  <circle cx="222" cy="92" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="222" y="95.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F2</text>
+  <circle cx="222" cy="228" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="222" y="231.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F3</text>
+  <path d="M222,217 L196,236" fill="none" stroke="#4A6E92" stroke-width="1.6" marker-end="url(#arr-4A6E92)"/>
+  <circle cx="282" cy="125" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="282" y="128.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">D</text>
+  <circle cx="282" cy="196" r="11" fill="#4A6E92" opacity="0.92"/>
+  <text x="282" y="199.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">D</text>
+  <text x="110" y="160" text-anchor="middle" font-size="7" fill="#4A6E92" font-weight="700">гонит к борту</text>
+  <text x="300" y="262" text-anchor="middle" font-size="7" fill="#4A6E92" font-weight="700">ловят пас по борту</text>
+  <circle cx="32" cy="290" r="5.5" fill="#4A6E92" opacity="0.92"/>
+  <text x="41" y="293" font-size="8" fill="#2A2A24">Ловушка (обороняются)</text>
+  <circle cx="156.9" cy="290" r="5.5" fill="#A14A33" opacity="0.92"/>
+  <text x="165.9" y="293" font-size="8" fill="#2A2A24">Выходят из зоны</text>
+  <circle cx="252.4" cy="290" r="4" fill="#2A2A24"/>
+  <text x="261.4" y="293" font-size="8" fill="#2A2A24">Шайба</text>
+</svg>

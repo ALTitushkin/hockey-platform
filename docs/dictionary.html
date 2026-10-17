@@ -90,9 +90,11 @@ a{color:var(--steel);}
   padding:13px 16px;border-bottom:4px double var(--line);max-width:720px;margin:0 auto;}
 .top__home{font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink);text-decoration:none;}
 .top__home:hover{color:var(--steel);}
-.top__nav{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.top__nav{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
 .top__nav a{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);text-decoration:none;display:inline-flex;align-items:center;min-height:44px;padding:0 6px;}
 .top__nav a:hover,.top__nav a[aria-current]{color:var(--steel);}
+/* узкий экран: «Главная» дублирует логотип — прячем, чтобы меню влезло в одну строку */
+@media(max-width:480px){.top__nav{gap:2px;}.top__nav a{padding:0 4px;letter-spacing:0.08em;}.top__nav a:first-child{display:none;}}
 .head{padding:22px 0 4px;}
 .head__over{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);}
 .head h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(30px,9vw,42px);line-height:1.02;text-transform:uppercase;letter-spacing:0.02em;margin:6px 0 8px;}
@@ -180,6 +182,8 @@ a{color:var(--steel);}
 .term.open .term__extra{display:block;}
 .visual{border:1.5px solid var(--line-soft);border-radius:3px;background:repeating-linear-gradient(45deg,rgba(32,36,44,0.05) 0 8px,transparent 8px 16px);padding:18px 14px;text-align:center;position:relative;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:inherit;}
 a.visual:hover{border-color:var(--steel);}
+.visual--scheme{background:none;padding:6px;min-height:0;gap:4px;}
+.visual--scheme img{display:block;width:100%;height:auto;border-radius:2px;}
 .visual__tag{font-family:'PT Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);}
 .visual__lab{font-size:12.5px;color:var(--ink-soft);font-style:italic;max-width:34ch;}
 .visual__play{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--ink);}
@@ -216,7 +220,7 @@ a.visual:hover{border-color:var(--steel);}
 
 <header class="top">
   <a class="top__home" href="index.html">Культура хоккея</a>
-  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html" aria-current="page">Словарь</a><a href="history.html">История</a></nav>
+  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html" aria-current="page">Словарь</a><a href="history.html">История</a><a href="learn.html">Обучение</a></nav>
 </header>
 
 <div class="wrap">
@@ -307,7 +311,8 @@ function visualHTML(t){
   }
   const src=t.diagram||((t.visual_type==="scheme")?t.visual:null);
   if(src){
-    return `<a class="visual" href="${esc(src)}" target="_blank" rel="noopener"><div class="visual__tag">Слот визуала · SVG-схема</div><div class="visual__lab">${esc(t.visual_caption||"Открыть схему")}</div></a>`;
+    const cap=esc(t.visual_caption||"Схема");
+    return `<a class="visual visual--scheme" href="${esc(src)}" target="_blank" rel="noopener" title="Открыть схему крупно"><img src="${esc(src)}" alt="${cap}" loading="lazy" width="420" height="302"><div class="visual__lab">${cap}</div></a>`;
   }
   return "";
 }
@@ -464,7 +469,7 @@ init();
         "CF%",
         "SAT"
       ],
-      "description": "Считает все попытки броска за смену: в створ, мимо и заблокированные. CF% выше 50% — команда контролирует шайбу больше, чем соперник. Назван в честь Джима Корси, вратарского тренера «Баффало».",
+      "description": "Считает все попытки броска, пока игрок (или команда) на льду: в створ, мимо и заблокированные — свои против чужих. CF% выше 50% — команда чаще владеет шайбой, чем соперник. Назван в честь Джима Корси, вратарского тренера «Баффало».",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -492,7 +497,7 @@ init();
         "xGA",
         "xGF%"
       ],
-      "description": "Вероятность гола с данной позиции. Учитывает тип броска, дистанцию, угол, предшествующие пасы. Бросок с пятака = высокий xG, бросок с синей линии = низкий xG. xGF% — доля ожидаемых голов команды от общего xG в матче.",
+      "description": "Вероятность того, что конкретный бросок станет голом. Модель учитывает тип броска, дистанцию, угол, передачу перед ним и добивание. Бросок с пятака — высокий xG, бросок от синей линии — низкий. xGF% — доля ожидаемых голов команды от суммы xG обеих команд.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -500,7 +505,7 @@ init();
       "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-pdo",
       "name": "ПДО",
       "alternateName": "PDO",
-      "description": "Процент попаданий (Sh%) плюс процент отражений вратаря (Sv%). Среднее по лиге всегда близко к 100. PDO значительно выше 100 — команда переживает удачную полосу, ниже 100 — неудачную. На дистанции PDO стремится к среднему.",
+      "description": "Процент реализации бросков (Sh%) плюс процент отражений вратаря (Sv%). Среднее по лиге — около 100 (или 1.000). PDO заметно выше 100 — команде везёт, ниже — не везёт. На длинной дистанции PDO возвращается к среднему, поэтому по нему видно, чьи результаты держатся на удаче.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -537,7 +542,7 @@ init();
         "Sv%",
         "SV%"
       ],
-      "description": "Доля бросков в створ, которые вратарь отразил. Sv% = (Броски - Голы) / Броски. Лига в среднем: ~0.910. Элитные вратари: 0.920+. Сильно зависит от качества бросков против — поэтому смотрят вместе с xG against.",
+      "description": "Доля бросков в створ, которые вратарь отразил: Sv% = (броски − голы) / броски. В среднем по лиге — около .905–.910, у элитных вратарей — .920 и выше. Сильно зависит от качества бросков, поэтому его смотрят вместе с xGA и GSAx.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -573,7 +578,7 @@ init();
       "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-neutral-zone-trap",
       "name": "Ловушка в нейтральной зоне",
       "alternateName": "Neutral Zone Trap",
-      "description": "Оборонительная тактика: 4–5 игроков блокируют нейтральную зону, вынуждая соперника бросать шайбу вперёд или делать ошибки. Убивает темп игры, снижает количество бросков обеих команд. Популяризирована сборной Франции и «Нью-Джерси» в 90-е.",
+      "description": "Оборонительная тактика: команда отходит и перекрывает среднюю зону, вынуждая соперника отдавать шайбу или забрасывать её вперёд — и ловит его на ошибке. Убивает темп и сокращает число бросков с обеих сторон. Прославилась в 1990-х благодаря «Нью-Джерси» Жака Лемера; борьба с ней стала одной из причин реформы правил 2005 года.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -585,7 +590,7 @@ init();
         "PP",
         "PP%"
       ],
-      "description": "Игра при численном преимуществе — когда у соперника один или два игрока удалены. PP% = голы в большинстве / время в большинстве × 100. Лига в среднем: 18–20%. Большинство с пяти точек (фланги + синяя линия) — классическая схема.",
+      "description": "Игра в численном большинстве — когда у соперника один или два игрока удалены. PP% — доля реализованных большинств: голы в большинстве / число большинств × 100. В среднем по лиге — около 20%. Классическая расстановка — «зонтик» или «1-3-1».",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -597,7 +602,7 @@ init();
         "PK",
         "PK%"
       ],
-      "description": "Игра при численном меньшинстве — когда кто-то из своих удалён. PK% = 100 минус процент пропущенных в меньшинстве. Лига в среднем: 79–82%. Успешный PK — один из важнейших показателей командной игры.",
+      "description": "Игра в численном меньшинстве — когда кто-то из своих удалён. PK% — доля отбитых меньшинств: 100 − (пропущенные в меньшинстве / число меньшинств × 100). В среднем по лиге — около 80%. Надёжное меньшинство — признак дисциплинированной команды.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -643,7 +648,7 @@ init();
         "Plus/Minus",
         "+/-"
       ],
-      "description": "+1 когда игрок на льду при голе своей команды в равных составах или большинстве. -1 при пропущенном голе. Широко критикуется как метрика: зависит от качества партнёров и соперников. Более честная замена — Corsi и xGF% при равных составах.",
+      "description": "+1 игроку, если он был на льду, когда его команда забила в равных составах или в меньшинстве; −1 — если пропустила в равных составах или в своём большинстве. Голы в большинстве своей команды не учитываются. Метрику критикуют: она зависит от партнёров, соперников и вратаря. Точнее — Корси и xGF% в равных составах.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -655,7 +660,7 @@ init();
         "FO",
         "FO%"
       ],
-      "description": "Розыгрыш шайбы двумя центральными нападающими после остановки игры. FO% — процент выигранных вбрасываний. Критично для большинства/меньшинства и нейтральной зоны. Специалист по вбрасываниям — «dot man» на сленге.",
+      "description": "Розыгрыш шайбы после остановки игры: судья бросает её между двумя игроками, чаще всего центральными нападающими. FO% — доля выигранных вбрасываний. Особенно важны вбрасывания в своей зоне и при игре в большинстве и меньшинстве.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -757,7 +762,7 @@ init();
       "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-breakaway",
       "name": "Выход один на один",
       "alternateName": "Breakaway",
-      "description": "Игрок с шайбой убегает на вратаря без единого защитника между ними. Чистейший голевой момент. Фол на убегающем игроке = буллит.",
+      "description": "Игрок с шайбой уходит на вратаря без единого защитника между ними — самый чистый голевой момент. Если такого игрока сбивают сзади и лишают явного шанса забить, судья назначает буллит.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -805,7 +810,7 @@ init();
       "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-enforcer",
       "name": "Тафгай",
       "alternateName": "Enforcer",
-      "description": "Игрок, чья роль — защищать партнёров кулаками и физической игрой. Драки, силовое давление, ответ на грязную игру соперника. В современном хоккее роль почти исчезла: лимит на состав слишком дорог.",
+      "description": "Игрок, чья главная роль — защищать партнёров силовой игрой и кулаками: драки, давление, ответ на грубость соперника. В современном хоккее роль почти исчезла: место в составе слишком ценно, чтобы отдавать его игроку одной функции.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -831,7 +836,8 @@ init();
       "alternateName": [
         "Forward",
         "F",
-        "FWD"
+        "FWD",
+        "нападающий"
       ],
       "description": "Атакующий игрок. В звене три форварда: центральный (C) и два крайних нападающих (LW, RW). Основная задача — создание голевых моментов и взятие ворот. Форварды первого звена получают большинство времени на льду.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
@@ -873,7 +879,7 @@ init();
       "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-zone-defense",
       "name": "Зонная оборона",
       "alternateName": "Zone defense",
-      "description": "Оборона, где каждый отвечает за свою зону льда, а не за конкретного соперника (в отличие от персональной опеки). Чаще применяется в меньшинстве.",
+      "description": "Оборона, в которой каждый отвечает за свой участок льда, а не за конкретного соперника (в отличие от персональной опеки). Основа игры в своей зоне и особенно в меньшинстве.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {
@@ -954,7 +960,7 @@ init();
       "@id": "https://altitushkin.github.io/hockey-platform/dictionary.html#term-draft",
       "name": "Драфт",
       "alternateName": "Draft",
-      "description": "Ежегодная процедура, на которой клубы НХЛ по очереди закрепляют права на молодых игроков (как правило, 18 лет и старше). Порядок выбора обратный таблице — слабейшие команды выбирают раньше, через лотерею. EN: NHL Entry Draft.",
+      "description": "Ежегодная процедура, на которой клубы НХЛ по очереди закрепляют права на молодых игроков (как правило, 18 лет и старше). Слабейшие команды выбирают раньше, порядок первых выборов определяет лотерея. EN: NHL Entry Draft.",
       "inDefinedTermSet": "https://altitushkin.github.io/hockey-platform/dictionary.html#termset"
     },
     {

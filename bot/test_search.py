@@ -70,6 +70,16 @@ def main() -> None:
     assert "Сленг:" not in card, "пустой ru_slang не должен показывать строку сленга"
     print("  ok: подпись «Сленг:» + пустой ru_slang скрыт")
 
+    # Ссылки на сайт: схема / глава истории / термин в словаре; у unverified — никаких
+    card = format_card(search("форчек", TERMS)[0])
+    assert "diagrams/forecheck.svg" in card and "dictionary.html#t-forecheck" in card, "нет ссылок схемы/словаря"
+    card = format_card(search("corsi", TERMS)[0])
+    assert "history/modern-game.html#counting-shots" in card, "нет ссылки на главу истории"
+    assert "Схема" not in card, "ссылка на схему у термина без схемы"
+    card = format_card(search("рыбачок", TERMS)[0])
+    assert "dictionary.html" not in card, "unverified-термин ведёт на сайт, где его нет"
+    print("  ok: ссылки карточки на схему, историю и словарь")
+
     print("Поиск — новые термины S7 + антиложные совпадения:")
     check("хват", "handedness")
     check("правый хват", "handedness")
@@ -81,6 +91,9 @@ def main() -> None:
     check("нмхл", "rhl")
     check_not_in("нмхл", "nhl")   # «нмхл» не должен тащить «нхл» нечётко
     check("нхл", "nhl")
+    check("Н0л", "nhl")           # цифра вместо буквы в аббревиатуре (лог S8)
+    check("кх1", "khl")
+    assert not search("н0", TERMS) or search("н0", TERMS)[0]["id"] != "nhl", "2 символа — не опечатка"
 
     print("Не та раскладка (fix_layout):")
     assert fix_layout("cbkjdjq") == "силовой", fix_layout("cbkjdjq")

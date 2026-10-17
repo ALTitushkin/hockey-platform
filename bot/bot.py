@@ -29,6 +29,7 @@ from calendar_feature import (
     today_mmdd,
 )
 from search import (
+    SITE_URL,
     find_history_chapter,
     fix_layout,
     format_card,
@@ -37,6 +38,7 @@ from search import (
     load_terms,
     search,
     suggest,
+    term_links,
 )
 from telegram import (
     InlineKeyboardButton,
@@ -121,7 +123,8 @@ def format_inline_text(term: dict) -> str:
     lines.append(term["definition"])
     if term.get("ru_slang"):
         lines.append(f"\n<i>Сленг: {term['ru_slang']}</i>")
-    lines.append("\n🔗 <a href='https://altitushkin.github.io/hockey-platform/'>Весь словарь</a>")
+    links = term_links(term) or [f"🔗 <a href='{SITE_URL}dictionary.html'>Весь словарь</a>"]
+    lines.append("\n" + " · ".join(links))
     return "\n".join(lines)
 
 
@@ -175,11 +178,8 @@ def help_search() -> str:
 START_KEYBOARD = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton("📅 В этот день", callback_data="onthisday:today")],
-        [InlineKeyboardButton("📖 Открыть весь словарь", url="https://altitushkin.github.io/hockey-platform/")],
-        [InlineKeyboardButton(
-            "📚 История хоккея",
-            url="https://altitushkin.github.io/hockey-platform/#history-section",
-        )],
+        [InlineKeyboardButton("📖 Открыть весь словарь", url=f"{SITE_URL}dictionary.html")],
+        [InlineKeyboardButton("📚 История хоккея", url=f"{SITE_URL}history.html")],
     ]
 )
 
@@ -268,7 +268,9 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if results:
         log_query(query, hit=True)
         for term in results[:2]:
-            await update.message.reply_text(format_card(term), parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                format_card(term), parse_mode=ParseMode.HTML, disable_web_page_preview=True
+            )
         return
 
     # Словарь не нашёл — проверяем исторический раздел
@@ -363,6 +365,7 @@ async def handle_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 input_message_content=InputTextMessageContent(
                     message_text=format_inline_text(term),
                     parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
                 ),
             )
         )

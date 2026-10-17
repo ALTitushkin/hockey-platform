@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Культура хоккея — обучение</title>
+<meta name="description" content="Учебные маршруты платформы «Культура хоккея»: тактика с нуля и продвинутая статистика по шагам — термины, схемы, история и вопрос для самопроверки в каждом шаге.">
+<link rel="canonical" href="https://altitushkin.github.io/hockey-platform/learn.html">
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Культура хоккея">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Обучение — Культура хоккея">
+<meta property="og:description" content="Маршруты по шагам: тактика с нуля и продвинутая статистика. Термины, схемы и самопроверка.">
+<meta property="og:url" content="https://altitushkin.github.io/hockey-platform/learn.html">
+<meta property="og:image" content="https://altitushkin.github.io/hockey-platform/logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Обучение — Культура хоккея">
+<meta name="twitter:description" content="Маршруты по шагам: тактика с нуля и продвинутая статистика. Термины, схемы и самопроверка.">
+<meta name="twitter:image" content="https://altitushkin.github.io/hockey-platform/logo.png">
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://altitushkin.github.io/hockey-platform/#org",
+      "name": "Культура хоккея",
+      "url": "https://altitushkin.github.io/hockey-platform/",
+      "logo": "https://altitushkin.github.io/hockey-platform/logo.png",
+      "sameAs": [
+        "https://t.me/lifeinovertime",
+        "https://github.com/altitushkin/hockey-platform"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://altitushkin.github.io/hockey-platform/#website",
+      "name": "Культура хоккея",
+      "url": "https://altitushkin.github.io/hockey-platform/",
+      "inLanguage": "ru",
+      "publisher": {
+        "@id": "https://altitushkin.github.io/hockey-platform/#org"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Главная",
+          "item": "https://altitushkin.github.io/hockey-platform/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Обучение",
+          "item": "https://altitushkin.github.io/hockey-platform/learn.html"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
+<style>
+/* КУЛЬТУРА ХОККЕЯ — ОБУЧЕНИЕ · направление A. Данные из data/learning.json + data/terms.json. */
+:root{
+  --paper:#F1EAD8;--card:#FAF4E2;--field:#FBF6E9;
+  --ink:#20242C;--ink-soft:#3C4350;--ink-faint:#7A7763;
+  --line:#20242C;--line-soft:rgba(32,36,44,0.30);
+  --steel:#44698D;--navy:#1B2433;--brick:#9E3B2C;--green:#3E6B4F;--ochre:#A87E34;
+  --grain:0.05;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{-webkit-font-smoothing:antialiased;text-size-adjust:100%;scroll-behavior:smooth;}
+body{background:var(--paper);color:var(--ink);font-family:'PT Serif',serif;line-height:1.62;position:relative;overflow-x:hidden;}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity:var(--grain);mix-blend-mode:multiply;}
+a{color:var(--steel);}
+.top{position:sticky;top:0;z-index:30;background:var(--paper);display:flex;align-items:baseline;gap:12px;
+  padding:13px 16px;border-bottom:4px double var(--line);max-width:920px;margin:0 auto;}
+.top__home{font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink);text-decoration:none;white-space:nowrap;}
+.top__home:hover{color:var(--steel);}
+.top__nav{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.top__nav a{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);text-decoration:none;display:inline-flex;align-items:center;min-height:44px;padding:0 6px;}
+.top__nav a:hover,.top__nav a[aria-current]{color:var(--steel);}
+/* узкий экран: «Главная» дублирует логотип — прячем, чтобы меню влезло в одну строку */
+@media(max-width:480px){.top__nav{gap:2px;}.top__nav a{padding:0 4px;letter-spacing:0.08em;}.top__nav a:first-child{display:none;}}
+.wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 16px 56px;}
+.idx-head{padding:26px 0 6px;}
+.over{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);}
+.idx-head h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(32px,9vw,46px);line-height:1.0;text-transform:uppercase;letter-spacing:0.02em;margin:6px 0 10px;}
+.lead{font-size:clamp(15px,2.4vw,17px);color:var(--ink-soft);max-width:58ch;font-style:italic;border-left:2px solid var(--line-soft);padding-left:14px;}
+
+/* список маршрутов */
+.routes{display:grid;gap:14px;margin-top:26px;}
+@media(min-width:680px){.routes{grid-template-columns:1fr 1fr;}}
+.route{display:flex;flex-direction:column;background:var(--card);border:1.5px solid var(--line);border-radius:3px;padding:16px;text-decoration:none;color:inherit;}
+a.route:hover{border-color:var(--steel);}
+.route__meta{display:flex;flex-wrap:wrap;gap:8px;font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;}
+.route__title{font-family:'Oswald',sans-serif;font-weight:600;font-size:23px;line-height:1.1;margin-bottom:8px;}
+.route__sum{font-size:14px;color:var(--ink-soft);flex:1;}
+.route__foot{display:flex;align-items:center;gap:12px;margin-top:13px;flex-wrap:wrap;}
+.route__cta{display:inline-flex;align-items:center;font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:var(--navy);border-radius:3px;padding:10px 14px;min-height:42px;}
+a.route:hover .route__cta{background:var(--steel);}
+.progress{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--green);}
+.lvl{font-weight:700;}
+.lvl--novice{color:var(--green);}.lvl--fan{color:var(--ochre);}.lvl--geek{color:var(--brick);}
+
+/* маршрут */
+.back{display:inline-flex;align-items:center;min-height:44px;font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;}
+.steps{counter-reset:step;margin-top:22px;display:grid;gap:18px;}
+.step{background:var(--card);border:1.5px solid var(--line);border-radius:3px;padding:18px 16px;scroll-margin-top:80px;}
+.step.done{border-color:var(--green);}
+.step__num{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);}
+.step.done .step__num::after{content:" · пройдено ✓";color:var(--green);}
+.step h2{font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(19px,4.6vw,23px);line-height:1.15;margin:4px 0 10px;}
+.step__text{font-size:15.5px;max-width:66ch;}
+.terms{display:grid;gap:10px;margin-top:14px;}
+@media(min-width:680px){.terms{grid-template-columns:1fr 1fr;}}
+.mini{border:1px solid var(--line-soft);border-radius:3px;background:var(--field);padding:11px 12px;display:flex;flex-direction:column;}
+.mini__head{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+.mini__ru{font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;}
+.mini__en{font-family:'PT Mono',monospace;font-size:11px;color:var(--ink-faint);}
+.mini__def{font-size:13.5px;color:var(--ink-soft);margin-top:4px;flex:1;}
+.mini__img{display:block;margin-top:8px;}
+.mini__img img{display:block;width:100%;height:auto;border-radius:2px;}
+.mini__more{font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-top:8px;display:inline-flex;align-items:center;min-height:32px;}
+.hist{display:inline-flex;align-items:center;min-height:40px;margin-top:10px;font-style:italic;font-size:14.5px;}
+.check{margin-top:16px;border-top:1px dashed var(--line-soft);padding-top:14px;}
+.check__q{font-weight:700;font-size:15px;margin-bottom:10px;}
+.check__q::before{content:"Проверь себя · ";font-family:'PT Mono',monospace;font-weight:400;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ochre);}
+.opts{display:grid;gap:8px;}
+.opt{appearance:none;text-align:left;font:inherit;font-size:14.5px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line-soft);border-radius:3px;padding:10px 12px;min-height:44px;cursor:pointer;}
+.opt:hover:not([disabled]){border-color:var(--steel);}
+.opt.ok{border-color:var(--green);background:#E3ECDF;}
+.opt.no{border-color:var(--brick);background:#F3DED6;}
+.opt[disabled]{cursor:default;}
+.explain{margin-top:10px;font-size:14px;color:var(--ink-soft);}
+.explain b{color:var(--green);}
+.explain.miss b{color:var(--brick);}
+.next{margin-top:24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.foot{margin-top:34px;border-top:4px double var(--line);padding-top:16px;text-align:center;font-family:'PT Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);line-height:2;}
+.foot a{color:var(--steel);text-decoration:underline;text-underline-offset:3px;}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="top__home" href="index.html">Культура хоккея</a>
+  <nav class="top__nav"><a href="index.html">Главная</a><a href="dictionary.html">Словарь</a><a href="history.html">История</a><a href="learn.html" aria-current="page">Обучение</a></nav>
+</header>
+
+<div class="wrap">
+  <main id="app">
+    <div class="idx-head">
+      <div class="over">03 · Обучение</div>
+      <h1>Обучение</h1>
+      <p class="lead">Маршруты по шагам: короткое объяснение, термины со схемами, ссылка в историю и вопрос для самопроверки. Начните с тактики, если хоккей для вас новый, или со статистики, если хотите читать цифры как аналитик.</p>
+    </div>
+    <noscript><p style="margin-top:20px">Для маршрутов нужен JavaScript. Все термины доступны в <a href="dictionary.html">словаре</a>.</p></noscript>
+  </main>
+  <footer class="foot">
+    <a href="index.html">← На главную</a> · <a href="dictionary.html">Словарь →</a><br>
+    Культура хоккея · при поддержке канала «Хоккейный Овертайм»
+  </footer>
+</div>
+
+<script>
+const LVL={novice:"База",fan:"Средний",geek:"Продвинутый"};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let ROUTES=[],TMAP={};
+const app=document.getElementById("app");
+const INTRO=app.innerHTML;
+
+/* прогресс — удобство для одного зрителя: в браузере, без гарантий хранения */
+const KEY="hp-learn-done";
+function loadDone(){try{return new Set(JSON.parse(localStorage.getItem(KEY)||"[]"));}catch(e){return new Set();}}
+function saveDone(set){try{localStorage.setItem(KEY,JSON.stringify([...set]));}catch(e){}}
+let DONE=loadDone();
+
+function plural(n,one,few,many){const m10=n%10,m100=n%100;return m10===1&&m100!==11?one:(m10>=2&&m10<=4&&(m100<10||m100>=20)?few:many);}
+
+function renderIndex(){
+  document.title="Культура хоккея — обучение";
+  app.innerHTML=INTRO+`<div class="routes">${ROUTES.map(r=>{
+    const n=r.steps.length,done=r.steps.filter(s=>DONE.has(r.id+"/"+s.id)).length;
+    return `<a class="route" href="#${esc(r.id)}">
+      <div class="route__meta"><span class="lvl lvl--${esc(r.level)}">${esc(LVL[r.level]||r.level)}</span><span>${n} ${plural(n,"шаг","шага","шагов")}</span><span>~${esc(r.minutes)} мин</span></div>
+      <h2 class="route__title">${esc(r.title)}</h2>
+      <p class="route__sum">${esc(r.summary)}</p>
+      <div class="route__foot"><span class="route__cta">${done?"Продолжить":"Начать"} →</span>${done?`<span class="progress">пройдено ${done} из ${n}</span>`:""}</div>
+    </a>`;}).join("")}</div>`;
+}
+
+function miniCard(id){
+  const t=TMAP[id];if(!t)return"";
+  const img=(t.visual_type==="scheme"&&t.visual)?`<a class="mini__img" href="${esc(t.visual)}" target="_blank" rel="noopener" title="Открыть схему крупно"><img src="${esc(t.visual)}" alt="${esc(t.visual_caption||"Схема")}" loading="lazy" width="420" height="302"></a>`:"";
+  return `<div class="mini"><div class="mini__head"><span class="mini__ru">${esc(t.ru)}</span><span class="mini__en">${esc(t.en)}</span></div>
+    <p class="mini__def">${esc(t.definition)}</p>${img}
+    <a class="mini__more" href="dictionary.html#t-${esc(t.id)}">В словаре →</a></div>`;
+}
+
+function stepHTML(r,s,i){
+  const key=r.id+"/"+s.id;
+  const hist=s.history?`<a class="hist" href="${esc(s.history.target)}#${esc(s.history.anchor_id)}">${esc(s.history.label||"Читать в истории")} →</a>`:"";
+  const c=s.check;
+  const check=c?`<div class="check" data-key="${esc(key)}" data-answer="${c.answer}">
+      <p class="check__q">${esc(c.q)}</p>
+      <div class="opts">${c.options.map((o,j)=>`<button class="opt" data-i="${j}">${esc(o)}</button>`).join("")}</div>
+      <p class="explain" hidden></p></div>`:"";
+  return `<section class="step${DONE.has(key)?" done":""}" id="${esc(r.id)}-${esc(s.id)}">
+    <div class="step__num">Шаг ${i+1} из ${r.steps.length}</div>
+    <h2>${esc(s.title)}</h2>
+    <p class="step__text">${esc(s.text)}</p>
+    <div class="terms">${s.terms.map(miniCard).join("")}</div>
+    ${hist}${check}
+  </section>`;
+}
+
+function renderRoute(r){
+  document.title=`${r.title} — обучение · Культура хоккея`;
+  const others=ROUTES.filter(x=>x.id!==r.id);
+  app.innerHTML=`<div class="idx-head">
+      <a class="back" href="#">← Все маршруты</a>
+      <div class="over">Маршрут · <span class="lvl lvl--${esc(r.level)}">${esc(LVL[r.level]||r.level)}</span> · ~${esc(r.minutes)} мин</div>
+      <h1>${esc(r.title)}</h1>
+      <p class="lead">${esc(r.summary)}</p>
+    </div>
+    <div class="steps">${r.steps.map((s,i)=>stepHTML(r,s,i)).join("")}</div>
+    <div class="next"><a class="back" href="#">← Все маршруты</a>${others.length?`<a class="back" href="#${esc(others[0].id)}">${esc(others[0].title)} →</a>`:""}</div>`;
+  window.scrollTo(0,0);
+}
+
+app.addEventListener("click",e=>{
+  const b=e.target.closest(".opt");if(!b||b.disabled)return;
+  const box=b.closest(".check"),ans=+box.dataset.answer,i=+b.dataset.i;
+  const r=ROUTES.find(x=>box.dataset.key.startsWith(x.id+"/"));
+  const s=r&&r.steps.find(x=>r.id+"/"+x.id===box.dataset.key);
+  const ex=box.querySelector(".explain");
+  if(i===ans){
+    box.querySelectorAll(".opt").forEach(o=>{o.disabled=true;if(+o.dataset.i===ans)o.classList.add("ok");});
+    ex.className="explain";ex.innerHTML=`<b>Верно.</b> ${esc(s?s.check.explain:"")}`;
+    DONE.add(box.dataset.key);saveDone(DONE);box.closest(".step").classList.add("done");
+  }else{
+    b.classList.add("no");b.disabled=true;
+    ex.className="explain miss";ex.innerHTML="<b>Не совсем.</b> Перечитайте шаг и попробуйте ещё раз.";
+  }
+  ex.hidden=false;
+});
+
+function route(){
+  const id=location.hash.slice(1);
+  const r=ROUTES.find(x=>x.id===id||id.startsWith(x.id+"-"));
+  if(!r){renderIndex();return;}
+  renderRoute(r);
+  if(id!==r.id){const el=document.getElementById(id);if(el)setTimeout(()=>el.scrollIntoView(),50);}
+}
+window.addEventListener("hashchange",route);
+
+async function init(){
+  try{
+    const [routes,terms]=await Promise.all([
+      fetch("./data/learning.json").then(r=>r.json()),
+      fetch("./data/terms.json").then(r=>r.json())
+    ]);
+    ROUTES=routes;terms.forEach(t=>TMAP[t.id]=t);
+    route();
+  }catch(e){console.error(e);app.insertAdjacentHTML("beforeend",'<p style="color:var(--ink-soft);margin-top:20px">Не удалось загрузить маршруты. Обновите страницу.</p>');}
+}
+init();
+</script>
+</body>
+</html>

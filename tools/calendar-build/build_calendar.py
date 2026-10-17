@@ -4,6 +4,10 @@
 Источник данных: курируемый список E (факты, в которых я уверен; conf=med — проверить).
 Выход: hockey_calendar.json (ключ MM-DD), hockey_calendar.xlsx, gaps_to_fill.txt, to_verify.txt
 Поля: date(MM-DD), year, text(RU), cat(категория), reg(RU/NHL/INT/WORLD), conf(high/med)
+
+⚠️ Исторический генератор СТАРТОВОЙ базы. С тех пор источник правды — сам
+hockey_calendar.json (его правят исследователь и дев). Повторный запуск ПЕРЕЗАПИШЕТ
+батч старым списком и потеряет всё добавленное позже. Не запускать.
 """
 E = []
 def add(date, year, text, cat, reg, conf):

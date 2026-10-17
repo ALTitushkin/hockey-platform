@@ -1,26 +1,82 @@
 [
   {
+    "slug": "attack",
+    "title": "Атака",
+    "category": "tactic",
+    "term_id": null,
+    "order": 1,
+    "summary": "Как команда доводит шайбу до ворот: от выхода из зоны до добивания."
+  },
+  {
     "slug": "shots",
     "title": "Броски",
     "category": "tactic",
     "term_id": null,
-    "order": 1,
+    "order": 2,
     "summary": "Виды бросков: чем отличаются по технике и когда применяются."
   },
   {
+    "slug": "defense",
+    "title": "Оборона",
+    "category": "tactic",
+    "term_id": null,
+    "order": 3,
+    "summary": "Как команда отбирает шайбу и закрывает свои ворота."
+  },
+  {
     "slug": "power-play",
-    "title": "Большинство",
+    "title": "Большинство и меньшинство",
     "category": "tactic",
     "term_id": "power-play",
-    "order": 2,
-    "summary": "Игра в большинстве: расстановки и розыгрыши при численном перевесе."
+    "order": 4,
+    "summary": "Спецбригады: игра при численном перевесе и в меньшинстве."
+  },
+  {
+    "slug": "positions",
+    "title": "Позиции и роли",
+    "category": "position",
+    "term_id": null,
+    "order": 5,
+    "summary": "Кто есть кто на льду: от центрального нападающего до тафгая."
+  },
+  {
+    "slug": "rules",
+    "title": "Правила и нарушения",
+    "category": "rule",
+    "term_id": null,
+    "order": 6,
+    "summary": "Почему судья остановил игру и что за этим следует."
+  },
+  {
+    "slug": "rink",
+    "title": "Площадка и инвентарь",
+    "category": "basics",
+    "term_id": null,
+    "order": 7,
+    "summary": "Шайба, клюшка и разметка льда — с чего начинается игра."
+  },
+  {
+    "slug": "basic-stats",
+    "title": "Статистика из трансляции",
+    "category": "stat",
+    "term_id": null,
+    "order": 8,
+    "summary": "Цифры, которые показывают в протоколе и на экране."
+  },
+  {
+    "slug": "advanced-stats",
+    "title": "Продвинутая аналитика",
+    "category": "stat",
+    "term_id": null,
+    "order": 9,
+    "summary": "Метрики, которые объясняют игру глубже счёта: Корси, xG, PDO."
   },
   {
     "slug": "leagues",
     "title": "Лиги",
     "category": "org",
     "term_id": null,
-    "order": 3,
-    "summary": "Профессиональные лиги: расшифровка и место в хоккейной иерархии."
+    "order": 10,
+    "summary": "Профессиональные и молодёжные лиги и как в них попадают."
   }
 ]
