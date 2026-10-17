@@ -1,8 +1,10 @@
 """Тесты рубрики «В этот день». Запуск: python test_calendar.py (без зависимостей/токена)."""
 
 from calendar_feature import (  # noqa: F401 — см. примечание ниже
+    coverage,
     events_for_date,
     format_day_card,
+    is_impossible_date,
     load_calendar,
     parse_date,
     today_mmdd,
@@ -33,6 +35,7 @@ def test_parse_valid() -> None:
         "14/03": "03-14",
         "31 декабря": "12-31",
         "1 МАЯ": "05-01",                  # регистр игнорируется
+        "29 февраля": "02-29",             # рубрика вне года: високосный день законен
     }
     for t, exp in cases.items():
         check_parse(t, exp)
@@ -48,6 +51,8 @@ def test_parse_relative() -> None:
         "завтра": (today + timedelta(days=1)).strftime("%m-%d"),
         "вчера": (today - timedelta(days=1)).strftime("%m-%d"),
         "что было вчера": (today - timedelta(days=1)).strftime("%m-%d"),
+        "послезавтра": (today + timedelta(days=2)).strftime("%m-%d"),   # «завтра» внутри не ловится
+        "позавчера": (today - timedelta(days=2)).strftime("%m-%d"),
     }
     for t, exp in cases.items():
         check_parse(t, exp)
@@ -56,8 +61,31 @@ def test_parse_relative() -> None:
 def test_parse_rejects() -> None:
     print("parse_date — антиколлизия (должны быть None):")
     for t in ["март", "14", "xG", "форчек", "one-timer", "5 на 3",
-              "32 марта", "0 января", "12.2024", "корси", "", "слот"]:
+              "32 марта", "0 января", "12.2024", "корси", "", "слот",
+              "56 мая", "31 апреля", "30 февраля", "31.06"]:
         check_parse(t, None)
+
+
+def test_impossible_date() -> None:
+    print("is_impossible_date — «нет такой даты» вместо промаха словаря:")
+    for t in ["56 мая", "31 апреля", "что было 30 февраля"]:
+        assert is_impossible_date(t), f"{t!r}: ожидалось True"
+        print(f"  ok: {t!r:26} → нет такой даты")
+    for t in ["14 марта", "29 февраля", "март", "5 на 3", "форчек", "56"]:
+        assert not is_impossible_date(t), f"{t!r}: ожидалось False"
+        print(f"  ok: {t!r:26} → не про дату")
+
+
+def test_coverage() -> None:
+    print("coverage — покрытие и самая длинная дыра:")
+    ev = [{"year": 2000, "text": "x"}]
+    assert coverage({}) == (0, 366)
+    assert coverage({"01-01": ev}) == (1, 365)
+    assert coverage({"01-01": ev, "12-31": ev}) == (2, 364), "дыра через стык года — одна"
+    assert coverage({"01-01": ev, "01-03": ev}) == (2, 363)
+    n, gap = coverage(CAL)
+    assert n == sum(1 for v in CAL.values() if v), "покрытие ≠ числу непустых дат"
+    print(f"  ok: синтетика + реальный календарь {n}/366, макс. дыра {gap} дн.")
 
 
 def test_events_sorted() -> None:
@@ -101,6 +129,8 @@ if __name__ == "__main__":
     test_parse_valid()
     test_parse_relative()
     test_parse_rejects()
+    test_impossible_date()
+    test_coverage()
     test_events_sorted()
     test_empty_date()
     test_card_format()

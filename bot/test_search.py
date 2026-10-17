@@ -2,6 +2,7 @@
 
 from search import (
     find_history_chapter,
+    fix_layout,
     format_card,
     load_history,
     load_terms,
@@ -81,6 +82,12 @@ def main() -> None:
     check_not_in("нмхл", "nhl")   # «нмхл» не должен тащить «нхл» нечётко
     check("нхл", "nhl")
 
+    print("Не та раскладка (fix_layout):")
+    assert fix_layout("cbkjdjq") == "силовой", fix_layout("cbkjdjq")
+    assert search(fix_layout("cbkjdjq"), TERMS)[0]["id"] == "body-check"
+    assert fix_layout("форчек") is None and fix_layout("5 на 3") is None
+    print("  ok: 'cbkjdjq' → 'силовой' → body-check; кириллица/цифры не трогаем")
+
     print("История (find_history_chapter):")
     check_history("история хоккея", "origins")
     check_history("откуда появился хоккей", "origins")
@@ -92,6 +99,14 @@ def main() -> None:
     check_history("ну", None)
     # «нхл» как подстрока внутри слова не должна срабатывать (границы слов)
     check_history("снхлынск", None)
+    # главы 2–9: у каждой опубликованной главы есть свои триггеры
+    check_history("оригинальная шестёрка", "golden-age-canada")
+    check_history("система тарасова", "tarasov-system")
+    check_history("суперсерия 1972", "summit-1972")
+    check_history("кубок канады", "canada-cup")
+    check_history("русская пятёрка", "exodus")
+    check_history("локаут и аналитика", "modern-game")
+    check_history("кубок гагарина", "russia-future")
 
     print(f"\nВсе тесты пройдены. Терминов в базе: {len(TERMS)}, глав истории: {len(HISTORY)}")
 

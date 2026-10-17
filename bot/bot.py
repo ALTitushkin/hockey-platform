@@ -8,6 +8,8 @@ v0.5: добавлен inline-режим (@bot термин в любом чат
 v0.6: inline отдаёт и главы истории при miss по словарю;
       username бота больше не захардкожен (берётся из bot.username).
 v0.7: рубрика «В этот день» — кнопка/команды /today, /day, parse_date, data/calendar.json.
+v0.8: «послезавтра»/«позавчера», ответ «нет такой даты» на «56 мая», запрос в английской
+      раскладке («cbkjdjq» → «силовой»), покрытие календаря в строке запуска.
 """
 
 import logging
@@ -16,6 +18,26 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from calendar_feature import (
+    coverage,
+    events_for_date,
+    format_day_card,
+    is_impossible_date,
+    load_calendar,
+    parse_date,
+    random_day,
+    today_mmdd,
+)
+from search import (
+    find_history_chapter,
+    fix_layout,
+    format_card,
+    load_history,
+    load_review,
+    load_terms,
+    search,
+    suggest,
+)
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -34,24 +56,6 @@ from telegram.ext import (
     filters,
 )
 
-from search import (
-    find_history_chapter,
-    format_card,
-    load_history,
-    load_review,
-    load_terms,
-    search,
-    suggest,
-)
-from calendar_feature import (
-    events_for_date,
-    format_day_card,
-    load_calendar,
-    parse_date,
-    random_day,
-    today_mmdd,
-)
-
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
 # httpx на уровне INFO печатает полный URL запроса к Telegram API, а токен бота —
 # часть этого URL. Утечка секрета в journalctl. Держим httpx на WARNING.
@@ -59,12 +63,24 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 log = logging.getLogger("hockey-bot")
 
-TERMS = load_terms()
-HISTORY = load_history()
-CALENDAR = load_calendar()
+
+
+def _load_or_die(name: str, loader):
+    """Битый реестр — fail fast, но с именем файла в логе, а не голым трейсбеком json.
+    В CI это ловит validate_data.py; здесь — страховка для ручной правки на сервере."""
+    try:
+        return loader()
+    except (OSError, ValueError) as e:  # JSONDecodeError — подкласс ValueError
+        raise SystemExit(f"Не читается реестр {name}: {e}") from e
+
+
+TERMS = _load_or_die("data/terms.json / expert_review.json", load_terms)
+HISTORY = _load_or_die("data/history.json", load_history)
+CALENDAR = _load_or_die("data/calendar.json", load_calendar)
 # Счётчики по файлам (вариант 1): база = terms.json, «на выверке» = expert_review.json.
-N_REVIEW = len(load_review())
+N_REVIEW = len(_load_or_die("data/expert_review.json", load_review))
 N_BASE = len(TERMS) - N_REVIEW
+NO_SUCH_DATE = "Такой даты в календаре нет — проверь число и месяц. Например: 14 марта."
 # Логи спроса. В контейнере пишем в том (RUNTIME_DIR=/app/runtime), иначе пересборка
 # образа стирает историю запросов и ритуал разбора логов теряет смысл. Без переменной —
 # прежнее поведение: рядом с bot.py (локальный запуск, старый systemd-стенд).
@@ -206,6 +222,9 @@ async def cmd_day(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await _send_day(update.message, today_mmdd())
         return
     mmdd = parse_date(arg)
+    if not mmdd and is_impossible_date(arg):
+        await update.message.reply_text(NO_SUCH_DATE)
+        return
     if not mmdd:
         await update.message.reply_text(
             "Не понял дату. Примеры: <code>/day 14 марта</code> или <code>/day 14-03</code>.",
@@ -236,8 +255,15 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         log_query(query, hit=True)
         await _send_day(update.message, mmdd)
         return
+    if is_impossible_date(query):
+        # «56 мая» — это попытка даты, а не пропущенный термин: в missing_queries.log не пишем.
+        log_query(query, hit=True)
+        await update.message.reply_text(NO_SUCH_DATE)
+        return
 
     results = search(query, TERMS)
+    if not results and (fixed := fix_layout(query)):
+        results = search(fixed, TERMS)
 
     if results:
         log_query(query, hit=True)
@@ -361,8 +387,8 @@ async def _post_init(app: Application) -> None:
     if me.username:
         BOT_USERNAME = me.username
     log.info(
-        "Бот запущен v0.7 (@%s), терминов: %d (+%d на выверке), глав истории: %d, дней календаря: %d",
-        BOT_USERNAME, N_BASE, N_REVIEW, len(HISTORY), len(CALENDAR),
+        "Бот запущен v0.8 (@%s), терминов: %d (+%d на выверке), глав истории: %d, календарь: %d/366, макс. дыра %d дн.",
+        BOT_USERNAME, N_BASE, N_REVIEW, len(HISTORY), *coverage(CALENDAR),
     )
 
 

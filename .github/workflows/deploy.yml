@@ -40,6 +40,8 @@ jobs:
           ruff check bot/ tools/
       - name: Validate data (целостность реестров + паритет зеркал + status)
         run: python tools/validate_data.py
+      - name: Validate calendar (формат событий + отчёт покрытия)
+        run: python tools/validate_calendar.py
       - name: Bot tests (без токена)
         run: |
           cd bot

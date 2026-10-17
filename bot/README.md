@@ -92,36 +92,16 @@ Inline — это когда бота можно вызвать **в любом 
 - `cat`: Рождение / Гибель / Дебют / Рекорд / Матч / Турнир / Переход / Возвращение / Достижение / Организация
 - `reg`: RU / NHL / INT / WORLD · `conf`: high / med · `video` (опц.): ссылка на момент → в карточке «🎥 Смотреть момент»
 - На этом спринте показываем **все** события (включая `conf:med`) — данные курируемые; фильтр по `conf` — бэклог.
-- Наполнение календаря и `video` — поток исследователя; коммит `calendar.json` пока ручной (авто-синк — бэклог).
+- Наполнение календаря и `video` — поток исследователя в `tools/calendar-build/hockey_calendar.json`. В бота: `python tools/validate_calendar.py --sync` (проверка формата + отчёт покрытия), затем коммит `data/calendar.json`.
+- Даты понимаются и словами: «сегодня», «завтра», «послезавтра», «вчера», «позавчера». На несуществующую дату («56 мая», «31 апреля») бот отвечает «Такой даты в календаре нет».
 
-## Деплой на VPS (спринт 3)
+## Деплой
 
-Первичная настройка, один раз:
-
-```bash
-# на VPS, под root или sudo
-sudo useradd -r -m -d /opt/hockey-platform -s /bin/bash hockey
-sudo -u hockey git clone https://github.com/ALTitushkin/hockey-platform /opt/hockey-platform
-cd /opt/hockey-platform/bot
-sudo -u hockey python3 -m venv venv
-sudo -u hockey venv/bin/pip install -r requirements.txt
-sudo -u hockey sh -c 'echo "BOT_TOKEN=новый_токен" > .env'
-sudo cp ../deploy/hockey-bot.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now hockey-bot
-journalctl -u hockey-bot -f   # проверить, что поднялся
-```
-
-Для автодеплоя (push в main → бот обновился):
-
-1. На VPS: `ssh-keygen -t ed25519 -f deploy_key` (без пароля), публичный ключ → `~hockey/.ssh/authorized_keys`
-2. Разреши пользователю hockey рестарт сервиса без пароля:
-   `echo "hockey ALL=NOPASSWD: /usr/bin/systemctl restart hockey-bot" | sudo tee /etc/sudoers.d/hockey-bot`
-3. В GitHub репо → Settings → Secrets → Actions: `VPS_HOST`, `VPS_USER=hockey`, `VPS_SSH_KEY` (приватный deploy_key)
+С 30.08.2026 бот живёт в Docker на app-VPS и выкатывается пушем в `main` (тесты → деплой → healthcheck). Runbook, отладка и алерт о падении — [`../deploy/README.md`](../deploy/README.md). Прежняя схема на systemd снята.
 
 ## Лог запросов
 
-Все запросы пишутся в `bot/queries.log` (дата + hit/miss + текст), ненайденные дублируются в `bot/missing_queries.log`. Раз в спринт логи разбираются (правило проекта) и чистятся.
+Все запросы пишутся в `queries.log` (в контейнере — том `runtime/`, локально — рядом с `bot.py`) (дата + hit/miss + текст), ненайденные дублируются в `missing_queries.log`. Раз в спринт логи разбираются (правило проекта) и чистятся.
 
 Готовый список «чего не хватает в базе»:
 `sort missing_queries.log | cut -f2 | sort | uniq -c | sort -rn`

@@ -81,6 +81,19 @@ def search(query: str, terms: list[dict], limit: int = 3) -> list[dict]:
     return out[:limit]
 
 
+# Раскладка ЙЦУКЕН поверх QWERTY: «cbkjdjq» — это «силовой», набранный не в той раскладке.
+_LAYOUT = str.maketrans("qwertyuiop[]asdfghjkl;'zxcvbnm,.`", "йцукенгшщзхъфывапролджэячсмитьбюё")
+
+
+def fix_layout(query: str) -> str | None:
+    """Запрос в английской раскладке вместо русской → русский вариант, иначе None.
+    Звать только при пустой выдаче: настоящие латинские термины (Corsi, xG) уже нашлись."""
+    q = query.strip().lower()
+    if not q or not re.fullmatch(r"[a-z\[\];',.`\s]+", q):
+        return None
+    return q.translate(_LAYOUT)
+
+
 def suggest(query: str, terms: list[dict], limit: int = 3) -> list[str]:
     """Ближайшие названия для «ничего не нашлось»."""
     all_keys = sorted({k for t in terms for k in _keys(t)})
