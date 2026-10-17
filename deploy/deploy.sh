@@ -10,6 +10,26 @@
 # разобрать тело целиком до первой команды, поэтому подмена файла безопасна.
 set -euo pipefail
 
+# Причина падения для лога деплоя — БЕЗ сырых логов контейнера.
+# Репозиторий публичный, значит и лог GitHub Actions виден всем. Трейсбек в логах
+# бота может нести фрагмент чужого сообщения или данные сетевого запроса, поэтому
+# наружу отдаём только свои строки бота (в них нет пользовательских данных) и
+# ИМЕНА классов исключений — без их текста. Полные логи — на сервере, см. подсказку.
+failure_reason() {
+    local logs own types
+    logs="$(docker compose logs --tail 200 --no-log-prefix bot 2>&1 || true)"
+    # Не конвейер с grep -q (см. грабля 3 ниже): grep без -q дочитывает вход до конца.
+    own="$(printf '%s\n' "$logs" | grep -E 'Не читается реестр|Нет токена|Бот запущен' | tail -n 3 || true)"
+    # Только имя класса в начале строки (последняя строка трейсбека) — текст после «:» отрезан.
+    # Имя вида «telegram.error.BadRequest:» / «KeyError:» — ASCII, с заглавной, без пробелов.
+    types="$(printf '%s\n' "$logs" | grep -oE '^([A-Za-z_][A-Za-z0-9_]*\.)*[A-Z][A-Za-z0-9_]*:' \
+        | grep -v '^Traceback' | tr -d ':' | sort -u | tail -n 5 | paste -sd ' ' - || true)"
+    if [ -n "$own" ]; then printf 'Бот сообщил:\n%s\n' "$own"; fi
+    if [ -n "$types" ]; then echo "Типы исключений: $types"; fi
+    if [ -z "$own$types" ]; then echo "В логах бота нет ни своих строк, ни исключений"; fi
+    echo "Полные логи — на сервере: ssh deploy@<VPS> 'cd /opt/hockey-platform && docker compose logs --tail 100 bot'"
+}
+
 main() {
     cd /opt/hockey-platform
 
@@ -60,7 +80,7 @@ main() {
             echo "OK: бот перезапущен с новым образом"
         else
             echo "FAILED: контейнер пересоздан, но строки запуска в логах нет"
-            docker compose logs --tail 40 bot
+            failure_reason
             return 1
         fi
     else
@@ -70,7 +90,7 @@ main() {
             echo "OK: образ не изменился, контейнер работает (status=$state, restarts=$restarts)"
         else
             echo "FAILED: контейнер не в состоянии running (status=$state, restarts=$restarts)"
-            docker compose logs --tail 40 bot
+            failure_reason
             return 1
         fi
     fi
