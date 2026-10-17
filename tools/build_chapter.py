@@ -1,89 +1,66 @@
 #!/usr/bin/env python3
-"""Сборка HTML-страницы главы истории из принятого markdown-черновика.
+"""Сборка HTML-страниц глав истории из принятых markdown-черновиков.
 
-    python tools/build_chapter.py
+    python tools/build_chapter.py <id> [<id> ...]   # собрать главы
+    python tools/build_chapter.py --all             # пересобрать все главы с черновиками
+    python tools/build_chapter.py --relink          # только перешить навигацию между главами
 
-Берёт черновик `docs/history/drafts/<id>.md`, верстает страницу по шаблону
-`docs/history/origins.html` (шапка/стили/подвал переиспользуются), проставляет
-JSON-LD (Article + BreadcrumbList) и обновляет `data/history.json` +
-`docs/data/history.json` (published/url/summary/sections). Затем запусти
-`python tools/build_seo.py`, чтобы глава попала в sitemap.
+Черновик `docs/history/drafts/<id>.md` начинается с frontmatter — всё, что раньше
+правилось в блоке CONFIG этого скрипта, теперь живёт рядом с текстом главы:
 
-Под новую главу меняется только блок CONFIG ниже + наличие черновика.
+    ---
+    published: 2026-07-05          # дата первой публикации (date-only)
+    modified: 2026-07-05           # опц., дата обновления; по умолчанию = published
+    subtitle: ...
+    breadcrumb: Суперсерия-1972    # короткое имя для хлебных крошек и <title>
+    og_title: ...
+    og_desc: ...
+    meta_desc: ...
+    article_desc: ...
+    sections: prologue, rosters, ...   # id-якоря h2-разделов по порядку
+    keywords: суперсерия, хендерсон    # опц., триггеры бота (find_history_chapter)
+    ---
+
+Страница верстается по шаблону `docs/history/origins.html` (стили берутся оттуда),
+проставляется JSON-LD (Article + BreadcrumbList), обновляются `data/history.json` и
+`docs/data/history.json` (published/url/summary/sections/keywords). После сборки
+навигация «← предыдущая / следующая →» перешивается на всех опубликованных главах:
+ссылка на следующую главу включается, как только та опубликована.
+Затем запусти `python tools/build_seo.py`, чтобы глава попала в sitemap.
+
+`h1` и заголовок в Article — `title` из history.json (канон), номер главы — `n`.
 Читает только docs/ и data/; бот (bot/**) не задевается.
 
 ⚠️ Формат дат: в Article (datePublished/dateModified) и в og:article:*_time —
 полный ISO 8601 с поясом Europe/Moscow (см. iso()). Видимая дата «Обновлено»
 остаётся date-only в атрибуте <time datetime>. Так Rich Results не ругается.
 """
+import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://altitushkin.github.io/hockey-platform/"
+DRAFTS = ROOT / "docs/history/drafts"
+PAGES = ROOT / "docs/history"
+HISTORY_FILES = ["data/history.json", "docs/data/history.json"]
 
-# ─────────────────────────── CONFIG (под текущую главу) ───────────────────────────
-CONFIG = {
-    "id": "summit-1972",
-    "date": "2026-07-05",                       # дата публикации/обновления (date-only)
-    "h1": "Суперсерия-1972: восемь матчей, которые изменили хоккей",
-    "subtitle": "СССР против звёзд НХЛ: шок, камбэк и гол за 34 секунды до конца",
-    "chapter_label": "Глава 5 · История хоккея",
-    "breadcrumb_name": "Суперсерия-1972",
-    "og_title": "Суперсерия-1972 — восемь матчей СССР против Канады, изменившие хоккей",
-    "og_desc": "Осенью 1972-го профессионалы НХЛ впервые вышли против сборной СССР: шок первой игры, кризис, камбэк и победный гол Пола Хендерсона за 34 секунды до конца восьмого матча.",
-    "meta_desc": "Суперсерия-1972 (Summit Series): восемь матчей СССР — Канада, шок в Монреале 7:3, слэш Кларка и травма Харламова, московский камбэк и победный гол Хендерсона за 34 секунды до сирены. Глава 5 истории хоккея.",
-    "article_desc": "Суперсерия-1972: восемь матчей сборной СССР против профессионалов НХЛ — от разгрома 7:3 в Монреале до победного гола Пола Хендерсона за 34 секунды до конца 8-й игры; слэш Кларка, травма Харламова и итоговые 32:31 по шайбам.",
-    "page_title": "Суперсерия-1972 · Культура хоккея",
-    "section_slugs": ["prologue","rosters","game-1","games-2-4",
-                      "turning-point","game-6-slash","games-7-8","aftermath"],
-    "prev": ("tarasov-system.html", "← Тарасов и большая система"),
-    "next_label": "Кубки Канады →",             # следующая глава — пока задизейблена
-    "typo_fixes": [],
-}
-# ──────────────────────────────────────────────────────────────────────────────────
+REQUIRED = ("published", "subtitle", "breadcrumb", "og_title", "og_desc", "meta_desc", "article_desc", "sections")
+LIST_KEYS = ("sections", "keywords")
 
-def iso(d: str) -> str:
-    """date-only → полный ISO 8601, полдень по Москве (Europe/Moscow, +03:00)."""
-    return f"{d}T12:00:00+03:00"
-
-MONTHS_RU = {1:"января",2:"февраля",3:"марта",4:"апреля",5:"мая",6:"июня",
-            7:"июля",8:"августа",9:"сентября",10:"октября",11:"ноября",12:"декабря"}
-def human_date(d):
-    y,m,dd = d.split("-")
-    return f"{int(dd)} {MONTHS_RU[int(m)]} {y}"
-
-def esc(t): return t.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-def inline(t):
-    t = esc(t)
-    t = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
-    t = re.sub(r"\*(.+?)\*", r"<em>\1</em>", t)
-    return t
-
-def main():
-    cid = CONFIG["id"]; date = CONFIG["date"]
-    url = f"{BASE}history/{cid}.html"
-    draft = (ROOT/f"docs/history/drafts/{cid}.md").read_text(encoding="utf-8")
-    for a,b in CONFIG["typo_fixes"]:
-        draft = draft.replace(a,b)
-
-    # title из history.json (канон)
-    hist = json.loads((ROOT/"data/history.json").read_text(encoding="utf-8"))
-    ch = next(c for c in hist if c["id"]==cid)
-    full_title = ch["title"]
-
-    # переиспользуем <style>+шапку+подвал из origins
-    oh = (ROOT/"docs/history/origins.html").read_text(encoding="utf-8")
-    style_block = oh[oh.index("<style>"):oh.index("</style>")+len("</style>")]
-    if ".sources" not in style_block:
-        style_block = style_block.replace("</style>", """  .sources { list-style: none; margin: 8px 0 0; padding: 0; }
-  .sources li { font-size: 14px; line-height: 1.5; margin-bottom: 10px; padding-left: 16px; position: relative; color: var(--ink-soft); }
+FONTS = (
+    "https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700"
+    "&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap"
+)
+SOURCES_CSS = """  .sources { list-style: none; margin: 8px 0 0; padding: 0; }
+  .sources li { font-size: 14px; line-height: 1.5; margin-bottom: 10px; padding-left: 16px; position: relative;
+    color: var(--ink-soft); }
   .sources li::before { content: "→"; position: absolute; left: 0; color: var(--steel); }
   .sources a { color: var(--steel); }
-</style>""")
-
-    SITE_HEADER = '''  <header class="site-header">
+</style>"""
+SITE_HEADER = """  <header class="site-header">
     <div class="rules"></div>
     <div class="logo">
       <a href="../index.html">
@@ -93,102 +70,260 @@ def main():
     <p class="site-name">Хоккейный словарь</p>
     <p class="tagline">Исторический раздел</p>
     <p class="channel">приложение к каналу «Хоккейный Овертайм»</p>
-  </header>'''
-    SITE_FOOTER = '''  <footer class="site-footer">
+  </header>"""
+SITE_FOOTER = """  <footer class="site-footer">
     <a href="https://t.me/lifeinovertime" rel="noopener">Telegram · Хоккейный Овертайм</a><br>
     <a href="https://github.com/altitushkin/hockey-platform" rel="noopener">GitHub · hockey-platform</a>
-  </footer>'''
+  </footer>"""
+NAV_RE = re.compile(r'    <nav class="nav-footer">.*?</nav>', re.S)
+DISABLED = 'style="opacity:0.45;pointer-events:none;cursor:default"'
 
-    # разбор черновика
-    blocks=[]; cur=[]
-    for ln in draft.split("\n"):
-        if ln.strip()=="":
-            if cur: blocks.append("\n".join(cur)); cur=[]
-        else: cur.append(ln)
-    if cur: blocks.append("\n".join(cur))
+MONTHS_RU = {1: "января", 2: "февраля", 3: "марта", 4: "апреля", 5: "мая", 6: "июня",
+             7: "июля", 8: "августа", 9: "сентября", 10: "октября", 11: "ноября", 12: "декабря"}
 
-    slug_it=iter(CONFIG["section_slugs"]); sections_meta=[]; body=[]; lede=None
-    i=0; n=len(blocks)
-    while i<n:
-        b=blocks[i]
-        if b.startswith("# "): i+=1; continue
-        if b.startswith("## Краткое резюме"): lede=blocks[i+1]; i+=2; continue
-        if b.startswith("## Таймлайн"):
-            items=[]
-            for ln in blocks[i+1].split("\n"):
-                ln=re.sub(r"^\s*-\s*","",ln).strip()
-                m=re.match(r"\*\*(.+?)\*\*\s*—\s*(.*)", ln)
-                if m: items.append((m.group(1),m.group(2)))
-            rows="".join(f'\n        <div class="timeline-item">\n          <div class="year">{esc(y)}</div>\n          <p>{inline(t)}</p>\n        </div>' for y,t in items)
-            body.append(f'      <h2 id="timeline">Таймлайн</h2>\n      <div class="timeline">{rows}\n      </div>'); i+=2; continue
-        if b.startswith("## Источники"):
-            lis=[]
-            for ln in blocks[i+1].split("\n"):
-                ln=re.sub(r"^\s*-\s*","",ln).strip()
-                if not ln:
-                    continue
-                # одна строка = один источник; ссылок в ней может быть несколько
-                # ([текст](url) и [текст](url) — описание). Рендерим все ссылки,
-                # текст между ними и описание — как inline (связки, тире, курсив).
-                parts=[]; pos=0
-                for m in re.finditer(r"\[(.+?)\]\((.+?)\)", ln):
-                    if m.start()>pos:
-                        parts.append(inline(ln[pos:m.start()]))
-                    parts.append(f'<a href="{m.group(2)}" rel="noopener" target="_blank">{esc(m.group(1))}</a>')
-                    pos=m.end()
-                if pos<len(ln):
-                    parts.append(inline(ln[pos:]))
-                if parts:
-                    lis.append(f'\n        <li>{"".join(parts)}</li>')
-            body.append(f'      <h2 id="sources">Источники</h2>\n      <ul class="sources">{"".join(lis)}\n      </ul>'); i+=2; continue
-        if b.startswith("### Fact-box:"):
-            label=b.split(":",1)[1].strip()
-            body.append(f'      <div class="fact-box">\n        <span class="fact-label">{inline(label)}</span>\n        {inline(blocks[i+1])}\n      </div>'); i+=2; continue
-        if b.startswith("## "):
-            title=b[3:].strip(); slug=next(slug_it)
-            sections_meta.append({"id":slug,"title":title})
-            body.append(f'      <h2 id="{slug}">{inline(title)}</h2>'); i+=1; continue
-        body.append(f"      <p>{inline(b)}</p>"); i+=1
 
-    intro=f"      <p>{inline(lede)}</p>" if lede else ""
-    body_html="\n\n".join(([intro] if intro else [])+body)
+class DraftError(Exception):
+    pass
 
-    ORG={"@type":"Organization","@id":BASE+"#org","name":"Культура хоккея","url":BASE,
-         "logo":BASE+"logo.png","sameAs":["https://t.me/lifeinovertime","https://github.com/altitushkin/hockey-platform"]}
-    SITE={"@type":"WebSite","@id":BASE+"#website","name":"Культура хоккея","url":BASE,
-          "inLanguage":"ru","publisher":{"@id":BASE+"#org"}}
-    ART={"@type":"Article","headline":full_title,"description":CONFIG["article_desc"],
-         "inLanguage":"ru","datePublished":iso(date),"dateModified":iso(date),"image":BASE+"logo.png",
-         "author":{"@id":BASE+"#org"},"publisher":{"@id":BASE+"#org"},
-         "isPartOf":{"@id":BASE+"#website"},"mainEntityOfPage":url}
-    CRUMB={"@type":"BreadcrumbList","itemListElement":[
-        {"@type":"ListItem","position":1,"name":"Главная","item":BASE},
-        {"@type":"ListItem","position":2,"name":"История хоккея","item":BASE+"history.html"},
-        {"@type":"ListItem","position":3,"name":CONFIG["breadcrumb_name"],"item":url}]}
-    ldjson=json.dumps({"@context":"https://schema.org","@graph":[ORG,SITE,ART,CRUMB]},ensure_ascii=False,indent=2)
 
-    prev_href,prev_text=CONFIG["prev"]
-    html=f'''<!DOCTYPE html>
+def iso(d: str) -> str:
+    """date-only → полный ISO 8601, полдень по Москве (Europe/Moscow, +03:00)."""
+    return f"{d}T12:00:00+03:00"
+
+
+def human_date(d: str) -> str:
+    y, m, dd = d.split("-")
+    return f"{int(dd)} {MONTHS_RU[int(m)]} {y}"
+
+
+def esc(t: str) -> str:
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def inline(t: str) -> str:
+    t = esc(t)
+    # [текст](url) в абзаце — например, deep-link в словарь: ../dictionary.html#t-corsi
+    t = re.sub(r"\[([^\]]+)\]\(([^()\s]+)\)", r'<a href="\2">\1</a>', t)
+    t = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
+    t = re.sub(r"\*(.+?)\*", r"<em>\1</em>", t)
+    return t
+
+
+def short_title(chapter: dict) -> str:
+    """Короткое имя главы для навигации: заголовок до двоеточия, без «(годы)»."""
+    t = chapter["title"].split(":")[0]
+    return re.sub(r"\s*\(.*?\)\s*$", "", t).strip()
+
+
+def load_history(rel: str = HISTORY_FILES[0]) -> list[dict]:
+    return json.loads((ROOT / rel).read_text(encoding="utf-8"))
+
+
+def parse_draft(text: str, cid: str) -> tuple[dict, str]:
+    """frontmatter → dict (списки — через запятую), остальное — тело черновика."""
+    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    if not m:
+        raise DraftError(f"{cid}: нет frontmatter (--- ... ---) в начале черновика")
+    meta: dict = {}
+    for ln in m.group(1).split("\n"):
+        ln = re.sub(r"\s+#\s.*$", "", ln).strip()
+        if not ln:
+            continue
+        key, _, val = ln.partition(":")
+        key, val = key.strip(), val.strip()
+        meta[key] = [v.strip() for v in val.split(",") if v.strip()] if key in LIST_KEYS else val
+    missing = [k for k in REQUIRED if not meta.get(k)]
+    if missing:
+        raise DraftError(f"{cid}: во frontmatter нет полей {missing}")
+    meta.setdefault("modified", meta["published"])
+    return meta, text[m.end():]
+
+
+def split_blocks(body: str) -> list[str]:
+    blocks, cur = [], []
+    for ln in body.split("\n"):
+        if ln.strip():
+            cur.append(ln)
+        elif cur:
+            blocks.append("\n".join(cur))
+            cur = []
+    if cur:
+        blocks.append("\n".join(cur))
+    return blocks
+
+
+def render_timeline(block: str) -> str:
+    rows = []
+    for ln in block.split("\n"):
+        ln = re.sub(r"^\s*-\s*", "", ln).strip()
+        m = re.match(r"\*\*(.+?)\*\*\s*—\s*(.*)", ln)
+        if m:
+            rows.append(f'\n        <div class="timeline-item">\n          <div class="year">{esc(m.group(1))}</div>'
+                        f'\n          <p>{inline(m.group(2))}</p>\n        </div>')
+    return f'      <h2 id="timeline">Таймлайн</h2>\n      <div class="timeline">{"".join(rows)}\n      </div>'
+
+
+def render_sources(block: str) -> str:
+    lis = []
+    for ln in block.split("\n"):
+        ln = re.sub(r"^\s*-\s*", "", ln).strip()
+        if not ln:
+            continue
+        # одна строка = один источник; ссылок в ней может быть несколько
+        # ([текст](url) и [текст](url) — описание). Рендерим все ссылки,
+        # текст между ними и описание — как inline (связки, тире, курсив).
+        parts, pos = [], 0
+        # URL может содержать скобки: Wikipedia …_(1942–1967) — допускаем один уровень
+        for m in re.finditer(r"\[(.+?)\]\(((?:[^()\s]|\([^()\s]*\))+)\)", ln):
+            if m.start() > pos:
+                parts.append(inline(ln[pos:m.start()]))
+            parts.append(f'<a href="{m.group(2)}" rel="noopener" target="_blank">{esc(m.group(1))}</a>')
+            pos = m.end()
+        if pos < len(ln):
+            parts.append(inline(ln[pos:]))
+        if parts:
+            lis.append(f'\n        <li>{"".join(parts)}</li>')
+    return f'      <h2 id="sources">Источники</h2>\n      <ul class="sources">{"".join(lis)}\n      </ul>'
+
+
+def render_body(body: str, slugs: list[str], cid: str) -> tuple[str, str | None, list[dict]]:
+    """Тело черновика → (html, лид из «Краткого резюме», sections для history.json)."""
+    blocks = split_blocks(body)
+    h2_count = sum(1 for b in blocks if b.startswith("## ") and not b.startswith(
+        ("## Краткое резюме", "## Таймлайн", "## Источники")))
+    if h2_count != len(slugs):
+        raise DraftError(f"{cid}: разделов h2 — {h2_count}, а slug'ов в sections — {len(slugs)}")
+
+    slug_it = iter(slugs)
+    sections, out, lede = [], [], None
+    i = 0
+    while i < len(blocks):
+        b = blocks[i]
+        if b.startswith("# "):
+            i += 1
+        elif b.startswith("## Краткое резюме"):
+            lede = blocks[i + 1]
+            i += 2
+        elif b.startswith("## Таймлайн"):
+            out.append(render_timeline(blocks[i + 1]))
+            i += 2
+        elif b.startswith("## Источники"):
+            out.append(render_sources(blocks[i + 1]))
+            i += 2
+        elif b.startswith("### Fact-box:"):
+            label = b.split(":", 1)[1].strip()
+            out.append(f'      <div class="fact-box">\n        <span class="fact-label">{inline(label)}</span>'
+                       f'\n        {inline(blocks[i + 1])}\n      </div>')
+            i += 2
+        elif b.startswith("## "):
+            title, slug = b[3:].strip(), next(slug_it)
+            sections.append({"id": slug, "title": title})
+            out.append(f'      <h2 id="{slug}">{inline(title)}</h2>')
+            i += 1
+        else:
+            out.append(f"      <p>{inline(b)}</p>")
+            i += 1
+
+    if lede:
+        out.insert(0, f"      <p>{inline(lede)}</p>")
+    return "\n\n".join(out), lede, sections
+
+
+def nav_html(hist: list[dict], idx: int) -> str:
+    """Навигация главы: предыдущая — ссылкой (у первой — оглавление), следующая —
+    ссылкой, если опубликована, иначе приглушённой надписью; у последней — оглавление."""
+    if idx > 0:
+        prev = hist[idx - 1]
+        left = f'<a href="{prev["id"]}.html">← {short_title(prev)}</a>'
+    else:
+        left = '<a href="../history.html">← Оглавление истории</a>'
+    if idx + 1 < len(hist):
+        nxt = hist[idx + 1]
+        label = "Следующая глава"
+        if nxt.get("published"):
+            right = f'<a href="{nxt["id"]}.html">{short_title(nxt)} →</a>'
+        else:
+            right = f'<a href="#" {DISABLED}>{short_title(nxt)} →</a>'
+    else:
+        label = "Раздел пройден"
+        right = '<a href="../history.html">К оглавлению →</a>'
+    return f"""    <nav class="nav-footer">
+      {left}
+      <div style="text-align:right">
+        <span class="next-label">{label}</span>
+        {right}
+      </div>
+    </nav>"""
+
+
+def relink(hist: list[dict]) -> list[str]:
+    """Перешить nav-footer на всех опубликованных главах. Возвращает изменённые id."""
+    changed = []
+    for idx, ch in enumerate(hist):
+        page = PAGES / f"{ch['id']}.html"
+        if not ch.get("published") or not page.exists():
+            continue
+        html = page.read_text(encoding="utf-8")
+        new = NAV_RE.sub(lambda _: nav_html(hist, idx), html, count=1)
+        if new != html:
+            page.write_text(new, encoding="utf-8")
+            changed.append(ch["id"])
+    return changed
+
+
+def build(cid: str, hist: list[dict]) -> None:
+    meta, body = parse_draft((DRAFTS / f"{cid}.md").read_text(encoding="utf-8"), cid)
+    idx = next((i for i, c in enumerate(hist) if c["id"] == cid), None)
+    if idx is None:
+        raise DraftError(f"{cid}: главы нет в data/history.json (канон — docs/history/INDEX.md)")
+    ch = hist[idx]
+    url = f"{BASE}history/{cid}.html"
+    body_html, lede, sections = render_body(body, meta["sections"], cid)
+
+    # стили — из шаблона origins (читаем до записи: origins тоже собирается этим скриптом)
+    oh = (PAGES / "origins.html").read_text(encoding="utf-8")
+    style = oh[oh.index("<style>"):oh.index("</style>") + len("</style>")]
+    if ".sources" not in style:
+        style = style.replace("</style>", SOURCES_CSS)
+
+    org = {"@type": "Organization", "@id": BASE + "#org", "name": "Культура хоккея", "url": BASE,
+           "logo": BASE + "logo.png",
+           "sameAs": ["https://t.me/lifeinovertime", "https://github.com/altitushkin/hockey-platform"]}
+    site = {"@type": "WebSite", "@id": BASE + "#website", "name": "Культура хоккея", "url": BASE,
+            "inLanguage": "ru", "publisher": {"@id": BASE + "#org"}}
+    art = {"@type": "Article", "headline": ch["title"], "description": meta["article_desc"],
+           "inLanguage": "ru", "datePublished": iso(meta["published"]), "dateModified": iso(meta["modified"]),
+           "image": BASE + "logo.png", "author": {"@id": BASE + "#org"}, "publisher": {"@id": BASE + "#org"},
+           "isPartOf": {"@id": BASE + "#website"}, "mainEntityOfPage": url}
+    crumb = {"@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Главная", "item": BASE},
+        {"@type": "ListItem", "position": 2, "name": "История хоккея", "item": BASE + "history.html"},
+        {"@type": "ListItem", "position": 3, "name": meta["breadcrumb"], "item": url}]}
+    ldjson = json.dumps({"@context": "https://schema.org", "@graph": [org, site, art, crumb]},
+                        ensure_ascii=False, indent=2)
+
+    page_title = meta.get("page_title") or f"{meta['breadcrumb']} · Культура хоккея"
+    html = f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{CONFIG["page_title"]}</title>
-<meta name="description" content="{CONFIG["meta_desc"]}">
+<title>{esc(page_title)}</title>
+<meta name="description" content="{esc(meta["meta_desc"])}">
 <link rel="canonical" href="{url}">
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Культура хоккея">
 <meta property="og:locale" content="ru_RU">
-<meta property="og:title" content="{CONFIG["og_title"]}">
-<meta property="og:description" content="{CONFIG["og_desc"]}">
+<meta property="og:title" content="{esc(meta["og_title"])}">
+<meta property="og:description" content="{esc(meta["og_desc"])}">
 <meta property="og:url" content="{url}">
 <meta property="og:image" content="{BASE}logo.png">
-<meta property="article:published_time" content="{iso(date)}">
-<meta property="article:modified_time" content="{iso(date)}">
+<meta property="article:published_time" content="{iso(meta["published"])}">
+<meta property="article:modified_time" content="{iso(meta["modified"])}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{CONFIG["og_title"]}">
-<meta name="twitter:description" content="{CONFIG["og_desc"]}">
+<meta name="twitter:title" content="{esc(meta["og_title"])}">
+<meta name="twitter:description" content="{esc(meta["og_desc"])}">
 <meta name="twitter:image" content="{BASE}logo.png">
 <!-- JSON-LD -->
 <script type="application/ld+json">
@@ -196,9 +331,9 @@ def main():
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=PT+Mono&display=swap" rel="stylesheet">
+<link href="{FONTS}" rel="stylesheet">
 <link rel="stylesheet" href="../style.css">
-{style_block}
+{style}
 </head>
 <body>
 
@@ -213,14 +348,14 @@ def main():
       <span>›</span>
       <a href="../history.html">История</a>
       <span>›</span>
-      {CONFIG["breadcrumb_name"]}
+      {esc(meta["breadcrumb"])}
     </div>
 
     <header class="article-header">
-      <span class="chapter-label">{CONFIG["chapter_label"]}</span>
-      <h1>{CONFIG["h1"]}</h1>
-      <p class="subtitle">{CONFIG["subtitle"]}</p>
-      <p class="article-date">Обновлено: <time datetime="{date}">{human_date(date)}</time></p>
+      <span class="chapter-label">Глава {ch["n"]} · История хоккея</span>
+      <h1>{esc(ch["title"])}</h1>
+      <p class="subtitle">{inline(meta["subtitle"])}</p>
+      <p class="article-date">Обновлено: <time datetime="{meta["modified"]}">{human_date(meta["modified"])}</time></p>
     </header>
 
     <div class="article-body">
@@ -229,13 +364,7 @@ def main():
 
     </div>
 
-    <nav class="nav-footer">
-      <a href="{prev_href}">{prev_text}</a>
-      <div style="text-align:right">
-        <span class="next-label">Следующая глава</span>
-        <a href="#" style="opacity:0.45;pointer-events:none;cursor:default">{CONFIG["next_label"]}</a>
-      </div>
-    </nav>
+{nav_html(hist, idx)}
 
   </div>
 
@@ -245,18 +374,46 @@ def main():
 
 </body>
 </html>
-'''
-    (ROOT/f"docs/history/{cid}.html").write_text(html, encoding="utf-8")
+"""
+    (PAGES / f"{cid}.html").write_text(html, encoding="utf-8")
 
-    # history.json (оба зеркала)
-    for rel in ["data/history.json","docs/data/history.json"]:
-        p=ROOT/rel; data=json.loads(p.read_text(encoding="utf-8"))
-        for c in data:
-            if c["id"]==cid:
-                c["url"]=url; c["summary"]=lede; c["sections"]=sections_meta; c["published"]=True
-        p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    ch.update(url=url, summary=lede, sections=sections, published=True)
+    if meta.get("keywords"):
+        ch["keywords"] = meta["keywords"]
+    print(f"OK {cid}.html: sections={[s['id'] for s in sections]}; Article {iso(meta['published'])}"
+          f" / {iso(meta['modified'])}")
 
-    print(f"OK {cid}.html: sections={[s['id'] for s in sections_meta]}; Article dates ISO {iso(date)}")
+
+def save_history(hist: list[dict]) -> None:
+    """Пишем оба зеркала из одного списка — паритет data/ ↔ docs/data/ сохраняется."""
+    text = json.dumps(hist, ensure_ascii=False, indent=2) + "\n"
+    for rel in HISTORY_FILES:
+        (ROOT / rel).write_text(text, encoding="utf-8")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Сборка глав истории из docs/history/drafts/<id>.md")
+    ap.add_argument("ids", nargs="*", help="id глав из data/history.json")
+    ap.add_argument("--all", action="store_true", help="пересобрать все главы, у которых есть черновик")
+    ap.add_argument("--relink", action="store_true", help="только перешить навигацию между главами")
+    args = ap.parse_args()
+
+    hist = load_history()
+    ids = [c["id"] for c in hist if (DRAFTS / f"{c['id']}.md").exists()] if args.all else args.ids
+    if not ids and not args.relink:
+        ap.error("укажи id главы, --all или --relink")
+    try:
+        for cid in ids:
+            build(cid, hist)
+    except DraftError as e:
+        print(f"ОШИБКА: {e}", file=sys.stderr)
+        return 1
+    if ids:
+        save_history(hist)
+    changed = relink(hist)
+    print(f"Навигация перешита: {changed or 'без изменений'}")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
