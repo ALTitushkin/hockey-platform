@@ -203,6 +203,12 @@ Google-Extended, Applebot-Extended, OAI-SearchBot и др.) + обычные; с
 только `data/` — паритет `data/ ↔ docs/data/` и `validate_data.py` не задеты.
 Запускать после изменений в `terms.json` или `history.json` (новые published-главы).
 
+**Поисковики (18.10.2026):** Google Search Console — ресурс «Префикс URL»
+`…/hockey-platform/`, тег `google-site-verification` в `docs/index.html`, sitemap отправлен.
+Яндекс.Вебмастер подпапку github.io не подтверждает (файл ищет в корне домена) —
+вместо него **IndexNow**: ключ `docs/<KEY>.txt`, отправка `python tools/indexnow.py`
+(все URL из sitemap или перечисленные). Запускать после пуша значимых правок сайта.
+
 ⚠️ **FAQ-rich не закладываем** (Google убрал FAQ-сниппеты в 05.2026) — Q&A-структуру
 держим ради цитируемости LLM, не ради звёздочек в выдаче.
 
