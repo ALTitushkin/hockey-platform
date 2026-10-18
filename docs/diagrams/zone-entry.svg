@@ -1,7 +1,7 @@
 <svg viewBox="0 0 420 302" xmlns="http://www.w3.org/2000/svg" font-family="'PT Mono', monospace">
   <rect width="420" height="302" fill="#F1EAD9"/>
   <text x="210" y="18" text-anchor="middle" font-family="'Oswald', sans-serif" font-size="13" font-weight="700" fill="#233048" letter-spacing="2">ZONE ENTRY · ВХОД В ЗОНУ</text>
-  <text x="210" y="33" text-anchor="middle" font-size="7.5" fill="#2A2A24" opacity="0.75">три способа пересечь синюю линию</text>
+  <text x="210" y="33" text-anchor="middle" font-size="7.5" fill="#2A2A24" opacity="0.75">с контролем шайбы или забросом</text>
   <defs><marker id="arr-2A2A24" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#2A2A24"/></marker><marker id="arr-A14A33" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#A14A33"/></marker></defs>
   <rect x="20" y="38" width="380" height="245" rx="18" fill="#EAF2F8" stroke="#2A2A24" stroke-width="1.5"/>
   <rect x="360" y="148" width="14" height="25" rx="2" fill="#233048" fill-opacity="0.15" stroke="#233048" stroke-width="1.8"/>
@@ -16,14 +16,16 @@
   <circle cx="120" cy="82" r="11" fill="#A14A33" opacity="0.92"/>
   <text x="120" y="85.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
   <path d="M132,84 L236,92" fill="none" stroke="#A14A33" stroke-width="1.6" marker-end="url(#arr-A14A33)"/>
-  <text x="300" y="70" text-anchor="middle" font-size="8" fill="#A14A33" font-weight="700">С КОНТРОЛЕМ</text>
-  <text x="300" y="80" text-anchor="middle" font-size="7" fill="#2A2A24">больше всего моментов</text>
-  <circle cx="125" cy="160" r="11" fill="#A14A33" opacity="0.92"/>
-  <text x="125" y="163.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
-  <path d="M136,160 L205,150" fill="none" stroke="#A14A33" stroke-width="1.6" stroke-dasharray="5,3" marker-end="url(#arr-A14A33)"/>
-  <circle cx="215" cy="148" r="11" fill="#A14A33" opacity="0.92"/>
-  <text x="215" y="151.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
-  <text x="270" y="146" text-anchor="middle" font-size="8" fill="#A14A33" font-weight="700">ПАСОМ</text>
+  <text x="290" y="70" text-anchor="middle" font-size="8" fill="#A14A33" font-weight="700">С КОНТРОЛЕМ · ПРОВЁЗ</text>
+  <text x="290" y="80" text-anchor="middle" font-size="7" fill="#2A2A24">больше всего моментов</text>
+  <circle cx="125" cy="145" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="125" y="148.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
+  <path d="M136,147 L205,165" fill="none" stroke="#A14A33" stroke-width="1.6" stroke-dasharray="5,3" marker-end="url(#arr-A14A33)"/>
+  <circle cx="148" cy="183" r="11" fill="#A14A33" opacity="0.92"/>
+  <text x="148" y="186.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
+  <path d="M160,182 L200,176" fill="none" stroke="#A14A33" stroke-width="1.6" marker-end="url(#arr-A14A33)"/>
+  <text x="285" y="146" text-anchor="middle" font-size="8" fill="#A14A33" font-weight="700">С КОНТРОЛЕМ · ПЕРЕДАЛ</text>
+  <text x="285" y="156" text-anchor="middle" font-size="7" fill="#2A2A24">шайба пересекает линию первой</text>
   <circle cx="120" cy="236" r="11" fill="#A14A33" opacity="0.92"/>
   <text x="120" y="239.2" text-anchor="middle" font-size="8.5" fill="#F1EAD9" font-weight="700">F</text>
   <path d="M132,240 Q257.0,247.1 380,270" fill="none" stroke="#2A2A24" stroke-width="1.6" stroke-dasharray="1.5,3" marker-end="url(#arr-2A2A24)"/>
