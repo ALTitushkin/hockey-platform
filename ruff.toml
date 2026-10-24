@@ -1,4 +1,4 @@
-# Линтер/форматтер (ruff). Общий для bot/ и tools/.
+# Линтер/форматтер (ruff). Общий для bot/, tools/ и news/.
 target-version = "py312"
 line-length = 120
 

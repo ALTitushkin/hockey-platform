@@ -17,6 +17,7 @@ on:
       - "bot/**"
       - "data/**"
       - "tools/**"
+      - "news/**"
       - "Dockerfile"
       - "docker-compose.yml"
       - "deploy/**"
@@ -29,6 +30,7 @@ on:
       - "bot/**"
       - "data/**"
       - "tools/**"
+      - "news/**"
       - "Dockerfile"
       - "docker-compose.yml"
       - "deploy/**"
@@ -50,7 +52,7 @@ jobs:
       - name: Lint (ruff)
         run: |
           pip install -q ruff
-          ruff check bot/ tools/
+          ruff check bot/ tools/ news/
       - name: Validate data (целостность реестров + паритет зеркал + status)
         run: python tools/validate_data.py
       - name: Validate calendar (формат событий + отчёт покрытия)
@@ -60,6 +62,8 @@ jobs:
           cd bot
           python test_search.py
           python test_calendar.py
+      - name: News tests (без сети)
+        run: python -m news.test_news
 
   # ── Деплой только после зелёных тестов и только при включённом флаге ──
   deploy:
