@@ -15,6 +15,7 @@
 - Ретро/итоги: [planning/results/](planning/results/) (sprint_1, 6, 7, 8, 9)
 
 ### 🎨 [design/](design/) — дизайн и концепт
+- [ecosystem.md](design/ecosystem.md) — **карта экосистемы бренда (24.10.2026): треки, решения, роли**
 - [koncept_platforma.md](design/koncept_platforma.md) — концепт платформы
 - [design_concept_s5.md](design/design_concept_s5.md) — утверждённый визуальный концепт (идентичность A «Учебник»)
 - [design_brief.md](design/design_brief.md) · [design_brief_s5.md](design/design_brief_s5.md) — брифы дизайнеру
