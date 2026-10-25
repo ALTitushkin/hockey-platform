@@ -15,7 +15,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from news import guard, nhl
+from news import guard, nhl, publish
 from news.digest import render_night
 from news.llm import PROVIDERS, _clean, prompt_for
 from news.publish import OUT
@@ -92,6 +92,7 @@ def main() -> int:
     r.add_argument("--providers", default="claude_cli")
     r.add_argument("--runs", type=int, default=1)
     args = ap.parse_args()
+    publish.load_env()
     return {"save": cmd_save, "run": cmd_run}[args.cmd](args)
 
 

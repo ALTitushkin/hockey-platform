@@ -63,11 +63,24 @@ jobs:
           python test_search.py
           python test_calendar.py
       - name: News tests (без сети)
-        run: python -m news.test_news
+        run: |
+          pip install -q -r news/requirements.txt
+          python -m news.test_news
+
+  # ── Образ новостника собирается в CI: ошибка Dockerfile видна до сервера ──
+  news-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build news image (без push)
+        run: |
+          docker build -f news/Dockerfile -t hockey-news:ci .
+          docker run --rm hockey-news:ci python -c "import news.run, news.card; from PIL import Image; print('ok')"
+          docker run --rm hockey-news:ci sh -c 'claude --version && ls news/prompts/lead.md news/assets/logos/TBL.png'
 
   # ── Деплой только после зелёных тестов и только при включённом флаге ──
   deploy:
-    needs: test
+    needs: [test, news-image]
     if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:

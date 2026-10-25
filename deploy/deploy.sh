@@ -95,8 +95,39 @@ main() {
         fi
     fi
 
+    deploy_news
+
     echo "==> чистка старых образов"
     docker image prune -f >/dev/null
+}
+
+# Новостник (профиль news). Выключатель — файл news/.env на сервере: нет файла — сервис не трогаем,
+# а запущенный останавливаем (так выключение = переименовать .env и задеплоить или запустить скрипт).
+deploy_news() {
+    if [ ! -f news/.env ]; then
+        if [ -n "$(docker compose --profile news ps -q news 2>/dev/null || true)" ]; then
+            echo "==> новостник: news/.env нет — останавливаю"
+            docker compose --profile news stop news
+        else
+            echo "==> новостник: выключен (нет news/.env)"
+        fi
+        return 0
+    fi
+    echo "==> новостник: сборка и запуск"
+    mkdir -p news-runtime
+    docker compose --profile news up -d --build news
+    sleep 8
+    local logs
+    logs="$(docker compose --profile news logs --since 60s news 2>&1 || true)"
+    if [[ "$logs" == *"новостник: сбор после"* ]]; then
+        echo "OK: новостник запущен"
+    elif [ "$(docker inspect -f '{{.State.Status}}' hockey-news 2>/dev/null)" = "running" ] \
+        && [ "$(docker inspect -f '{{.RestartCount}}' hockey-news 2>/dev/null)" = "0" ]; then
+        echo "OK: новостник работает, образ не менялся"
+    else
+        echo "FAILED: новостник не стартовал. Логи — на сервере: docker compose --profile news logs --tail 50 news"
+        return 1
+    fi
 }
 
 main "$@"

@@ -37,3 +37,31 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Новостник «Культура хоккея» (news/). Профиль news: обычный `docker compose up` его не трогает,
+  # поднимает deploy.sh, только если на сервере есть news/.env (выключатель — см. deploy/README.md).
+  # Тоже ровно ОДИН инстанс: свой токен NEWS_BOT_TOKEN, второй getUpdates → 409.
+  news:
+    profiles: ["news"]
+    build:
+      context: .
+      dockerfile: news/Dockerfile
+    image: hockey-news:latest
+    container_name: hockey-news
+    restart: unless-stopped
+    env_file: news/.env
+    environment:
+      # На сервере вводную пишет только Claude: GigaChat прошёл гард, но путал факты (news/prompts/README.md).
+      NEWS_LLM: claude_cli
+    init: true
+    # Черновики, карточки и состояние сервиса переживают пересборку. Владелец — UID 1000.
+    volumes:
+      - ./news-runtime:/app/news/out
+    # Claude Code CLI в момент вызова — основная память; Python + Pillow ~60 МБ.
+    mem_limit: 512m
+    memswap_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
