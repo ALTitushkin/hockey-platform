@@ -36,13 +36,13 @@ def display_names(reports: list[GameReport], players: dict) -> dict[int, str]:
 
 
 def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date: str,
-                 highlights: list | None = None, compact: bool = False) -> tuple[str, dict]:
+                 highlights: list | None = None) -> tuple[str, dict]:
     """→ (HTML-текст для Telegram, факты для гарда). Пустой список матчей → пустой текст.
 
     highlights — `events.headline(...)`: [(pid, [Event, ...]), ...]. Есть события — блок «Главное»
     строится из них (рекорд важнее двух очков); нет — главный тот, у кого больше очков.
-    compact — для тяжёлых ночей, когда пост не влезает в подпись к картинке: наши в матче
-    одной строкой, матчи без наших очков — только на картинке.
+    Это полный текст по матчам: его читает модель для вводной фразы, он же — запасной пост без
+    картинки. В канал с карточкой идёт `render_caption`.
     """
     y, m, d = (int(x) for x in msk_date.split("-"))
     facts = {"numbers": {d}, "pids": set(), "teams": set()}
@@ -74,13 +74,12 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
         facts["teams"] |= {home, away}
         facts["numbers"] |= {r.home_score, r.away_score}
         head = f"{home} — {away} {r.home_score}:{r.away_score}{SUFFIX.get(r.last_period, '')}"
-        rows, scored = [], []
+        rows = []
         for s in sorted(r.skaters, key=lambda s: (-s.points, -s.goals)):
             facts["pids"].add(s.pid)
             facts["numbers"] |= {s.goals, s.assists, s.sog}
             if s.points:
-                scored.append(f"{names[s.pid]} <b>{s.goals}+{s.assists}</b>" if compact
-                              else f"🏒 {names[s.pid]} — <b>{s.goals}+{s.assists}</b>")
+                rows.append(f"🏒 {names[s.pid]} — <b>{s.goals}+{s.assists}</b>")
             else:
                 idle_players.append(names[s.pid])
         for g in r.goalies:
@@ -91,21 +90,93 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
             result = (f", {word}" if word else "") + (", на ноль" if against == 0 and g.saves == g.shots else "")
             rows.append(f"🥅 {names[g.pid]} — {g.saves} {plural(g.saves, ('сейв', 'сейва', 'сейвов'))} "
                         f"из {g.shots}{result}")
-        rows = (["🏒 " + ", ".join(scored)] if compact and scored else scored) + rows
         if rows:
-            lines += [f"<b>{head}</b>", *rows] + ([] if compact else [""])
+            lines += [f"<b>{head}</b>", *rows, ""]
         else:
             idle_games.append(head)
 
     idle = []
     if idle_players:
         idle.append("Без очков: " + ", ".join(idle_players))
-    if idle_games and not compact:
+    if idle_games:
         idle.append("Ещё матчи: " + "; ".join(idle_games))
     if idle:
-        lines += [""] if compact else []
         lines.append("<blockquote expandable>" + "\n".join(idle) + "</blockquote>")
     return "\n".join(lines).strip(), facts
+
+
+ICONS = [("в истории клуба", "🏆"), ("-й гол в НХЛ", "🎯"), ("-е очко в НХЛ", "🎯"), ("-й матч", "🎖"),
+         ("перв", "✨"), ("победный", "🚨"), ("хет-трик", "🎩"), ("гола за матч", "🎩"), ("за матч", "💥"),
+         ("сухой матч", "🧱")]
+
+
+def icon(text: str) -> str:
+    return next((e for key, e in ICONS if key in text), "⭐")
+
+
+def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_date: str,
+                   highlights: list | None = None, lead: str | None = None,
+                   with_teams: bool = True) -> tuple[str, dict]:
+    """Подпись к карточке: как у больших спортивных каналов — заголовок-новость, абзац, блоки через
+    пустую строку, одна метка на строку, подпись рубрики в конце. Счёт всех матчей — на картинке,
+    в тексте — сюжет и очки наших. with_teams=False — запасной вариант, если не влезает в 1024 знака.
+    """
+    _, m, d = (int(x) for x in msk_date.split("-"))
+    facts = {"numbers": {d}, "pids": set(), "teams": set()}
+    if not reports:
+        return "", facts
+    names = display_names(reports, players)
+    team_of = {s.pid: teams[s.team] for r in reports for s in r.skaters} | \
+              {g.pid: teams[g.team] for r in reports for g in r.goalies}
+    for r in reports:
+        facts["teams"] |= {teams[r.home], teams[r.away]}
+        facts["numbers"] |= {r.home_score, r.away_score}
+
+    blocks = []
+    rest = list(highlights or [])
+    if rest:
+        pid, evs = rest[0]
+        top = evs[0]
+        facts["numbers"] |= top.numbers
+        blocks.append(f"{icon(top.text)} <b>{names[pid]} — {top.text}</b>")
+        others = [(pid, evs[1:])] if evs[1:] else []
+        rest = others + rest[1:]
+    else:
+        blocks.append(f"🌙 <b>Ночь наших · {d} {MONTHS[m - 1]}</b>")
+    if lead:
+        blocks.append(lead)
+    if rest:
+        lines = ["⭐ <b>Ещё главное</b>"]
+        for pid, evs in rest:
+            for e in evs:
+                facts["numbers"] |= e.numbers
+            lines.append(f"{icon(evs[0].text)} {names[pid]} — {', '.join(e.text for e in evs)}")
+        blocks.append("\n".join(lines))
+
+    def who(pid: int) -> str:
+        return f"{names[pid]} ({team_of[pid]})" if with_teams else names[pid]
+
+    scorers = sorted((s for r in reports for s in r.skaters), key=lambda s: (-s.points, -s.goals))
+    lines = ["📊 <b>Очки наших</b>"]
+    idle = []
+    for s in scorers:
+        facts["pids"].add(s.pid)
+        facts["numbers"] |= {s.goals, s.assists, s.sog}
+        if s.points:
+            lines.append(f"{who(s.pid)} — <b>{s.goals}+{s.assists}</b>")
+        else:
+            idle.append(names[s.pid])
+    for r in reports:
+        for g in r.goalies:
+            facts["pids"].add(g.pid)
+            facts["numbers"] |= {g.saves, g.shots}
+            word = (DECISION_SO if r.last_period == "SO" else {}).get(g.decision) or DECISION.get(g.decision)
+            lines.append(f"🥅 {who(g.pid)} — {g.saves} из {g.shots}" + (f", {word}" if word else ""))
+    blocks.append("\n".join(lines))
+    if idle:
+        blocks.append("<blockquote expandable>Без очков: " + ", ".join(idle) + "</blockquote>")
+    blocks.append(f"🌙 #НочьНаших · {d} {MONTHS[m - 1]}")
+    return "\n\n".join(blocks), facts
 
 
 def with_lead(text: str, lead: str) -> str:

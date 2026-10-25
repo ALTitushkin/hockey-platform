@@ -1,7 +1,7 @@
 """Картинка к посту «Ночь наших»: карточка 1080×1350 в стиле «Культуры хоккея».
 
-Только своя графика: текст, цифры, фирменные цвета. Чужих фото и клубных логотипов нет —
-это права третьих лиц. Шрифты Oswald и PT Sans (OFL) лежат в news/assets/fonts.
+Своя графика плюс логотипы клубов (news/assets/logos, обновляет `python -m news.logos`) — только
+как обозначение клуба. Фото игроков не берём: это чужие снимки. Шрифты Oswald и PT Sans (OFL) — news/assets/fonts.
 Цифры берутся из тех же отчётов, что и текст поста, — отдельно гард их не проверяет.
 """
 
@@ -9,6 +9,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from news import logos
 from news.digest import MONTHS, SUFFIX, display_names
 from news.nhl import GameReport
 
@@ -32,6 +33,17 @@ def fit(draw: ImageDraw.ImageDraw, text: str, f: ImageFont.FreeTypeFont, width: 
     while text and draw.textlength(text + "…", font=f) > width:
         text = text[:-1]
     return text.rstrip(" ,·") + "…"
+
+
+def paste_logo(img: Image.Image, abbrev: str, x: int, y: int, box: int) -> int:
+    """Логотип в квадрат box×box с сохранением пропорций → сколько места занял по ширине. Нет файла — 0."""
+    src = logos.path(abbrev)
+    if not src.exists():
+        return 0
+    logo = Image.open(src).convert("RGBA")
+    logo.thumbnail((box, box), Image.LANCZOS)
+    img.paste(logo, (x + (box - logo.width) // 2, y + (box - logo.height) // 2), logo)
+    return box
 
 
 def ours_line(r: GameReport, names: dict[int, str]) -> str:
@@ -99,8 +111,16 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
         score = f"{r.home_score}:{r.away_score}{SUFFIX.get(r.last_period, '')}"
         sw = dr.textlength(score, font=sf)
         dr.text((W - PAD - sw, yy), score, font=sf, fill=INK)
-        dr.text((PAD, yy + 2), fit(dr, f"{teams[r.home]} — {teams[r.away]}", tf, int(W - 2 * PAD - sw - 30)),
-                font=tf, fill=INK)
+        x = PAD
+        for k, abbrev in enumerate((r.home, r.away)):
+            if k:
+                x += int(dr.textlength(" — ", font=tf))
+                dr.text((x - int(dr.textlength(" — ", font=tf)), yy + 2), " — ", font=tf, fill=INK)
+            used = paste_logo(img, abbrev, x, yy + 4, 54)
+            x += used + (12 if used else 0)
+            name = teams[abbrev]
+            dr.text((x, yy + 2), name, font=tf, fill=INK)
+            x += int(dr.textlength(name, font=tf))
         line = ours_line(r, names)
         dr.text((PAD, yy + 44), fit(dr, line, of, W - 2 * PAD), font=of,
                 fill=FAINT if line == "наши без очков" else STEEL)

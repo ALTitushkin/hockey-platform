@@ -53,8 +53,26 @@ def test_render():
     assert "<blockquote expandable>Без очков: А. Протас</blockquote>" in text
     assert "🥅 Шестёркин — 30 сейвов из 33, победа" in text
     assert "московск" not in text
-    short, _ = render_night([parse_box(BOX, {1, 2, 3, 4, 5})], PLAYERS, TEAMS, "2026-10-24", compact=True)
-    assert "🏒 Капризов <b>2+1</b>, И. Протас <b>1+0</b>" in short and len(short) < len(text)
+
+
+
+def test_caption():
+    from news.digest import render_caption
+    from news.events import Event
+
+    rep = parse_box(BOX, {1, 2, 3, 4, 5})
+    hl = [(1, [Event(1, 60, "победный гол в овертайме")]), (2, [Event(2, 70, "первый гол в НХЛ")])]
+    text, facts = render_caption([rep], PLAYERS, TEAMS, "2026-10-24", hl, "Капризов вытащил Миннесоту")
+    blocks = text.split("\n\n")
+    assert blocks[0] == "🚨 <b>Капризов — победный гол в овертайме</b>"  # заголовок-новость
+    assert blocks[1] == "Капризов вытащил Миннесоту"
+    assert blocks[2] == "⭐ <b>Ещё главное</b>\n✨ И. Протас — первый гол в НХЛ"
+    assert "Капризов (Миннесота) — <b>2+1</b>" in blocks[3]
+    assert "🥅 Шестёркин (Миннесота) — 30 из 33, победа" in blocks[3]
+    assert blocks[-1] == "🌙 #НочьНаших · 24 октября"
+    assert guard.check(text, facts, PLAYERS, TEAMS) == []
+    short, _ = render_caption([rep], PLAYERS, TEAMS, "2026-10-24", with_teams=False)
+    assert short.startswith("🌙 <b>Ночь наших · 24 октября</b>") and "(Миннесота)" not in short
     assert "999" not in text
 
 

@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 from news import events, guard, nhl, publish
 from news.card import render_card
-from news.digest import render_night, with_lead
+from news.digest import render_caption, render_night
 from news.llm import lead
 
 ROOT = Path(__file__).parent
@@ -54,10 +54,12 @@ def cmd_night(args) -> int:
             print(f"  ↳ {line}")
         if phrase:
             variant = f"шаблон + вводная {source}"
-    final = with_lead(text, phrase) if phrase else text
-    if publish.visible_len(final) > publish.CAPTION_LIMIT:  # не влезает в подпись к картинке — сжимаем
-        text, _ = render_night(reports, players, teams, msk, highlights, compact=True)
-        final, variant = (with_lead(text, phrase) if phrase else text), variant + " · компактно"
+    # Модели дали полный текст по матчам (render_night) — ей нужен контекст. В канал идёт подпись
+    # к карточке: счёт матчей на картинке, в тексте сюжет и очки наших.
+    final, facts = render_caption(reports, players, teams, msk, highlights, phrase)
+    if publish.visible_len(final) > publish.CAPTION_LIMIT:  # не влезает в подпись — без клубов в скобках
+        final, facts = render_caption(reports, players, teams, msk, highlights, phrase, with_teams=False)
+        variant += " · компактно"
     issues = guard.check(final, facts, players, teams)
 
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png", highlights)
