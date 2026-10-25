@@ -1,4 +1,4 @@
-"""CLI новостника «Культура хоккея». В каналы — только командой publish после проверки владельцем.
+"""CLI новостника «Культура хоккея». Сервис публикует сам при чистом гарде (NEWS_AUTO_PUBLISH=1).
 
     python -m news.run night [--date YYYY-MM-DD] [--llm [chain]] [--review]  # «Ночь наших» (МСК)
     python -m news.run publish [--date YYYY-MM-DD] [--to tg,max]            # черновик → каналы
@@ -10,6 +10,7 @@
 
 import argparse
 import json
+import os
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -71,7 +72,10 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")
     print(f"— черновик: {path}")
-    if review:
+    if review and not issues and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
+        ok, info = publish.auto_publish(msk)
+        print(f"— автопубликация: {'ок' if ok else 'ошибка'} — {info}")
+    elif review:  # гард не чист или автопубликация выключена — черновик владельцу с кнопками
         ok, info = publish.review(msk)
         print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
     return "guard" if issues else "ok"

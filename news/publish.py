@@ -144,6 +144,16 @@ def review(msk: str, post: Post = http_post) -> tuple[bool, str]:
     return bool(r.get("ok")), info if r.get("ok") else r.get("description", "")
 
 
+def auto_publish(msk: str, post: Post = http_post) -> tuple[bool, str]:
+    """Автопубликация (NEWS_AUTO_PUBLISH=1): чистый черновик сразу в каналы, владельцу — отчёт.
+    Те же проверки, что у кнопки: гард, отказ, дубль — внутри publish()."""
+    ok, report = publish(msk, ["tg", "max"], post)
+    note = (f"🤖 <b>{msk}</b> вышло автоматически" if ok else f"⚠️ <b>{msk}</b>: автопубликация не прошла") \
+        + "\n" + html.escape("\n".join(report))
+    tg_call("sendMessage", {"chat_id": os.environ.get("OWNER_CHAT_ID", ""), "text": note, "parse_mode": "HTML"}, post)
+    return ok, "; ".join(report)
+
+
 def reject(msk: str) -> None:
     path = draft_path(msk)
     d = json.loads(path.read_text(encoding="utf-8"))
