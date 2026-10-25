@@ -2,8 +2,9 @@
 
     python -m news.run serve
 
-- Каждое утро после NEWS_REVIEW_AT (МСК, по умолчанию 09:30) собирает «Ночь наших» и шлёт владельцу
-  в личку бота: пост как он выйдет и кнопки «✅ Опубликовать» / «✖️ Отклонить».
+- Каждое утро собирает рубрики по своему времени (МСК): «Ночь в НХЛ» после NEWS_LEAGUE_AT (09:00),
+  «Ночь наших» после NEWS_REVIEW_AT (09:30). Чистый гард — пост уходит сам, владельцу отчёт;
+  иначе — владельцу в личку пост и кнопки «✅ Опубликовать» / «✖️ Отклонить».
   Если в ночи ещё идут матчи, ждёт и пробует снова каждые RETRY минут, но не дольше NEWS_DEADLINE
   (по умолчанию 12:00): в дедлайн собирает с тем, что закончилось.
 - Кнопки принимает только от OWNER_CHAT_ID. Нажатие от кого-то ещё игнорируется.
@@ -40,13 +41,15 @@ def handle_update(update: dict, owner: str, post: publish.Post = publish.http_po
     if str(cb.get("from", {}).get("id")) != str(owner):
         publish.tg_call("answerCallbackQuery", {"callback_query_id": cb["id"]}, post)
         return f"чужое нажатие от {cb.get('from', {}).get('id')} — игнор"
-    action, _, msk = cb.get("data", "").partition(":")
+    # «pub:<рубрика>:<дата>»; у старых кнопок «pub:<дата>» — это «Ночь наших»
+    action, *rest = cb.get("data", "").split(":")
+    kind, msk = rest if len(rest) == 2 else ["night", *rest[:1]]
     msg = cb.get("message", {})
     if action == "pub":
-        ok, report = publish.publish(msk, ["tg", "max"], post)
+        ok, report = publish.publish(msk, ["tg", "max"], post, kind)
         note = ("✅ Опубликовано" if ok else "⚠️ Не всё ушло") + "\n" + "\n".join(report)
     elif action == "rej":
-        publish.reject(msk)
+        publish.reject(msk, kind)
         note = "✖️ Отклонено — в канал не пойдёт"
     else:
         return f"неизвестная кнопка {cb.get('data')}"
@@ -54,7 +57,7 @@ def handle_update(update: dict, owner: str, post: publish.Post = publish.http_po
     # кнопки убираем, чтобы не нажать второй раз; итог — в том же сообщении
     publish.tg_call("editMessageText", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"),
                                         "text": note, "reply_markup": {"inline_keyboard": []}}, post)
-    return f"{action} {msk}: {note.splitlines()[0]}"
+    return f"{action} {kind} {msk}: {note.splitlines()[0]}"
 
 
 def due(now: datetime, state: dict, review_at: dtime, deadline: dtime) -> str | None:
@@ -68,10 +71,12 @@ def due(now: datetime, state: dict, review_at: dtime, deadline: dtime) -> str | 
 
 
 def load_state() -> dict:
+    """{рубрика: {"built": дата, "next_try": ts}}. Старый формат (одна рубрика) — это «Ночь наших»."""
     try:
-        return json.loads(STATE.read_text(encoding="utf-8"))
+        state = json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
+    return {"night": state} if "built" in state or "next_try" in state else state
 
 
 def save_state(state: dict) -> None:
@@ -79,26 +84,32 @@ def save_state(state: dict) -> None:
     STATE.write_text(json.dumps(state), encoding="utf-8")
 
 
-def run_forever(build: Callable[[str, bool], str]) -> None:
-    """build(дата, последняя_попытка) → "ok" | "nogames" | "pending" (матчи ещё идут)."""
+Build = Callable[[str, bool], str]
+
+
+def run_forever(jobs: list[tuple[str, str, str, Build]]) -> None:
+    """jobs: (рубрика, переменная со временем, время по умолчанию, build).
+    build(дата, последняя_попытка) → "ok" | "nogames" | "pending" (матчи ещё идут)."""
     owner = os.environ["OWNER_CHAT_ID"]
-    review_at = parse_hhmm(os.environ.get("NEWS_REVIEW_AT", ""), "09:30")
     deadline = parse_hhmm(os.environ.get("NEWS_DEADLINE", ""), "12:00")
+    plan = [(kind, parse_hhmm(os.environ.get(var, ""), default), build) for kind, var, default, build in jobs]
     offset = None
-    print(f"новостник: сбор после {review_at:%H:%M} МСК, дедлайн {deadline:%H:%M}, владелец {owner}", flush=True)
+    times = ", ".join(f"{kind} {at:%H:%M}" for kind, at, _ in plan)
+    print(f"новостник: сбор после {times} МСК, дедлайн {deadline:%H:%M}, владелец {owner}", flush=True)
     while True:
         state, now = load_state(), datetime.now(MSK)
-        msk = due(now, state, review_at, deadline)
-        if msk:
+        for kind, at, build in plan:
+            job = state.get(kind, {})
+            msk = due(now, job, at, deadline)
+            if not msk:
+                continue
             try:
                 result = build(msk, now.time() >= deadline)
             except Exception as e:  # сеть/API: не роняем сервис, пробуем позже
                 result = f"ошибка {type(e).__name__}: {e}"
-            print(f"{now:%Y-%m-%d %H:%M} сборка {msk}: {result}", flush=True)
-            if result in ("ok", "nogames"):
-                state = {"built": msk}
-            else:
-                state["next_try"] = now.timestamp() + RETRY
+            print(f"{now:%Y-%m-%d %H:%M} сборка {kind} {msk}: {result}", flush=True)
+            done = result in ("ok", "nogames")
+            state[kind] = {"built": msk} if done else {**job, "next_try": now.timestamp() + RETRY}
             save_state(state)
         body = {"timeout": 50, "allowed_updates": ["callback_query"]}
         if offset is not None:

@@ -27,6 +27,7 @@ OUT = ROOT / "out"
 TG_API = "https://api.telegram.org"
 MAX_API = "https://platform-api2.max.ru"
 CAPTION_LIMIT = 1024
+TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»"}
 
 Post = Callable[..., dict]
 
@@ -104,13 +105,15 @@ def max_send(text: str, post: Post = http_post) -> tuple[bool, str]:
     return ok, "отправлено" if ok else str(r.get("message") or r.get("description") or r)[:300]
 
 
-def draft_path(msk: str) -> Path:
-    return OUT / f"{msk}_night.json"
+def draft_path(msk: str, kind: str = "night") -> Path:
+    """kind — рубрика: night («Ночь наших»), league («Ночь в НХЛ»)."""
+    return OUT / f"{msk}_{kind}.json"
 
 
-def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str | None = None) -> Path:
+def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str | None = None,
+               kind: str = "night") -> Path:
     OUT.mkdir(exist_ok=True)
-    path = draft_path(msk)
+    path = draft_path(msk, kind)
     # пересборка черновика не сбрасывает отметки о публикации — иначе дата ушла бы в канал дважды
     done = json.loads(path.read_text(encoding="utf-8"))["published"] if path.exists() else []
     path.write_text(json.dumps({"date": msk, "text": text, "issues": issues, "variant": variant,
@@ -123,47 +126,48 @@ def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
     return post(f"{TG_API}/bot{os.environ.get('NEWS_BOT_TOKEN', '')}/{method}", body, {})
 
 
-def control_text(d: dict) -> str:
-    guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + "; ".join(d["issues"])
-    return f"📝 <b>Черновик {d['date']}</b> выше\n{d['variant']} · {guard_line}"
+def control_text(d: dict, kind: str = "night") -> str:
+    guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + html.escape("; ".join(d["issues"]))
+    return f"📝 <b>Черновик {TITLES.get(kind, kind)} {d['date']}</b> выше\n{d['variant']} · {guard_line}"
 
 
-def review(msk: str, post: Post = http_post) -> tuple[bool, str]:
+def review(msk: str, post: Post = http_post, kind: str = "night") -> tuple[bool, str]:
     """Черновик владельцу: сам пост как он выйдет, следом — сообщение с кнопками.
     Гард не чист — кнопки «Опубликовать» нет: такой пост не уходит ни кнопкой, ни командой."""
-    d = json.loads(draft_path(msk).read_text(encoding="utf-8"))
+    d = json.loads(draft_path(msk, kind).read_text(encoding="utf-8"))
     owner = os.environ.get("OWNER_CHAT_ID", "")
     ok, info = tg_send(owner, d["text"], post, d.get("card"))
     if not ok:
         return ok, info
-    buttons = [{"text": "✖️ Отклонить", "callback_data": f"rej:{msk}"}]
+    buttons = [{"text": "✖️ Отклонить", "callback_data": f"rej:{kind}:{msk}"}]
     if not d["issues"]:
-        buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{msk}"})
-    r = tg_call("sendMessage", {"chat_id": owner, "text": control_text(d), "parse_mode": "HTML",
+        buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{kind}:{msk}"})
+    r = tg_call("sendMessage", {"chat_id": owner, "text": control_text(d, kind), "parse_mode": "HTML",
                                 "reply_markup": {"inline_keyboard": [buttons]}}, post)
     return bool(r.get("ok")), info if r.get("ok") else r.get("description", "")
 
 
-def auto_publish(msk: str, post: Post = http_post) -> tuple[bool, str]:
+def auto_publish(msk: str, post: Post = http_post, kind: str = "night") -> tuple[bool, str]:
     """Автопубликация (NEWS_AUTO_PUBLISH=1): чистый черновик сразу в каналы, владельцу — отчёт.
     Те же проверки, что у кнопки: гард, отказ, дубль — внутри publish()."""
-    ok, report = publish(msk, ["tg", "max"], post)
-    note = (f"🤖 <b>{msk}</b> вышло автоматически" if ok else f"⚠️ <b>{msk}</b>: автопубликация не прошла") \
+    ok, report = publish(msk, ["tg", "max"], post, kind)
+    title = f"{TITLES.get(kind, kind)} {msk}"
+    note = (f"🤖 <b>{title}</b> вышло автоматически" if ok else f"⚠️ <b>{title}</b>: автопубликация не прошла") \
         + "\n" + html.escape("\n".join(report))
     tg_call("sendMessage", {"chat_id": os.environ.get("OWNER_CHAT_ID", ""), "text": note, "parse_mode": "HTML"}, post)
     return ok, "; ".join(report)
 
 
-def reject(msk: str) -> None:
-    path = draft_path(msk)
+def reject(msk: str, kind: str = "night") -> None:
+    path = draft_path(msk, kind)
     d = json.loads(path.read_text(encoding="utf-8"))
     d["rejected"] = True
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def publish(msk: str, targets: list[str], post: Post = http_post) -> tuple[bool, list[str]]:
+def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "night") -> tuple[bool, list[str]]:
     """→ (всё ушло, строки отчёта). Ничего не шлёт, если черновика нет, гард не чист или дата уже вышла."""
-    path = draft_path(msk)
+    path = draft_path(msk, kind)
     if not path.exists():
         return False, [f"нет черновика {path.name} — сначала night --review"]
     d = json.loads(path.read_text(encoding="utf-8"))

@@ -59,8 +59,8 @@ class GameReport:
     goalies: list[GoalieLine] = field(default_factory=list)
 
 
-def parse_box(box: dict, ours: set[int]) -> GameReport:
-    """Бокс-скор → отчёт только по «нашим». Игроки не из реестра отбрасываются."""
+def parse_box(box: dict, ours: set[int] | None) -> GameReport:
+    """Бокс-скор → отчёт только по «нашим» (игроки не из реестра отбрасываются); ours=None — все игроки."""
     rep = GameReport(
         game_id=box["id"],
         home=box["homeTeam"]["abbrev"],
@@ -73,11 +73,11 @@ def parse_box(box: dict, ours: set[int]) -> GameReport:
         team = box[side]["abbrev"]
         stats = box["playerByGameStats"][side]
         for p in stats.get("forwards", []) + stats.get("defense", []):
-            if p["playerId"] in ours:
+            if ours is None or p["playerId"] in ours:
                 rep.skaters.append(SkaterLine(p["playerId"], team, p["goals"], p["assists"], p["points"], p["sog"]))
         for g in stats.get("goalies", []):
             # Вратарь, просидевший на скамейке, в бокс-скоре тоже есть — с нулём бросков.
-            if g["playerId"] in ours and g.get("shotsAgainst", 0) > 0:
+            if (ours is None or g["playerId"] in ours) and g.get("shotsAgainst", 0) > 0:
                 rep.goalies.append(GoalieLine(g["playerId"], team, g["saves"], g["shotsAgainst"], g.get("decision")))
     return rep
 
@@ -88,14 +88,14 @@ def pending_games(nhl_date: str) -> int:
     return sum(1 for g in games if g.get("gameState") not in FINAL_STATES and g.get("gameScheduleState") == "OK")
 
 
-def collect_night(nhl_date: str, ours: set[int]) -> list[GameReport]:
-    """Все завершённые матчи даты (по времени Северной Америки), где играли наши."""
+def collect_night(nhl_date: str, ours: set[int] | None) -> list[GameReport]:
+    """Все завершённые матчи даты (по времени Северной Америки), где играли наши; ours=None — все матчи."""
     reports = []
     for game in fetch_json(f"{WEB}/score/{nhl_date}").get("games", []):
         if game.get("gameState") not in FINAL_STATES:
             continue
         rep = parse_box(fetch_json(f"{WEB}/gamecenter/{game['id']}/boxscore"), ours)
-        if rep.skaters or rep.goalies:
+        if ours is None or rep.skaters or rep.goalies:
             reports.append(rep)
     return reports
 

@@ -10,7 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from news import logos
-from news.digest import MONTHS, SUFFIX, display_names
+from news.digest import MONTHS, SUFFIX, display_names, plural
 from news.nhl import GameReport
 
 FONTS = Path(__file__).parent / "assets" / "fonts"
@@ -53,11 +53,30 @@ def ours_line(r: GameReport, names: dict[int, str]) -> str:
     return " · ".join(parts) or "наши без очков"
 
 
+def stars_line(r: GameReport, names: dict[int, str]) -> str:
+    """Строка матча в «Ночи в НХЛ»: двое лучших по очкам (с русским именем) и вратарь на ноль."""
+    top = sorted((s for s in r.skaters if s.points and s.pid in names), key=lambda s: (-s.points, -s.goals))[:2]
+    parts = [f"{names[s.pid]} {s.goals}+{s.assists}" for s in top]
+    for g in r.goalies:
+        against = r.away_score if g.team == r.home else r.home_score
+        if g.pid in names and against == 0 and g.saves == g.shots:
+            parts.append(f"{names[g.pid]} {g.saves}/{g.shots}")
+    return " · ".join(parts)
+
+
 def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date: str, path: Path,
-                highlights: list | None = None) -> Path:
+                highlights: list | None = None, league: bool = False) -> Path:
+    """league=False — «Ночь наших» (под матчем — наши), True — «Ночь в НХЛ» (под матчем — звёзды матча)."""
     y, m, d = (int(x) for x in msk_date.split("-"))
-    names = display_names(reports, players)
-    games = sorted(reports, key=lambda r: -sum(s.points for s in r.skaters) - len(r.goalies))
+    if league:  # в players только игроки с русским именем; display_names не должен видеть остальных
+        known = [GameReport(r.game_id, r.home, r.away, r.home_score, r.away_score, r.last_period,
+                            [s for s in r.skaters if str(s.pid) in players],
+                            [g for g in r.goalies if str(g.pid) in players]) for r in reports]
+        names = display_names(known, players)
+        games = reports
+    else:
+        names = display_names(reports, players)
+        games = sorted(reports, key=lambda r: -sum(s.points for s in r.skaters) - len(r.goalies))
     row_h = 106 if len(games) <= 10 else 96
     head_h, hero_h, foot_h = 250, 230 if highlights else 190, 110
     h = max(1350, head_h + hero_h + row_h * len(games) + foot_h + 40)
@@ -68,7 +87,7 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
 
     # шапка: как программка матча — двойная линейка, надзаголовок, крупное название
     dr.text((PAD, 58), "КУЛЬТУРА ХОККЕЯ  ·  НХЛ", font=mono, fill=FAINT)
-    dr.text((PAD, 92), "НОЧЬ НАШИХ", font=font("Oswald.ttf", 104, "Bold"), fill=INK)
+    dr.text((PAD, 92), "НОЧЬ В НХЛ" if league else "НОЧЬ НАШИХ", font=font("Oswald.ttf", 104, "Bold"), fill=INK)
     date = f"{d} {MONTHS[m - 1]}".upper()
     df = font("Oswald.ttf", 44, "Medium")
     dr.text((W - PAD - dr.textlength(date, font=df), 150), date, font=df, fill=BRICK)
@@ -79,9 +98,10 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
     best = max((s for r in reports for s in r.skaters), key=lambda s: (s.points, s.goals), default=None)
     top = head_h + 24
     dr.rounded_rectangle((PAD, top, W - PAD, top + hero_h - 40), radius=6, fill=NAVY)
+    highlights = [h for h in highlights or [] if h[0] in names]
     if highlights:
         pid, evs = highlights[0]
-        line = next((s for r in reports for s in r.skaters if s.pid == pid), None)
+        line = next((s for r in reports for s in r.skaters if s.pid == pid), None) if pid in names else None
         big = str(max(evs[0].numbers)) if evs[0].numbers else (f"{line.goals}+{line.assists}" if line else "")
         phrase = evs[0].text.split(":")[0]
         sf = font("Oswald.ttf", 96, "Bold")
@@ -91,15 +111,16 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
         dr.text((PAD + 36, top + 118), fit(dr, phrase[0].upper() + phrase[1:], small, int(W - 2 * PAD - bw - 100)),
                 font=small, fill="#F2B8A6")
         dr.text((W - PAD - 36 - bw, top + 22), big, font=sf, fill="#F2B8A6")
-    elif best and best.points >= 2:
+    elif best and best.points >= 2 and best.pid in names:
         dr.text((PAD + 36, top + 22), "ГЛАВНОЕ", font=mono, fill="#C9D3DF")
         dr.text((PAD + 36, top + 52), names[best.pid].upper(), font=font("Oswald.ttf", 64, "SemiBold"), fill="#FFFFFF")
         score = f"{best.goals}+{best.assists}"
         sf = font("Oswald.ttf", 96, "Bold")
         dr.text((W - PAD - 36 - dr.textlength(score, font=sf), top + 12), score, font=sf, fill="#F2B8A6")
     else:
-        dr.text((PAD + 36, top + 50), f"{len(reports)} матчей с нашими", font=font("Oswald.ttf", 56, "SemiBold"),
-                fill="#FFFFFF")
+        word = plural(len(reports), ("матч", "матча", "матчей"))
+        dr.text((PAD + 36, top + 50), f"{len(reports)} {word}" + ("" if league else " с нашими"),
+                font=font("Oswald.ttf", 56, "SemiBold"), fill="#FFFFFF")
 
     # матчи: счёт крупно, ниже — наши с очками
     y0 = head_h + hero_h
@@ -121,14 +142,15 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
             name = teams[abbrev]
             dr.text((x, yy + 2), name, font=tf, fill=INK)
             x += int(dr.textlength(name, font=tf))
-        line = ours_line(r, names)
+        line = stars_line(r, names) if league else ours_line(r, names)
         dr.text((PAD, yy + 44), fit(dr, line, of, W - 2 * PAD), font=of,
                 fill=FAINT if line == "наши без очков" else STEEL)
 
     # подвал
     fy = h - foot_h + 20
     dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
-    dr.text((PAD, fy + 24), "Россияне и белорусы в НХЛ · данные NHL", font=small, fill=SOFT)
+    dr.text((PAD, fy + 24), "Все матчи ночи · данные NHL" if league else "Россияне и белорусы в НХЛ · данные NHL",
+            font=small, fill=SOFT)
     tag = "Культура хоккея"
     tg = font("Oswald.ttf", 34, "SemiBold")
     dr.text((W - PAD - dr.textlength(tag, font=tg), fy + 20), tag, font=tg, fill=INK)

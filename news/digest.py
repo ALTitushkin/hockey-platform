@@ -1,4 +1,4 @@
-"""Шаблон поста «Ночь наших»: утренний дайджест по матчам НХЛ с участием россиян и белорусов.
+"""Шаблоны утренних постов: «Ночь наших» (россияне и белорусы в НХЛ) и «Ночь в НХЛ» (вся лига).
 
 Текст собирается только из данных. Фамилии — только из реестра, в именительном падеже
 (склонять фамилии шаблоном — верный способ ошибиться). Рядом с текстом возвращаются
@@ -182,6 +182,54 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
     if idle:
         blocks.append("<blockquote expandable>Без очков: " + ", ".join(idle) + "</blockquote>")
     blocks.append(f"🌙 #НочьНаших · {d} {MONTHS[m - 1]}")
+    return "\n\n".join(blocks), facts
+
+
+def render_league(reports: list[GameReport], players: dict, teams: dict, msk_date: str,
+                  highlights: list | None = None, stars: int = 5) -> tuple[str, dict]:
+    """«Ночь в НХЛ»: вся лига. Счёт всех матчей — на карточке, в подписи — события ночи и звёзды по очкам.
+    players — только игроки с русским именем (names.league_players): кого нет, того нет и в посте."""
+    _, m, d = (int(x) for x in msk_date.split("-"))
+    facts = {"numbers": {d}, "pids": set(), "teams": set()}
+    if not reports:
+        return "", facts
+    skaters = [s for r in reports for s in r.skaters if str(s.pid) in players]
+    goalies = [g for r in reports for g in r.goalies if str(g.pid) in players]
+    names = display_names([GameReport(0, "", "", 0, 0, "REG", skaters, goalies)], players)
+    team_of = {ln.pid: teams[ln.team] for ln in skaters + goalies}
+    for r in reports:
+        facts["teams"] |= {teams[r.home], teams[r.away]}
+        facts["numbers"] |= {r.home_score, r.away_score}
+
+    blocks, rest = [], [(pid, evs) for pid, evs in highlights or [] if str(pid) in players]
+    if rest:
+        pid, evs = rest.pop(0)
+        facts["pids"].add(pid)
+        facts["numbers"] |= evs[0].numbers
+        blocks.append(f"{icon(evs[0].text)} <b>{names[pid]} — {evs[0].text}</b> · {team_of[pid]}")
+        if evs[1:]:
+            rest.insert(0, (pid, evs[1:]))
+    else:
+        blocks.append(f"🏒 <b>Ночь в НХЛ · {d} {MONTHS[m - 1]}</b>")
+    if rest:
+        lines = ["⭐ <b>Ещё главное</b>"]
+        for pid, evs in rest:
+            facts["pids"].add(pid)
+            for e in evs:
+                facts["numbers"] |= e.numbers
+            lines.append(f"{icon(evs[0].text)} {names[pid]} — {', '.join(e.text for e in evs)} · {team_of[pid]}")
+        blocks.append("\n".join(lines))
+
+    # звёзды ночи: больше всех очков, от двух; ничья по очкам — больше голов
+    top = sorted((s for s in skaters if s.points >= 2), key=lambda s: (-s.points, -s.goals))
+    if top[:stars]:
+        rows = []
+        for s in top[:stars]:
+            facts["pids"].add(s.pid)
+            facts["numbers"] |= {s.goals, s.assists}
+            rows.append(f"<b>{names[s.pid]}</b> {s.goals}+{s.assists} · {team_of[s.pid]}")
+        blocks.append("📊 <b>Звёзды ночи</b>\n" + "\n".join(rows))
+    blocks.append(f"🏒 #НочьВНХЛ · {d} {MONTHS[m - 1]}")
     return "\n\n".join(blocks), facts
 
 

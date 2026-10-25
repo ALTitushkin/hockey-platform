@@ -227,7 +227,7 @@ def test_service_buttons_and_schedule():
         publish.save_draft("2026-10-25", "Пост", [], "шаблон")
         assert publish.review("2026-10-25", fake_post)[0]
         keys = [b["callback_data"] for b in calls[-1][1]["reply_markup"]["inline_keyboard"][0]]
-        assert keys == ["pub:2026-10-25", "rej:2026-10-25"]
+        assert keys == ["pub:night:2026-10-25", "rej:night:2026-10-25"]
 
         def press(who, data):
             calls.clear()
@@ -245,6 +245,12 @@ def test_service_buttons_and_schedule():
         publish.save_draft("2026-10-27", "Пост", ["выдумка"], "шаблон")
         publish.review("2026-10-27", fake_post)
         assert [b["text"] for b in calls[-1][1]["reply_markup"]["inline_keyboard"][0]] == ["✖️ Отклонить"]
+        # рубрики не путаются: кнопка «Ночи в НХЛ» публикует её черновик, «Ночь наших» той же даты не трогает
+        publish.save_draft("2026-10-28", "Лига", [], "шаблон", kind="league")
+        publish.save_draft("2026-10-28", "Наши", [], "шаблон")
+        assert press(42, "pub:league:2026-10-28").startswith("pub league")
+        assert [b.get("text") for m, b in calls if m == "sendMessage"] == ["Лига"]
+        assert publish.publish("2026-10-28", ["tg"], fake_post)[0]  # «Ночь наших» ещё не выходила
     finally:
         publish.OUT = old_out
         for k in ("NEWS_BOT_TOKEN", "NEWS_CHANNEL", "OWNER_CHAT_ID"):
@@ -259,6 +265,39 @@ def test_service_buttons_and_schedule():
     assert service.due(later, {"next_try": later.timestamp() + 60}, at, dl) is None  # ждём повтора
     noon = datetime(2026, 10, 25, 12, 1, tzinfo=msk)
     assert service.due(noon, {"next_try": noon.timestamp() + 60}, at, dl) == "2026-10-25"  # дедлайн
+
+    # состояние старого формата (одна рубрика) читается как «Ночь наших» — выкат не повторит пост
+    old_state = service.STATE
+    service.STATE = Path(tempfile.mkdtemp()) / "state.json"
+    try:
+        service.STATE.write_text('{"built": "2026-10-25"}', encoding="utf-8")
+        assert service.load_state() == {"night": {"built": "2026-10-25"}}
+    finally:
+        service.STATE = old_state
+
+
+def test_league_names_and_post():
+    from news import names
+    from news.digest import render_league
+    from news.events import Event
+
+    assert names.parse_label("Кучеров, Никита Игоревич (хоккеист)") == ("Никита", "Кучеров")
+    assert names.parse_label("Немчинов Сергей Львович") == ("Сергей", "Немчинов")
+    assert names.parse_label("Энтони Джеймс Эспозито") == ("Энтони", "Эспозито")
+    assert names.parse_label("Майк Ван Рин") == ("Майк", "Ван Рин")
+    assert names.parse_label("Sidney Crosby") is None
+
+    rep = parse_box(BOX, None)  # вся лига: 999 тоже в отчёте
+    assert {s.pid for s in rep.skaters} == {1, 2, 3, 999}
+    league = {**PLAYERS, "999": {"ru": "Коннор Макдэвид", "surname": "Макдэвид", "status": "wikidata"}}
+    hl = [(999, [Event(999, 55, "хет-трик")]), (1, [Event(1, 40, "победный гол")])]
+    text, facts = render_league([rep], league, TEAMS, "2026-10-25", hl)
+    assert text.startswith("🎩 <b>Макдэвид — хет-трик</b> · Вашингтон")
+    assert "<b>Капризов</b> 2+1 · Миннесота" in text and "#НочьВНХЛ · 25 октября" in text
+    assert guard.check(text, facts, league, TEAMS) == []
+    # без русского имени игрока в посте нет — ни в событиях, ни в звёздах
+    text, _ = render_league([rep], PLAYERS, TEAMS, "2026-10-25", hl)
+    assert "999" not in text and "Макдэвид" not in text
 
 
 def test_http_post_survives_network_errors():

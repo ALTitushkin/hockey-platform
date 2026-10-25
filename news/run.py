@@ -1,8 +1,10 @@
 """CLI новостника «Культура хоккея». Сервис публикует сам при чистом гарде (NEWS_AUTO_PUBLISH=1).
 
     python -m news.run night [--date YYYY-MM-DD] [--llm [chain]] [--review]  # «Ночь наших» (МСК)
-    python -m news.run publish [--date YYYY-MM-DD] [--to tg,max]            # черновик → каналы
+    python -m news.run league [--date YYYY-MM-DD] [--review]                 # «Ночь в НХЛ» — вся лига
+    python -m news.run publish [--date YYYY-MM-DD] [--to tg,max] [--kind night|league]  # черновик → каналы
     python -m news.run sync-registry                       # новые наши из НХЛ → реестр со status=new
+    python -m news.run sync-names                          # русские имена всей лиги из Wikidata
     python -m news.run serve                               # сервис: сбор по утрам + кнопки в личке
 
 Черновики и отчёт гарда пишутся в news/out/ (в git не попадает). Секреты — news/.env.
@@ -16,9 +18,9 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, nhl, publish, service
+from news import events, guard, names, nhl, publish, service
 from news.card import render_card
-from news.digest import render_caption, render_night
+from news.digest import render_caption, render_league, render_night
 from news.llm import lead
 
 ROOT = Path(__file__).parent
@@ -81,24 +83,74 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     return "guard" if issues else "ok"
 
 
+def build_league(msk: str, review: bool, last_try: bool = True) -> str:
+    """«Ночь в НХЛ»: все матчи, события всей лиги. Без вводной от модели — промпт под лигу ещё не прогнан
+    через eval. В посте только игроки с русским именем (наш реестр или Wikidata)."""
+    reg, teams = load()
+    nhl_date = (date.fromisoformat(msk) - timedelta(days=1)).isoformat()
+    if not last_try and nhl.pending_games(nhl_date):
+        return "pending"
+    reports = nhl.collect_night(nhl_date, None)
+    if not reports:
+        print(f"{msk}: в НХЛ матчей не было ({nhl_date}) — поста нет")
+        return "nogames"
+    pids = {ln.pid for r in reports for ln in r.skaters + r.goalies}
+    players = names.league_players(pids, reg["players"])
+    try:
+        found = [e for e in events.detect(reports, events.context(reports)) if str(e.pid) in players]
+        highlights = events.headline(found, limit=5)
+    except RuntimeError as e:
+        print(f"  ↳ события не собраны: {e}")
+        highlights = []
+    text, facts = render_league(reports, players, teams, msk, highlights)
+    issues = guard.check(text, facts, players, teams)
+    card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_league.png", highlights, league=True)
+    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league")
+    print(text, "\n")
+    print(f"— матчей: {len(reports)} · с русским именем {len(players)} из {len(pids)} · "
+          f"гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
+    if review and not issues and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
+        ok, info = publish.auto_publish(msk, kind="league")
+        print(f"— автопубликация: {'ок' if ok else 'ошибка'} — {info}")
+    elif review:
+        ok, info = publish.review(msk, kind="league")
+        print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
+    return "guard" if issues else "ok"
+
+
+def cmd_league(args) -> int:
+    msk = args.date or datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
+    return 1 if build_league(msk, args.review) == "guard" else 0
+
+
+def cmd_sync_names(_args) -> int:
+    print(f"Русских имён из Wikidata: {names.sync()} → {names.FILE}")
+    return 0
+
+
 def cmd_night(args) -> int:
     msk = args.date or datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
     return 1 if build_night(msk, args.llm, args.review) == "guard" else 0
 
 
 def cmd_serve(_args) -> int:
-    def build(msk: str, last_try: bool) -> str:
+    # гард не чист — черновик всё равно у владельца (без кнопки «Опубликовать»), день закрыт
+    def night(msk: str, last_try: bool) -> str:
         result = build_night(msk, "", True, last_try)
-        # гард не чист — черновик всё равно у владельца (без кнопки «Опубликовать»), день закрыт
         return "ok" if result == "guard" else result
 
-    service.run_forever(build)
+    def league(msk: str, last_try: bool) -> str:
+        result = build_league(msk, True, last_try)
+        return "ok" if result == "guard" else result
+
+    service.run_forever([("league", "NEWS_LEAGUE_AT", "09:00", league),
+                         ("night", "NEWS_REVIEW_AT", "09:30", night)])
     return 0
 
 
 def cmd_publish(args) -> int:
     msk = args.date or datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
-    ok, report = publish.publish(msk, args.to.split(","))
+    ok, report = publish.publish(msk, args.to.split(","), kind=args.kind)
     print("\n".join(report))
     return 0 if ok else 1
 
@@ -130,11 +182,17 @@ def main() -> int:
     p = sub.add_parser("publish")
     p.add_argument("--date", help="дата черновика по МСК, по умолчанию сегодня")
     p.add_argument("--to", default="tg,max", help="куда: tg, max или оба через запятую")
+    p.add_argument("--kind", default="night", choices=["night", "league"], help="рубрика")
+    lg = sub.add_parser("league")
+    lg.add_argument("--date", help="дата поста по МСК, по умолчанию сегодня")
+    lg.add_argument("--review", action="store_true", help="опубликовать (автопубликация) или в личку владельцу")
     sub.add_parser("sync-registry")
+    sub.add_parser("sync-names")
     sub.add_parser("serve", help="сервис: утренний сбор + кнопки «Опубликовать/Отклонить» в личке")
     args = ap.parse_args()
     publish.load_env()
-    cmds = {"night": cmd_night, "publish": cmd_publish, "sync-registry": cmd_sync, "serve": cmd_serve}
+    cmds = {"night": cmd_night, "league": cmd_league, "publish": cmd_publish, "sync-registry": cmd_sync,
+            "sync-names": cmd_sync_names, "serve": cmd_serve}
     return cmds[args.cmd](args)
 
 
