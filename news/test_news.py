@@ -67,8 +67,9 @@ def test_caption():
     assert blocks[0] == "🚨 <b>Капризов — победный гол в овертайме</b>"  # заголовок-новость
     assert blocks[1] == "Капризов вытащил Миннесоту"
     assert blocks[2] == "⭐ <b>Ещё главное</b>\n✨ И. Протас — первый гол в НХЛ"
-    assert "Капризов (Миннесота) — <b>2+1</b>" in blocks[3]
-    assert "🥅 Шестёркин (Миннесота) — 30 из 33, победа" in blocks[3]
+    assert blocks[3] == "📊 <b>Очки наших</b>\n<b>Капризов</b> 2+1 · Миннесота"
+    assert blocks[4] == "<b>И. Протас</b> 1+0 · Вашингтон"  # группа «1 очко» — через пустую строку
+    assert blocks[5] == "🥅 <b>Шестёркин</b> 30 из 33 · Миннесота, победа"
     assert blocks[-1] == "🌙 #НочьНаших · 24 октября"
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
     short, _ = render_caption([rep], PLAYERS, TEAMS, "2026-10-24", with_teams=False)

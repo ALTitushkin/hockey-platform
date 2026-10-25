@@ -153,26 +153,32 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
             lines.append(f"{icon(evs[0].text)} {names[pid]} — {', '.join(e.text for e in evs)}")
         blocks.append("\n".join(lines))
 
-    def who(pid: int) -> str:
-        return f"{names[pid]} ({team_of[pid]})" if with_teams else names[pid]
+    # Без меток в строках: опора для глаза — фамилия жирным; группы «2+ очка» и «1 очко» — через
+    # пустую строку. Так строки не сливаются и пост не пестрит (выбор владельца 25.10.2026).
+    def club(pid: int) -> str:
+        return f" · {team_of[pid]}" if with_teams else ""
 
     scorers = sorted((s for r in reports for s in r.skaters), key=lambda s: (-s.points, -s.goals))
-    lines = ["📊 <b>Очки наших</b>"]
+    groups: dict[bool, list[str]] = {True: [], False: []}
     idle = []
     for s in scorers:
         facts["pids"].add(s.pid)
         facts["numbers"] |= {s.goals, s.assists, s.sog}
         if s.points:
-            lines.append(f"{who(s.pid)} — <b>{s.goals}+{s.assists}</b>")
+            groups[s.points >= 2].append(f"<b>{names[s.pid]}</b> {s.goals}+{s.assists}{club(s.pid)}")
         else:
             idle.append(names[s.pid])
+    keepers = []
     for r in reports:
         for g in r.goalies:
             facts["pids"].add(g.pid)
             facts["numbers"] |= {g.saves, g.shots}
             word = (DECISION_SO if r.last_period == "SO" else {}).get(g.decision) or DECISION.get(g.decision)
-            lines.append(f"🥅 {who(g.pid)} — {g.saves} из {g.shots}" + (f", {word}" if word else ""))
-    blocks.append("\n".join(lines))
+            result = f", {word}" if word else ""
+            keepers.append(f"🥅 <b>{names[g.pid]}</b> {g.saves} из {g.shots}{club(g.pid)}{result}")
+    parts = ["\n".join(x) for x in (groups[True], groups[False], keepers) if x]
+    if parts:
+        blocks.append("📊 <b>Очки наших</b>\n" + "\n\n".join(parts))
     if idle:
         blocks.append("<blockquote expandable>Без очков: " + ", ".join(idle) + "</blockquote>")
     blocks.append(f"🌙 #НочьНаших · {d} {MONTHS[m - 1]}")
