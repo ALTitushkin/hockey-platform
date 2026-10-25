@@ -48,6 +48,8 @@ KINDS = {
     "recall": ("⬆️", "#Вызовы", True),
     "assign": ("⬇️", "#Вызовы", True),
 }
+# виды, где герой может оказаться новым нашим (подписали, обменяли, вызвали) — проверяем родину
+DISCOVER = {"signing", "trade", "claim", "recall", "assign", "return"}
 LABELS = {"trade": "ОБМЕН", "signing": "КОНТРАКТ", "injury": "ТРАВМА", "injury_minor": "ТРАВМА",
           "claim": "ВЕЙВЕРЫ", "return": "ВОЗВРАЩЕНИЕ", "recall": "ВЫЗОВ", "assign": "В ФАРМ"}
 # порядок важен: «activate … from injured reserve» — возвращение, а не травма
@@ -326,14 +328,27 @@ def ours_by_name(state: dict, today: str, nationals: Callable[[], list[dict]]) -
 
 def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: Callable[[set, dict], dict],
             write: Callable[[str], str | None], nationals: Callable[[], list[dict]],
-            deliver: Callable[[str, str], str], notify: Callable[[str], None]) -> list[str]:
+            deliver: Callable[[str, str], str], notify: Callable[[str], None],
+            discover: Callable[[set[int]], tuple[list[str], dict]] | None = None) -> list[str]:
     """Один проход: → строки для лога. write(промпт, гард) → (текст, кто написал, журнал),
-    deliver(дата, рубрика) → итог отправки владельцу/в канал, notify(текст) — владельцу о сбое."""
+    deliver(дата, рубрика) → итог отправки владельцу/в канал, notify(текст) — владельцу о сбое,
+    discover(NHL ID) → новые наши среди героев подписаний/обменов/вызовов (registry.from_story)."""
     state = load_state(now)
     msk = now.date().isoformat()
-    ours = {int(p) for p, r in registry.items() if r.get("ru")}
     items = [s for it in fetch(FEED).get("items", []) if (s := parse_item(it))]
     log = []
+    if discover:  # каждого незнакомого героя проверяем один раз: 1 запрос карточки на игрока
+        checked = set(state.get("checked", []))
+        fresh = {p for s in items if s.eid not in state["seen"] and s.kind in DISCOVER for p in s.pids}
+        fresh -= {int(k) for k in registry} | checked
+        if fresh:
+            lines, records = discover(fresh)
+            state["checked"] = sorted(checked | fresh)[-3000:]
+            registry.update({k: v for k, v in records.items() if v.get("ru")})
+            for line in lines:
+                notify(f"Реестр наших: {line}")
+            log += [f"реестр: {line}" for line in lines]
+    ours = {int(p) for p, r in registry.items() if r.get("ru")}
     for s in select(items, state, now, ours, ours_by_name(state, msk, nationals)):
         state["seen"][s.eid] = now.isoformat()  # до работы: упадёт посередине — повторять не будем
         try:

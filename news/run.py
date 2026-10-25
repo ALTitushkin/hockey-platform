@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, injuries, intrigue, levels, names, nhl, publish, service, stories
+from news import events, guard, injuries, intrigue, levels, names, nhl, publish, registry, service, stories
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
 from news.llm import ask, lead
@@ -30,7 +30,24 @@ SEASON = "20262027"
 
 
 def load():
-    return json.loads(PLAYERS.read_text(encoding="utf-8")), json.loads(TEAMS.read_text(encoding="utf-8"))
+    """Реестр наших (с изменениями сервера — registry.load) и русские названия клубов."""
+    return registry.load(), json.loads(TEAMS.read_text(encoding="utf-8"))
+
+
+def wiki_names() -> dict[str, str]:
+    return json.loads(names.FILE.read_text(encoding="utf-8")) if names.FILE.exists() else {}
+
+
+def audit_registry(msk: str, _last_try: bool) -> str:
+    """Утренняя сверка реестра с составами НХЛ; изменения — владельцу одним сообщением."""
+    _, teams = load()
+    report = registry.audit(nhl.fetch_json, sorted(teams), lambda: nhl.fetch_nationals(SEASON), wiki_names(), msk)
+    if report:
+        publish.tg_call("sendMessage", {"chat_id": os.environ.get("OWNER_CHAT_ID", ""),
+                                        "text": "👥 Реестр наших — изменения:\n" + "\n".join(report)})
+    for line in report:
+        print(f"  ↳ {line}", flush=True)
+    return "ok"
 
 
 def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True) -> str:
@@ -267,7 +284,7 @@ def run_stories(now: datetime) -> list[str]:
     """Проход по ленте NHL.com. Черновики владельцу, пока не включена NEWS_STORIES_AUTO=1:
     рубрика новая, гард пересказа ещё не обкатан на живых новостях."""
     reg, teams = load()
-    registry = {k: v for k, v in reg["players"].items() if v.get("ru")}
+    ours = {k: v for k, v in reg["players"].items() if v.get("ru")}
     owner = os.environ.get("OWNER_CHAT_ID", "")
 
     def write(prompt, accept):
@@ -284,8 +301,11 @@ def run_stories(now: datetime) -> list[str]:
     def notify(text: str) -> None:
         publish.tg_call("sendMessage", {"chat_id": owner, "text": text, "link_preview_options": {"is_disabled": True}})
 
-    return stories.process(now, nhl.fetch_json, registry, teams, names.league_players, write,
-                           lambda: nhl.fetch_nationals(SEASON), deliver, notify)
+    def discover(pids: set[int]):
+        return registry.from_story(pids, nhl.fetch_json, wiki_names(), now.date().isoformat())
+
+    return stories.process(now, nhl.fetch_json, ours, teams, names.league_players, write,
+                           lambda: nhl.fetch_nationals(SEASON), deliver, notify, discover)
 
 
 def cmd_stories(args) -> int:
@@ -331,12 +351,26 @@ def cmd_serve(_args) -> int:
         dates = [(now - timedelta(days=k)).date().isoformat() for k in (0, 1)]
         return [f"перепроверка {msk}: {r}" for msk in dates if (r := refresh_tonight(msk, now))]
 
-    service.run_forever([("league", "NEWS_LEAGUE_AT", "09:00", league),
+    chat_levels, owner = discussion_levels(), os.environ.get("OWNER_CHAT_ID", "")
+
+    def on_message(upd: dict) -> str | None:
+        """Личка владельца — команды реестра (/name), чат обсуждений — уровни."""
+        msg = upd.get("message") or {}
+        if owner and str(msg.get("chat", {}).get("id")) == owner:
+            reply = registry.owner_command(msg.get("text") or "")
+            if reply:
+                publish.tg_call("sendMessage", {"chat_id": owner, "text": reply})
+                return f"владелец: {msg.get('text')} → {reply}"
+            return None
+        return chat_levels(upd) if chat_levels else None
+
+    service.run_forever([("registry", "NEWS_REGISTRY_AT", "08:00", audit_registry),
+                         ("league", "NEWS_LEAGUE_AT", "09:00", league),
                          ("night", "NEWS_REVIEW_AT", "09:30", night),
                          ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)],
                         ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck),
                                (int(os.environ.get("NEWS_STORIES_MIN", "15")) * 60, run_stories)],
-                        chat=discussion_levels())
+                        chat=on_message)
     return 0
 
 
@@ -384,12 +418,14 @@ def main() -> int:
     st = sub.add_parser("stories", help="⚡ инфоповоды из ленты NHL.com → черновики владельцу")
     st.add_argument("--since", type=int, help="взять новости за последние N часов (сбрасывает «уже видел»)")
     sub.add_parser("sync-registry")
+    sub.add_parser("audit-registry", help="сверить реестр наших с составами НХЛ (как утром в сервисе)")
     sub.add_parser("sync-names")
     sub.add_parser("serve", help="сервис: утренний сбор + кнопки «Опубликовать/Отклонить» в личке")
     args = ap.parse_args()
     publish.load_env()
     cmds = {"night": cmd_night, "league": cmd_league, "tonight": cmd_tonight, "publish": cmd_publish,
-            "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve, "stories": cmd_stories}
+            "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve, "stories": cmd_stories,
+            "audit-registry": lambda _a: 0 if audit_registry(datetime.now(MSK).date().isoformat(), True) else 1}
     return cmds[args.cmd](args)
 
 

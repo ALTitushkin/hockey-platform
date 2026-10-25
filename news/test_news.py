@@ -619,6 +619,59 @@ def test_stories():
     assert publish.title("story-nhl") == "«Инфоповод»" and publish.title("night") == "«Ночь наших»"
 
 
+def test_registry():
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from news import publish, registry
+
+    base = Path(tempfile.mkdtemp()) / "players.json"
+    base.write_text(json.dumps({"_meta": {}, "players": {
+        "8000001": {"ru": "Игорь Шестёркин", "surname": "Шестёркин", "country": "RUS", "status": "confirmed"},
+        "8000002": {"ru": "Иван Уехавший", "surname": "Уехавший", "country": "RUS", "status": "confirmed"},
+    }}), encoding="utf-8")
+    registry.BASE, publish.OUT = base, Path(tempfile.mkdtemp())
+    p = lambda pid, first, last, c="RUS": {"id": pid, "firstName": {"default": first},  # noqa: E731
+                                          "lastName": {"default": last}, "birthCountry": c}
+    rosters = {"NYR": {"goalies": [p(8000001, "Igor", "Shesterkin")], "forwards": [p(9, "Joe", "Canadian", "CAN")]},
+               "CAR": {"defensemen": [p(8000003, "Alexander", "Nikishin")]}}
+    landing = {"8000002": {}}  # клуба НХЛ нет — уехал
+
+    def fetch(url):
+        if "/roster/" in url:
+            return rosters[url.split("/")[-2]]
+        return landing[url.split("/")[-2]]
+
+    wiki = {"8000003": "Александр Никишин"}
+    report = registry.audit(fetch, ["NYR", "CAR"], lambda: [], wiki, "2026-10-26")
+    assert report == ["➕ Александр Никишин (CAR)", "➖ Иван Уехавший: вне НХЛ (был без клуба)"]
+    reg = registry.load()["players"]
+    assert reg["8000003"]["surname"] == "Никишин" and reg["8000003"]["status"] == "wikidata"
+    assert reg["8000001"]["team"] == "NYR" and reg["8000002"]["team"] is None
+    assert reg["8000002"]["ru"] == "Иван Уехавший"  # запись не удаляем — вдруг вернётся
+
+    assert registry.audit(fetch, ["NYR", "CAR"], lambda: [], wiki, "2026-10-27") == []  # ничего не менялось
+    rosters["NYR"]["goalies"], rosters["CAR"]["goalies"] = [], [p(8000001, "Igor", "Shesterkin")]
+    assert registry.audit(fetch, ["NYR", "CAR"], lambda: [], wiki, "2026-10-28") == ["🔁 Игорь Шестёркин: NYR → CAR"]
+    assert registry.audit(lambda url: (_ for _ in ()).throw(RuntimeError("нет сети")), ["NYR"], lambda: [], wiki,
+                          "2026-10-29") == []  # API лёг — никого «вне НХЛ» не объявляем
+
+    landing["8000004"] = {"birthCountry": "BLR", "firstName": {"default": "New"}, "lastName": {"default": "Guy"},
+                          "currentTeamAbbrev": "SEA"}
+    landing["8000005"] = {"birthCountry": "CAN"}
+    lines, records = registry.from_story({8000004, 8000005, 8000001}, fetch, {}, "2026-10-29")
+    assert lines == ["➕ New Guy (SEA) — из инфоповода — нет русского имени: /name 8000004 Имя Фамилия"]
+    assert set(records) == {"8000004"} and records["8000004"]["ru"] is None
+    assert "8000004" in registry.load()["players"]
+
+    assert registry.owner_command("привет") is None
+    assert registry.owner_command("/name 8000004 new guy").startswith("Формат")
+    assert registry.owner_command("/name 8000004 Новый Парень").startswith("✅")
+    rec = registry.load()["players"]["8000004"]
+    assert (rec["ru"], rec["surname"], rec["status"]) == ("Новый Парень", "Парень", "confirmed")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in dict(globals()).items() if k.startswith("test_")]
     for t in tests:
