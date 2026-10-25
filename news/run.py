@@ -268,7 +268,8 @@ def discussion_levels():
         print("уровни: чат обсуждений не найден — выключены", flush=True)
         return None
     print(f"уровни: чат обсуждений {chat_id}", flush=True)
-    return levels.Levels(chat_id).on_update
+    owner = int(os.environ.get("OWNER_CHAT_ID") or 0)
+    return levels.Levels(chat_id, skip={owner}).on_update
 
 
 def cmd_serve(_args) -> int:

@@ -33,8 +33,9 @@ def level(points: int) -> tuple[int, str, str] | None:
 
 
 class Levels:
-    def __init__(self, chat_id: int, call=publish.tg_call, path=FILE):
-        self.chat, self.call, self.path = chat_id, call, path
+    def __init__(self, chat_id: int, call=publish.tg_call, path=FILE, skip: set[int] = frozenset()):
+        # skip — владелец: у него должность в клиенте («Главный тренер»), тег бот ему не ставит
+        self.chat, self.call, self.path, self.skip = chat_id, call, path, set(skip)
         self.points: dict[str, int] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
         self.authors: OrderedDict[int, dict] = OrderedDict()  # message_id → автор (id, имя)
         self.voted: set[tuple[int, int]] = set()  # (message_id, кто поставил) — одна реакция = один раз
@@ -61,7 +62,7 @@ class Levels:
         """Сообщение в чате. Автопересылка из канала, сообщения от имени канала и ботов — мимо."""
         user = msg.get("from") or {}
         if msg["chat"]["id"] != self.chat or msg.get("is_automatic_forward") or msg.get("sender_chat") \
-                or not user or user.get("is_bot"):
+                or not user or user.get("is_bot") or user["id"] in self.skip:
             return None
         self.authors[msg["message_id"]] = {"id": user["id"], "first_name": user.get("first_name", "")}
         if len(self.authors) > MSG_MEMORY:

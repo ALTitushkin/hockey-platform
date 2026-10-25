@@ -489,6 +489,9 @@ def test_levels():
     lv.on_update({"message": {"message_id": 51, "chat": {"id": -100}, "from": ann, "text": "/level"}})
     assert calls[-1][1]["text"] == "🌾 «Фарм» · 12 баллов · до «Дебютант» — 38"
     assert levels.Levels(-100, lambda m, b: {}, lv.path).points == {"1": 12}  # пережило рестарт
+    own = levels.Levels(-100, lambda m, b: {}, Path(tempfile.mkdtemp()) / "o.json", skip={1})
+    own.on_update(msg(60, ann))
+    assert own.points == {}  # владельцу баллы не идут
     assert levels.level(9) is None and levels.level(1000)[1] == "Капитан"
     assert all(len(name) <= 16 for _, name, _ in levels.LEVELS)  # лимит тега Telegram
 
