@@ -27,7 +27,12 @@ OUT = ROOT / "out"
 TG_API = "https://api.telegram.org"
 MAX_API = "https://platform-api2.max.ru"
 CAPTION_LIMIT = 1024
-TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»", "tonight": "«Сегодня ночью»"}
+TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»", "tonight": "«Сегодня ночью»", "story": "«Инфоповод»"}
+
+
+def title(kind: str) -> str:
+    """Название рубрики; у инфоповодов рубрика своя на каждую новость: «story-<id>»."""
+    return TITLES.get(kind) or TITLES.get(kind.split("-")[0], kind)
 
 Post = Callable[..., dict]
 
@@ -140,7 +145,7 @@ def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
 
 def control_text(d: dict, kind: str = "night") -> str:
     guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + html.escape("; ".join(d["issues"]))
-    return f"📝 <b>Черновик {TITLES.get(kind, kind)} {d['date']}</b> выше\n{d['variant']} · {guard_line}"
+    return f"📝 <b>Черновик {title(kind)} {d['date']}</b> выше\n{html.escape(d['variant'])} · {guard_line}"
 
 
 def review(msk: str, post: Post = http_post, kind: str = "night") -> tuple[bool, str]:
@@ -163,13 +168,13 @@ def auto_publish(msk: str, post: Post = http_post, kind: str = "night") -> tuple
     """Автопубликация (NEWS_AUTO_PUBLISH=1): чистый черновик сразу в каналы, владельцу — отчёт.
     Те же проверки, что у кнопки: гард, отказ, дубль — внутри publish()."""
     ok, report = publish(msk, ["tg", "max"], post, kind)
-    title = f"{TITLES.get(kind, kind)} {msk}"
+    name = f"{title(kind)} {msk}"
     if not any(": ок —" in line for line in report):  # ничего нового не ушло: уже было в канале или ошибка
         if ok:
             return ok, "; ".join(report)  # повтор той же даты — владельцу писать не о чем
-        note = f"⚠️ <b>{title}</b>: автопубликация не прошла"
+        note = f"⚠️ <b>{name}</b>: автопубликация не прошла"
     else:
-        note = f"🤖 <b>{title}</b> вышло автоматически" if ok else f"⚠️ <b>{title}</b>: ушло не везде"
+        note = f"🤖 <b>{name}</b> вышло автоматически" if ok else f"⚠️ <b>{name}</b>: ушло не везде"
     note += "\n" + html.escape("\n".join(report))
     tg_call("sendMessage", {"chat_id": os.environ.get("OWNER_CHAT_ID", ""), "text": note, "parse_mode": "HTML"}, post)
     return ok, "; ".join(report)

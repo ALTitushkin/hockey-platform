@@ -18,10 +18,10 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, injuries, intrigue, levels, names, nhl, publish, service
+from news import events, guard, injuries, intrigue, levels, names, nhl, publish, service, stories
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
-from news.llm import lead
+from news.llm import ask, lead
 
 ROOT = Path(__file__).parent
 PLAYERS = ROOT / "data" / "players.json"
@@ -263,6 +263,43 @@ def cmd_night(args) -> int:
     return 1 if build_night(msk, args.llm, args.review) == "guard" else 0
 
 
+def run_stories(now: datetime) -> list[str]:
+    """Проход по ленте NHL.com. Черновики владельцу, пока не включена NEWS_STORIES_AUTO=1:
+    рубрика новая, гард пересказа ещё не обкатан на живых новостях."""
+    reg, teams = load()
+    registry = {k: v for k, v in reg["players"].items() if v.get("ru")}
+    owner = os.environ.get("OWNER_CHAT_ID", "")
+
+    def write(prompt, accept):
+        return ask(prompt, accept, stories.clean)
+
+    def deliver(msk: str, kind: str) -> str:
+        d = json.loads(publish.draft_path(msk, kind).read_text(encoding="utf-8"))
+        if os.environ.get("NEWS_STORIES_AUTO") == "1" and d["data"].get("auto"):
+            ok, info = publish.auto_publish(msk, kind=kind)
+        else:
+            ok, info = publish.review(msk, kind=kind)
+        return f"{'ок' if ok else 'ошибка'} — {info}"
+
+    def notify(text: str) -> None:
+        publish.tg_call("sendMessage", {"chat_id": owner, "text": text, "link_preview_options": {"is_disabled": True}})
+
+    return stories.process(now, nhl.fetch_json, registry, teams, names.league_players, write,
+                           lambda: nhl.fetch_nationals(SEASON), deliver, notify)
+
+
+def cmd_stories(args) -> int:
+    now = datetime.now(MSK)
+    if args.since:  # ручной прогон: взять новости за последние N часов, даже если сервис их уже видел
+        state = stories.load_state(now)
+        state["since"] = (now - timedelta(hours=args.since)).isoformat()
+        state["seen"] = {}
+        stories.save_state(state)
+    for line in run_stories(now):
+        print(line)
+    return 0
+
+
 def discussion_levels():
     """Уровни в чате обсуждений канала; чат не привязан или Telegram не ответил — без уровней."""
     chat_id = publish.tg_call("getChat", {"chat_id": os.environ.get("NEWS_CHANNEL", "")}) \
@@ -297,7 +334,8 @@ def cmd_serve(_args) -> int:
     service.run_forever([("league", "NEWS_LEAGUE_AT", "09:00", league),
                          ("night", "NEWS_REVIEW_AT", "09:30", night),
                          ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)],
-                        ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck)],
+                        ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck),
+                               (int(os.environ.get("NEWS_STORIES_MIN", "15")) * 60, run_stories)],
                         chat=discussion_levels())
     return 0
 
@@ -343,13 +381,15 @@ def main() -> int:
     tn = sub.add_parser("tonight")
     tn.add_argument("--date", help="дата по МСК, по умолчанию сегодня")
     tn.add_argument("--review", action="store_true", help="опубликовать (автопубликация) или в личку владельцу")
+    st = sub.add_parser("stories", help="⚡ инфоповоды из ленты NHL.com → черновики владельцу")
+    st.add_argument("--since", type=int, help="взять новости за последние N часов (сбрасывает «уже видел»)")
     sub.add_parser("sync-registry")
     sub.add_parser("sync-names")
     sub.add_parser("serve", help="сервис: утренний сбор + кнопки «Опубликовать/Отклонить» в личке")
     args = ap.parse_args()
     publish.load_env()
     cmds = {"night": cmd_night, "league": cmd_league, "tonight": cmd_tonight, "publish": cmd_publish,
-            "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve}
+            "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve, "stories": cmd_stories}
     return cmds[args.cmd](args)
 
 

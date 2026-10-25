@@ -68,7 +68,7 @@ def claude_cli(prompt: str) -> str | None:
     except (subprocess.TimeoutExpired, OSError):
         return None
     # Исчерпанный лимит подписки = ненулевой код выхода: просто уступаем следующему провайдеру.
-    return _clean(res.stdout) if res.returncode == 0 else None
+    return res.stdout if res.returncode == 0 else None
 
 
 _giga_token: dict = {}
@@ -92,7 +92,7 @@ def gigachat(prompt: str) -> str | None:
         os.environ.get("GIGACHAT_API_URL", "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"),
         {"model": os.environ.get("GIGACHAT_MODEL", "GigaChat"), "messages": [{"role": "user", "content": prompt}]},
         {"Authorization": f"Bearer {_giga_token['token']}"}, ctx)
-    return _clean(data["choices"][0]["message"]["content"])
+    return data["choices"][0]["message"]["content"]
 
 
 def yandexgpt(prompt: str) -> str | None:
@@ -106,7 +106,7 @@ def yandexgpt(prompt: str) -> str | None:
          "completionOptions": {"stream": False, "temperature": 0.6, "maxTokens": "200"},
          "messages": [{"role": "user", "text": prompt}]},
         {"Authorization": f"Api-Key {key}", "x-folder-id": folder})
-    return _clean(data["result"]["alternatives"][0]["message"]["text"])
+    return data["result"]["alternatives"][0]["message"]["text"]
 
 
 PROVIDERS: dict[str, Callable[[str], str | None]] = {
@@ -117,6 +117,14 @@ PROVIDERS: dict[str, Callable[[str], str | None]] = {
 def lead(text: str, accept: Callable[[str], list[str]],
          chain: str | None = None, providers: dict | None = None) -> tuple[str | None, str, list[str]]:
     """→ (фраза или None, кто её дал, журнал попыток). `accept` — гард: пустой список = принято."""
+    return ask(lambda name: prompt_for(name, text), accept, _clean, chain, providers)
+
+
+def ask(prompt: Callable[[str], str], accept: Callable[[str], list[str]],
+        clean: Callable[[str | None], str | None], chain: str | None = None,
+        providers: dict | None = None) -> tuple[str | None, str, list[str]]:
+    """Цепочка провайдеров: первый ответ, который прошёл `clean` и гард `accept`.
+    prompt(провайдер) → текст запроса: у сильной и слабых моделей промпты разные."""
     providers = providers or PROVIDERS
     log = []
     for name in (chain or os.environ.get("NEWS_LLM") or DEFAULT_CHAIN).split(","):
@@ -127,7 +135,7 @@ def lead(text: str, accept: Callable[[str], list[str]],
             log.append(f"{name}: неизвестный провайдер")
             continue
         try:
-            phrase = _clean(providers[name](prompt_for(name, text)))
+            phrase = clean(providers[name](prompt(name)))
         except Exception as e:  # сеть, 4xx/5xx, неожиданный ответ — пробуем следующего
             log.append(f"{name}: ошибка {type(e).__name__}: {e}"[:200])
             continue

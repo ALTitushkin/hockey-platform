@@ -506,6 +506,103 @@ def test_levels():
     assert all(len(name) <= 16 for _, name, _ in levels.LEVELS)  # лимит тега Telegram
 
 
+def test_stories():
+    import json
+    import tempfile
+    from datetime import datetime, timedelta, timezone
+    from pathlib import Path
+
+    from news import publish, stories
+
+    k = stories.kind_of
+    assert k("Reimer signs one-year contract with Rangers, returns to NHL at age 38") == "signing"
+    assert k("Hellebuyck Acquired by Devils | RELEASE") == "trade"
+    assert k("RELEASE: Blackhawks Activate Andrew Mangiapane From Injured Reserve") == "return"
+    assert k("NHL Status Report: McCann out 10 weeks for Kraken") == "injury"
+    assert k("Capitals Claim Defenseman Jack St. Ivany") == "claim"
+    assert k("INSIDER: Alex Laferriere Staking His Claim On First Line") is None
+    assert k("Jets get ‘relief’ with Hellebuyck trade, begin new era") is None  # разбор, не событие
+    assert k("Predators Assign Jack Ahcan to Milwaukee (AHL)") == "assign"
+
+    now = datetime(2026, 10, 25, 17, 0, tzinfo=timezone.utc)
+
+    def item(eid, headline, tags, minutes_ago, summary=""):
+        return {"_entityId": eid, "slug": eid, "headline": headline, "summary": summary,
+                "contentDate": (now - timedelta(minutes=minutes_ago)).isoformat(), "selfUrl": f"u/{eid}",
+                "tags": [{"slug": t} for t in tags] + [{"slug": "teamid-3", "extraData": {"abbreviation": "NYR"}}]}
+
+    assert stories.parse_item(item("x", "INSIDER: Reimer signs", ["lak-insider"], 5)) is None
+    assert stories.parse_item(item("x", "Rangers recap: Reimer signs", ["game-recap"], 5)) is None
+    team = stories.parse_item(item("pr", "Rangers Agree to Terms with James Reimer", ["press-release"], 40))
+    nhl = stories.parse_item(item("nhl", "Reimer signs one-year contract with Rangers",
+                                  ["nhl-created", "playerid-8473503"], 20))
+    minor = stories.parse_item(item("ah", "Rangers Assign Some Guy to Hartford", ["playerid-1"], 90))
+    ours = stories.parse_item(item("rc", "Rangers recall Matvei Michkov", ["press-release"], 90))
+    assert stories.same_event(team, nhl)  # клуб без тега игрока, но общий клуб и «Reimer» в заголовке
+    state = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
+    got = stories.select([team, nhl, minor, ours], state, now, {4}, {"Matvei Michkov": 4})
+    assert [s.eid for s in got] == ["rc", "nhl"]  # текст NHL.com вместо релиза; мелочь не нашего — мимо
+    assert "ah" in state["seen"] and "pr" not in state["seen"]
+    state["seen"].update({"rc": now.isoformat(), "nhl": now.isoformat()})
+    assert stories.select([team, nhl], state, now, set(), {}) == [] and "pr" in state["seen"]  # дубль
+
+    alone = stories.parse_item(item("solo", "Rangers Agree to Terms with Someone", ["press-release"], 10))
+    later = stories.select([alone], {"since": state["since"], "seen": {}}, now, set(), {})
+    assert later == []  # релиз клуба ждёт текст NHL.com час
+    assert [s.eid for s in stories.select([alone], {"since": state["since"], "seen": {}},
+                                          now + timedelta(hours=1), set(), {})] == ["solo"]
+
+    names = {"8473503": {"ru": "Джеймс Раймер", "surname": "Раймер"}, "4": PLAYERS["4"]}
+    nhl.text = "He signed a one-year, $850,000 contract. Igor Shesterkin is out for the season."
+    nhl.mentioned = {4}
+    reg = {"4": PLAYERS["4"], "5": PLAYERS["5"]}
+    good = ("Раймер подписал контракт с Рейнджерс\n\nКонтракт на 1 год и 850 тысяч долларов. "
+            "Шестёркин выбыл до конца сезона.")
+    assert stories.check(good, nhl, names, reg, TEAMS, {4, 5}) == ([], [])
+    issues, _ = stories.check(good.replace("850", "900") + " Кучеров рад. Tampa", nhl, names, reg, TEAMS, {4, 5})
+    assert any("числа не из данных: 900" in i for i in issues) and any("Кучеров" in i for i in issues)
+    assert "латиница в тексте" in issues
+    issues, _ = stories.check("Рейнджерс подписали вратаря\n\nНа 1 год.", nhl, names, reg, TEAMS, {4, 5})
+    assert "не назван герой новости: Джеймс Раймер" in issues and "потерян игрок: Игорь Шестёркин" in issues
+    _, notes = stories.check(good + " Его хвалил Дрюри.", nhl, names, reg, TEAMS, {4, 5})
+    assert notes and "Дрюри" in notes[0]  # незнакомое имя — не запрет, а «проверь глазами»
+
+    assert stories.clean("Заголовок: Раймер вернулся\n\nТекст: Он подписал.") == "Раймер вернулся\n\nОн подписал."
+    assert stories.clean("одна строка") is None
+    post = stories.render(nhl, "Раймер вернулся\n\nОн подписал.", "2026-10-25")
+    assert post.startswith("✍️ <b>Раймер вернулся</b>\n\nОн подписал.")
+    assert post.endswith("NHL.com</a>\n⚡ #Контракты · 25 октября") and "nhl.com/news/nhl" in post
+
+    # полный проход: черновик сохранён и отдан на доставку; гард не прошёл — владелец узнаёт о новости
+    out = Path(tempfile.mkdtemp())
+    publish.OUT, stories.STATE = out, out / "stories_state.json"
+    stories.save_state({"since": (now - timedelta(hours=6)).isoformat(), "seen": {}})
+    feed = {"items": [item("nhl", "Reimer signs one-year contract with Rangers", ["nhl-created", "playerid-8473503"],
+                           20)]}
+    tagged = '<forge-entity slug="igor-shesterkin-0000004" code="player">Igor Shesterkin</forge-entity>'
+    full = {"parts": [{"type": "markdown", "content": nhl.text.replace("Igor Shesterkin", tagged)}]}
+    fetch = lambda url: feed if url == stories.FEED else full  # noqa: E731
+    sent, told = [], []
+
+    def run(answer):
+        def write(prompt, accept):
+            assert "Джеймс Раймер" in prompt("claude_cli") and "Игорь Шестёркин" in prompt("claude_cli")
+            text = stories.clean(answer)
+            return (text, "fake", []) if not accept(text) else (None, "шаблон", ["fake: отклонена"])
+        return stories.process(now, fetch, reg, TEAMS, lambda p, r: names, write, lambda: [],
+                               lambda msk, kind: sent.append(kind) or "ок", told.append)
+
+    log = run(good)
+    assert sent == ["story-nhl"] and "(signing): ок" in log[0]
+    d = json.loads(publish.draft_path("2026-10-25", "story-nhl").read_text(encoding="utf-8"))
+    assert d["issues"] == [] and d["data"]["auto"] and "⚡ #Контракты" in d["text"]
+    assert run(good) == []  # второй проход: новость уже видели
+    stories.save_state({"since": (now - timedelta(hours=6)).isoformat(), "seen": {}})
+    run(good.replace("850", "900"))
+    assert told and "Инфоповод без поста" in told[0] and len(sent) == 1
+    assert publish.title("story-nhl") == "«Инфоповод»" and publish.title("night") == "«Ночь наших»"
+
+
 if __name__ == "__main__":
     tests = [v for k, v in dict(globals()).items() if k.startswith("test_")]
     for t in tests:
