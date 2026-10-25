@@ -7,6 +7,7 @@
     "verified": "2026-10-25: все 60 сверены с ru.wikipedia (поиск «Фамилия, Имя хоккеист»), включая ё"
   },
   "players": {
+    "8482100": {"ru": "Александр Никишин", "surname": "Никишин", "country": "RUS", "status": "confirmed", "note": "добавлен 26.10.2026 вручную: в сезоне ещё не играл (переговоры) — bios его не отдавал; написание = Wikidata/ru.wikipedia"},
     "8483490": {"ru": "Павел Минтюков", "surname": "Минтюков", "country": "RUS", "status": "confirmed"},
     "8475200": {"ru": "Дмитрий Орлов", "surname": "Орлов", "country": "RUS", "status": "confirmed"},
     "8481721": {"ru": "Арсений Грицюк", "surname": "Грицюк", "country": "RUS", "status": "confirmed"},

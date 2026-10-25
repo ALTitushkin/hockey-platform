@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 DIR = ROOT / "assets" / "logos"
 URL = "https://assets.nhle.com/logos/nhl/svg/{}_light.svg"
-SIZE = 160
+SIZE = 640  # карточка инфоповода ставит логотип ~300 px после обрезки полей — 160 давало мыло
 
 
 def path(abbrev: str) -> Path:

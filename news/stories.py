@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from news import guard, publish
+from news.card import render_story_card
 from news.digest import MONTHS, plural
 from news.nhl import WEB
 
@@ -47,6 +48,8 @@ KINDS = {
     "recall": ("⬆️", "#Вызовы", True),
     "assign": ("⬇️", "#Вызовы", True),
 }
+LABELS = {"trade": "ОБМЕН", "signing": "КОНТРАКТ", "injury": "ТРАВМА", "injury_minor": "ТРАВМА",
+          "claim": "ВЕЙВЕРЫ", "return": "ВОЗВРАЩЕНИЕ", "recall": "ВЫЗОВ", "assign": "В ФАРМ"}
 # порядок важен: «activate … from injured reserve» — возвращение, а не травма
 RULES = [
     ("return", r"\bactivat\w*|\boff (ir|injured)|\breturns? from\b"),
@@ -98,6 +101,7 @@ class Story:
     url: str = ""
     text: str = ""
     mentioned: set[int] = field(default_factory=set)
+    en: dict[int, str] = field(default_factory=dict)  # упомянутые: имя латиницей из ссылки в тексте
 
     @property
     def link(self) -> str:
@@ -130,10 +134,12 @@ def parse_item(it: dict) -> Story | None:
                  kind, pids, teams, "nhl-created" in slugs, it.get("selfUrl", ""))
 
 
-def body_text(full: dict) -> tuple[str, set[int]]:
-    """Полный текст новости без разметки + все упомянутые игроки (теги forge-entity с NHL ID)."""
+def body_text(full: dict) -> tuple[str, dict[int, str]]:
+    """Полный текст новости без разметки + упомянутые игроки (теги forge-entity с NHL ID):
+    {pid: имя латиницей из slug} — «jared-mccann-8477955» → «Jared Mccann»."""
     md = "\n\n".join(p.get("content", "") for p in full.get("parts", []) if p.get("type") == "markdown")
-    mentioned = {int(x) for x in re.findall(r'slug="[^"]*?-(\d{7})" code="player"', md)}
+    mentioned = {int(pid): name.replace("-", " ").title()
+                 for name, pid in re.findall(r'slug="([^"]*?)-(\d{7})" code="player"', md)}
     plain = re.sub(r"<[^>]+>", "", md)
     plain = re.sub(r"[ \t]+", " ", html.unescape(plain)).strip()
     return plain, mentioned
@@ -246,10 +252,10 @@ def ru_num(x: float, digits: int) -> str:
     return f"{x:.{digits}f}".replace(".", ",")
 
 
-def goalie_lines(s: Story, names: dict, ours: set[int], fetch: Fetch) -> list[str]:
-    """КН и %ОБ вратарей новости — шаблоном из API НХЛ, не из пересказа: герой новости и наши
-    из текста. Сезон — текущий, а если в нём вратарь ещё не играл, последний сыгранный (так отдаёт API)."""
-    lines = []
+def goalie_stats(s: Story, names: dict, ours: set[int], fetch: Fetch) -> list[dict]:
+    """КН и %ОБ вратарей новости — из API НХЛ, не из пересказа: герой новости и наши из текста.
+    Сезон — текущий, а если в нём вратарь ещё не играл, последний сыгранный (так отдаёт API)."""
+    out = []
     for pid in sorted(s.pids | (s.mentioned & ours)):
         rec = names.get(str(pid))
         if not rec:
@@ -264,10 +270,36 @@ def goalie_lines(s: Story, names: dict, ours: set[int], fetch: Fetch) -> list[st
             continue
         season = str(featured.get("season", ""))
         gp = st["gamesPlayed"]
-        lines.append(f"🥅 <b>{html.escape(rec['surname'])}</b> · {season[:4]}/{season[6:]}: "
-                     f"{gp} {plural(gp, ('матч', 'матча', 'матчей'))}, КН {ru_num(st['goalsAgainstAvg'], 2)}, "
-                     f"%ОБ {ru_num(st['savePctg'] * 100, 1)}")
-    return lines
+        out.append({"pid": pid, "surname": rec["surname"], "season": f"{season[:4]}/{season[6:]}",
+                    "games": f"{gp} {plural(gp, ('матч', 'матча', 'матчей'))}",
+                    "gaa": ru_num(st["goalsAgainstAvg"], 2), "sv": ru_num(st["savePctg"] * 100, 1)})
+    return out
+
+
+def goalie_line(g: dict) -> str:
+    return f"🥅 <b>{html.escape(g['surname'])}</b> · {g['season']}: {g['games']}, КН {g['gaa']}, %ОБ {g['sv']}"
+
+
+def hero_of(s: Story, names: dict, ours: set[int]) -> int | None:
+    """Герой карточки: игрок из тегов новости с русским именем, наш — в первую очередь.
+    Тегов нет (сводка травм) — упомянутый в тексте, чья фамилия стоит в заголовке."""
+    known = [p for p in sorted(s.pids) if str(p) in names]
+    if not known:
+        low = s.headline.lower()
+        known = [p for p, en in sorted(s.en.items()) if str(p) in names and en.split()[-1].lower() in low]
+    return next((p for p in known if p in ours), known[0] if known else None)
+
+
+def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], teams_ru: dict,
+         msk: str, path: Path) -> Path:
+    hero = hero_of(s, names, ours)
+    g = next((g for g in goalies if g["pid"] == hero), None)
+    stats = f"{g['season']} · {g['games']} · КН {g['gaa']} · %ОБ {g['sv']}" if g else None
+    # у обмена — оба клуба; у остального — клуб из тегов (первый по алфавиту: тегов обычно один)
+    tagged = sorted(s.teams or teams_in(s.headline))  # нет тегов клуба — клуб из заголовка («…for Kraken»)
+    teams = tagged[:2] if s.kind == "trade" else tagged[:1]
+    return render_story_card(LABELS[s.kind], teams, names[str(hero)]["ru"] if hero else None, hero in ours,
+                             body.partition("\n\n")[0], stats, teams_ru, msk, path)
 
 
 def render(s: Story, body: str, msk: str, stats: list[str] = ()) -> str:
@@ -305,7 +337,8 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
     for s in select(items, state, now, ours, ours_by_name(state, msk, nationals)):
         state["seen"][s.eid] = now.isoformat()  # до работы: упадёт посередине — повторять не будем
         try:
-            s.text, s.mentioned = body_text(fetch(s.url))
+            s.text, s.en = body_text(fetch(s.url))
+            s.mentioned = set(s.en)
         except RuntimeError as e:
             log.append(f"инфоповод {s.slug}: текст не получен ({e})")
             continue
@@ -325,9 +358,14 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             log.append(f"инфоповод {s.slug}: пересказ не прошёл гард — {why[:300]}")
             continue
         variant = f"пересказ {source}" + (f" · 👀 проверь: {'; '.join(notes)}" if notes else "")
-        stats = goalie_lines(s, names, ours, fetch)
-        publish.save_draft(msk, render(s, body, msk, stats), [], variant, kind=kind,
-                           data={"slug": s.slug, "auto": not notes})
+        goalies = goalie_stats(s, names, ours, fetch)
+        try:
+            pic = str(card(s, body, names, ours, goalies, teams_ru, msk, publish.OUT / f"{msk}_{kind}.png"))
+        except Exception as e:  # картинка — украшение: без неё пост всё равно выходит
+            pic = None
+            log.append(f"инфоповод {s.slug}: карточка не собралась ({type(e).__name__}: {e})")
+        publish.save_draft(msk, render(s, body, msk, [goalie_line(g) for g in goalies]), [], variant, pic,
+                           kind=kind, data={"slug": s.slug, "auto": not notes})
         log.append(f"инфоповод {s.slug} ({s.kind}): {deliver(msk, kind)}")
     save_state(state)
     return log

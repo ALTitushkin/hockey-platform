@@ -35,13 +35,17 @@ def fit(draw: ImageDraw.ImageDraw, text: str, f: ImageFont.FreeTypeFont, width: 
     return text.rstrip(" ,·") + "…"
 
 
-def paste_logo(img: Image.Image, abbrev: str, x: int, y: int, box: int) -> int:
-    """Логотип в квадрат box×box с сохранением пропорций → сколько места занял по ширине. Нет файла — 0."""
+def paste_logo(img: Image.Image, abbrev: str, x: int, y: int, box: int, crop: bool = False) -> int:
+    """Логотип в квадрат box×box с сохранением пропорций → сколько места занял по ширине. Нет файла — 0.
+    crop — срезать прозрачные поля (у PNG из CDN знак занимает около половины холста)."""
     src = logos.path(abbrev)
     if not src.exists():
         return 0
     logo = Image.open(src).convert("RGBA")
-    logo.thumbnail((box, box), Image.LANCZOS)
+    if crop and logo.getchannel("A").getbbox():
+        logo = logo.crop(logo.getchannel("A").getbbox())
+    scale = box / max(logo.size)  # крупный логотип на карточке инфоповода — увеличиваем, не только ужимаем
+    logo = logo.resize((max(1, round(logo.width * scale)), max(1, round(logo.height * scale))), Image.LANCZOS)
     img.paste(logo, (x + (box - logo.width) // 2, y + (box - logo.height) // 2), logo)
     return box
 
@@ -123,6 +127,96 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
     fy = h - foot_h + 20
     dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
     dr.text((PAD, fy + 24), "Время московское · данные NHL", font=small, fill=SOFT)
+    tag, tg = "Культура хоккея", font("Oswald.ttf", 34, "SemiBold")
+    dr.text((W - PAD - dr.textlength(tag, font=tg), fy + 20), tag, font=tg, fill=INK)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path, "PNG", optimize=True)
+    return path
+
+
+def wrap(draw: ImageDraw.ImageDraw, text: str, f: ImageFont.FreeTypeFont, width: int, lines: int) -> list[str]:
+    """Перенос по словам в заданную ширину; не влезло в `lines` строк — последняя с многоточием."""
+    out, cur = [], ""
+    for word in text.split():
+        probe = f"{cur} {word}".strip()
+        if draw.textlength(probe, font=f) <= width:
+            cur = probe
+            continue
+        out.append(cur)
+        cur = word
+    out.append(cur)
+    if len(out) > lines:
+        out = out[:lines - 1] + [fit(draw, " ".join(out[lines - 1:]), f, width)]
+    return [ln for ln in out if ln]
+
+
+def render_story_card(label: str, teams_abbr: list[str], hero: str | None, ours: bool, headline: str,
+                      stats: str | None, teams: dict, msk_date: str, path: Path) -> Path:
+    """Инфоповод: вид новости, логотип клуба (у обмена — оба), герой и заголовок; у вратаря — КН и %ОБ.
+    Заголовок — тот же, что в посте (прошёл гард), цифры вратаря — из API НХЛ."""
+    _, m, d = (int(x) for x in msk_date.split("-"))
+    h = 1350
+    img = Image.new("RGB", (W, h), PAPER)
+    dr = ImageDraw.Draw(img)
+    mono, small = font("PTSans-Bold.ttf", 26), font("PTSans-Regular.ttf", 30)
+
+    dr.text((PAD, 58), "КУЛЬТУРА ХОККЕЯ  ·  НХЛ", font=mono, fill=FAINT)
+    dr.text((PAD, 92), label, font=font("Oswald.ttf", 104, "Bold"), fill=INK)
+    date = f"{d} {MONTHS[m - 1]}".upper()
+    df = font("Oswald.ttf", 44, "Medium")
+    dr.text((W - PAD - dr.textlength(date, font=df), 150), date, font=df, fill=BRICK)
+    for dy in (236, 244):
+        dr.line((PAD, dy, W - PAD, dy), fill=INK, width=3)
+
+    # герой и заголовок — на тёмной плашке, как «Главное» в «Ночи наших»; плашка по тексту, у подвала
+    inner = W - 2 * PAD - 80
+    hf, hl, sf = font("Oswald.ttf", 76, "Bold"), font("Oswald.ttf", 50, "Medium"), font("Oswald.ttf", 38, "Medium")
+    hero_lines = wrap(dr, hero.upper(), hf, inner, 2) if hero else []
+    head_lines = wrap(dr, headline, hl, inner, 3)
+    plate = 40 + (64 if ours else 0) + 88 * len(hero_lines) + (14 if hero_lines else 0) + 62 * len(head_lines) \
+        + (66 if stats else 0) + 34
+    bottom = h - 150
+    y = bottom - plate
+    dr.rounded_rectangle((PAD, y, W - PAD, bottom), radius=6, fill=NAVY)
+    x, yy = PAD + 40, y + 40
+    if ours:
+        badge = "НАШ ИГРОК"
+        bw = dr.textlength(badge, font=mono) + 32
+        dr.rounded_rectangle((x, yy, x + bw, yy + 44), radius=4, fill=BRICK)
+        dr.text((x + 16, yy + 7), badge, font=mono, fill="#FFFFFF")
+        yy += 64
+    for ln in hero_lines:
+        dr.text((x, yy - 8), ln, font=hf, fill="#FFFFFF")
+        yy += 88
+    yy += 14 if hero_lines else 0
+    for ln in head_lines:
+        dr.text((x, yy), ln, font=hl, fill="#F2B8A6")
+        yy += 62
+    if stats:
+        dr.text((x, yy + 14), stats, font=sf, fill="#C9D3DF")
+
+    # клубы: логотип крупно по центру свободного места, под ним название; у обмена — два клуба и стрелки
+    shown = [t for t in teams_abbr if t in teams][:2]
+    tf = font("Oswald.ttf", 46, "SemiBold")
+    free_top, free_bottom = 250, y - 20
+    box = min(300 if len(shown) < 2 else 240, free_bottom - free_top - 110)
+    top = free_top + max(0, (free_bottom - free_top - box - 80) // 2)
+    slots = [W // 2] if len(shown) < 2 else [W // 4 + 10, 3 * W // 4 - 10]
+    for cx, abbrev in zip(slots, shown, strict=False):
+        if not paste_logo(img, abbrev, cx - box // 2, top, box, crop=True):
+            dr.rounded_rectangle((cx - box // 2, top, cx + box // 2, top + box), radius=8, outline=LINE, width=3)
+        name = teams[abbrev]
+        dr.text((cx - dr.textlength(name, font=tf) // 2, top + box + 14), name, font=tf, fill=INK)
+    if len(shown) == 2:  # ⇄ рисуем сами: в Oswald нет стрелок
+        cx, cy, half = W // 2, top + box // 2, 54
+        for dy, tip, sign in ((-18, cx + half, 1), (18, cx - half, -1)):
+            dr.line((cx - half, cy + dy, cx + half, cy + dy), fill=BRICK, width=8)
+            dr.polygon([(tip + sign * 6, cy + dy), (tip - sign * 18, cy + dy - 16), (tip - sign * 18, cy + dy + 16)],
+                       fill=BRICK)
+
+    fy = h - 110
+    dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
+    dr.text((PAD, fy + 24), "Источник: NHL.com", font=small, fill=SOFT)
     tag, tg = "Культура хоккея", font("Oswald.ttf", 34, "SemiBold")
     dr.text((W - PAD - dr.textlength(tag, font=tg), fy + 20), tag, font=tg, fill=INK)
     path.parent.mkdir(parents=True, exist_ok=True)

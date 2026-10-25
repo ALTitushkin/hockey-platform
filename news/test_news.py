@@ -579,9 +579,15 @@ def test_stories():
     landing = {"8473503": {"position": "G", "featuredStats": {"season": 20252026, "regularSeason": {"subSeason": {
         "gamesPlayed": 14, "goalsAgainstAvg": 2.421179, "savePctg": 0.885813}}}},
         "4": {"position": "G", "featuredStats": {"season": 20262027, "regularSeason": {"subSeason": {}}}}}
-    lines = stories.goalie_lines(nhl, names, {4}, lambda url: landing[url.split("/")[-2]])
+    goalies = stories.goalie_stats(nhl, names, {4}, lambda url: landing[url.split("/")[-2]])
+    lines = [stories.goalie_line(g) for g in goalies]
     assert lines == ["🥅 <b>Раймер</b> · 2025/26: 14 матчей, КН 2,42, %ОБ 88,6"]  # без матчей в сезоне — без строки
     assert "%ОБ 88,6\n\n🔗" in stories.render(nhl, "З\n\nТ", "2026-10-25", lines)
+    assert stories.hero_of(nhl, names, {4}) == 8473503
+    pic = stories.card(nhl, "Раймер подписал контракт с Рейнджерс\n\nТекст", names, {4}, goalies, TEAMS,
+                       "2026-10-25", Path(tempfile.mkdtemp()) / "c.png")
+    from PIL import Image
+    assert Image.open(pic).size == (1080, 1350)
 
     # полный проход: черновик сохранён и отдан на доставку; гард не прошёл — владелец узнаёт о новости
     out = Path(tempfile.mkdtemp())
