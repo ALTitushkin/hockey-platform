@@ -113,7 +113,11 @@ def block_short(d: dict) -> str:
     doctor = "".join(f"<li>{esc(x)}</li>" for x in d["doctor"])
     top = "".join(f'<li><b>{esc(q["q"])}</b><span class="good">Хороший ответ: {esc(q["good"])}</span></li>'
                   for q in d["questions"] if q.get("top"))
+    role = d["role"]  # первым после тезиса: важнее любых цифр (решение владельца 25.10.2026)
+    points = "".join(f"<li>{esc(x)}</li>" for x in role["points"])
     return (f'<p class="thesis">{esc(d["thesis"])} <a href="#glavnoe">Почему так →</a></p>'
+            f'<section class="note note--role"><h3>{esc(role["title"])}</h3><ul>{points}</ul>'
+            f'<a class="more" href="#rol-roditelya">Подробно →</a>{src_links(role["src"], d["sources"])}</section>'
             f'<div class="ages">{"".join(cards)}</div>'
             f'<div class="aside-row"><section class="note note--alarm"><h3>К врачу, если</h3>'
             f'<ul>{doctor}</ul></section>'

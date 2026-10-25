@@ -51,6 +51,8 @@ h3,h4{font-family:'Oswald',sans-serif;font-weight:600;line-height:1.2;text-wrap:
 .note ul,.note ol{padding-left:1.2em;display:grid;gap:5px;font-size:14.5px;}
 .note--alarm{border-color:var(--brick);}
 .note--alarm h3{color:var(--brick);}
+.note--role{border-color:var(--green);border-width:2px;margin-bottom:16px;}
+.note--role h3{color:var(--green);}
 .short > .note{margin-top:12px;}
 .top-q li b{display:block;}
 .top-q .good{display:block;font-size:13.5px;color:var(--ink-soft);}

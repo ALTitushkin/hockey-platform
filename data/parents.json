@@ -8,6 +8,16 @@
   },
   "disclaimer": "Не медицинская консультация. Болит, особенно долго или повторно, — к врачу.",
   "thesis": "Хоккей — вид спорта поздней специализации. До подросткового возраста ребёнку нужны разные движения, игра и отдых больше, чем часы на льду. Так считают и ФХР, и Hockey Canada, и USA Hockey.",
+  "role": {
+    "title": "Главное — поддержка, а не давление",
+    "points": [
+      "Интерес, а не контроль: «Что понравилось?», «Что получилось?» — вместо разбора ошибок.",
+      "После игры лучше обнять, чем анализировать. Отношение к ребёнку не зависит от счёта.",
+      "Не лезьте в работу тренера: не подсказывайте с трибуны и не обсуждайте тренера при ребёнке. Вопросы — тренеру лично.",
+      "Ваша часть — сон, питание, отдых и вовремя сказать тренеру, что ребёнок устал или заболел."
+    ],
+    "src": ["fhr_parents1", "knight2010", "mnhockey"]
+  },
   "ages": [
     {
       "id": "do-6-let", "label": "До 6", "title": "До 6 лет · знакомство",
@@ -156,6 +166,8 @@
     "jayanthi": {"title": "Jayanthi 2015. Специализация и риск травм", "url": "https://europepmc.org/article/MED/25646361"},
     "emery": {"title": "Emery 2010. Силовые приёмы и травмы у юных хоккеистов", "url": "https://europepmc.org/article/MED/20530780"},
     "black2019": {"title": "Black 2019. Когда элитные хоккеисты специализировались", "url": "https://europepmc.org/article/MED/30289744"},
-    "ford": {"title": "Ford 2011. Критика модели LTAD", "url": "https://europepmc.org/article/MED/21259156"}
+    "ford": {"title": "Ford 2011. Критика модели LTAD", "url": "https://europepmc.org/article/MED/21259156"},
+    "knight2010": {"title": "Knight, Boden, Holt 2010. Чего юные спортсмены ждут от родителей", "url": "https://doi.org/10.1080/10413200.2010.495324"},
+    "mnhockey": {"title": "Minnesota Hockey. The Hockey Parent Challenge", "url": "https://www.minnesotahockey.org/news_article/show/436809-the-hockey-parent-challenge-"}
   }
 }

@@ -5,7 +5,7 @@ sprint: S10, трек A
 research: project/content/research/parents_guide_research.md (разделы 3 и 6)
 title: Гайд для родителей — как строить развитие хоккеиста по возрастам
 meta_desc: Что развивать у юного хоккеиста в 5, 8, 11 и 14 лет, сколько тренировок и игр — это нормально, нужны ли другие виды спорта, можно ли ребёнку силовую и что спросить у тренера. С источниками ФХР, Минспорта, Hockey Canada, USA Hockey и медицинских консенсусов.
-sections: zachem, glavnoe, do-6-let, 7-8-let, 9-12-let, 12-15-let, 16-plus, silovaya, otbor-mesyac-rozhdeniya, vybor-shkoly, sporno, rossiya-kanada-ssha, istochniki
+sections: zachem, glavnoe, rol-roditelya, do-6-let, 7-8-let, 9-12-let, 12-15-let, 16-plus, silovaya, otbor-mesyac-rozhdeniya, vybor-shkoly, sporno, rossiya-kanada-ssha, istochniki
 ---
 
 # Гайд для родителей: как строить развитие хоккеиста по возрастам
@@ -32,15 +32,38 @@ sections: zachem, glavnoe, do-6-let, 7-8-let, 9-12-let, 12-15-let, 16-plus, silo
 
 ## Коротко: главное {#glavnoe}
 
-1. **Хоккей — вид спорта поздней специализации.** Так прямо пишет Hockey Canada: специализация до 10 лет «может навредить» ([HC LTPD, с. 16](https://www.hockeyeasternontario.ca/media/010fq1ry/hc_ltpd_manual.pdf)). Национальная программа ФХР признаёт, что «ранняя специализация в хоккее не всегда гарантирует успешность спортивной карьеры» ([НППХ 2020](https://fhr.ru/upload/iblock/deb/Natsionalnaya-programma_-interaktiv.pdf)).
-2. **До подросткового возраста важнее разносторонность, чем объём хоккея.** Это общая позиция МОК, американских спортивных врачей и всех трёх федераций ([МОК 2015](https://www.sportaus.gov.au/__data/assets/pdf_file/0004/689647/IOC_consensus_statement_on_youth_athletic_development.pdf); [AMSSM 2014](https://excelsiorgroup.co.uk/wp-content/uploads/2015/03/Overuse_Injuries_and_Burnout_in_Youth_Sports___A.2-1-1.pdf)).
-3. **Тренировок должно быть больше, чем игр.** Hockey Canada для 7–8 лет даёт 2–3 тренировки на игру, USA Hockey для 10–12 лет — 70% тренировок и 30% игр ([HC U9](https://hockeycanada.ca/en-ca/hockey-programs/coaching/under-9/associations/seasonal-structure); [USA Hockey](https://portal.usahockey.com/cx/president/hockey-devlopment/recommended_youth_hockey_program_structure.pdf)). В российском стандарте на этапе начальной подготовки (8–10 лет) официальных матчей нет вообще ([ФССП № 782, прил. 4](http://publication.pravo.gov.ru/document/0001202511050026)).
-4. **Отдых — часть подготовки.** Методички ФХР для малышей советуют не меньше двух дней отдыха в неделю и длинный перерыв после сезона ([ФХР, 5 лет](https://fhr.ru/upload/iblock/64a/Prakticheskoe-rukovodstvo-5-let-_-interaktivnaya-_-versiya-20200107.pdf); [ФХР, 6 лет](https://fhr.ru/upload/iblock/708/Prakticheskoe-rukovodstvo-6-let-_-interaktivnaya-_-versiya-20200107.pdf)).
-5. **Боль — повод остановиться.** МОК: ребёнок не должен тренироваться и играть с болью или до полного восстановления после травмы или болезни ([МОК 2015](https://www.sportaus.gov.au/__data/assets/pdf_file/0004/689647/IOC_consensus_statement_on_youth_athletic_development.pdf)).
-6. **Раннему отбору нельзя доверять.** В 6–9 лет он во многом выбирает тех, кто раньше вырос и родился в начале года, а не тех, кто станет лучшим взрослым игроком ([МОК 2015](https://www.sportaus.gov.au/__data/assets/pdf_file/0004/689647/IOC_consensus_statement_on_youth_athletic_development.pdf); [Cobley 2009](https://europepmc.org/article/MED/19290678)).
-7. **Силовая подготовка детям не запрещена**, если её грамотно строят и тренер присматривает ([NSCA 2009](https://www.nsca.com/globalassets/about/position-statements/position_stand_youth_resistance_training---2009.pdf)).
+1. **Ваша главная роль — поддерживать, а не давить, и не подменять тренера.** ФХР советует родителям: «Проявляйте интерес, а не контроль» и «Помните про роли. У вас один игрок. У тренера — двадцать два» ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)). Подробно — [в разделе ниже](#rol-roditelya).
+2. **Хоккей — вид спорта поздней специализации.** Так прямо пишет Hockey Canada: специализация до 10 лет «может навредить» ([HC LTPD, с. 16](https://www.hockeyeasternontario.ca/media/010fq1ry/hc_ltpd_manual.pdf)). Национальная программа ФХР признаёт, что «ранняя специализация в хоккее не всегда гарантирует успешность спортивной карьеры» ([НППХ 2020](https://fhr.ru/upload/iblock/deb/Natsionalnaya-programma_-interaktiv.pdf)).
+3. **До подросткового возраста важнее разносторонность, чем объём хоккея.** Это общая позиция МОК, американских спортивных врачей и всех трёх федераций ([МОК 2015](https://www.sportaus.gov.au/__data/assets/pdf_file/0004/689647/IOC_consensus_statement_on_youth_athletic_development.pdf); [AMSSM 2014](https://excelsiorgroup.co.uk/wp-content/uploads/2015/03/Overuse_Injuries_and_Burnout_in_Youth_Sports___A.2-1-1.pdf)).
+4. **Тренировок должно быть больше, чем игр.** Hockey Canada для 7–8 лет даёт 2–3 тренировки на игру, USA Hockey для 10–12 лет — 70% тренировок и 30% игр ([HC U9](https://hockeycanada.ca/en-ca/hockey-programs/coaching/under-9/associations/seasonal-structure); [USA Hockey](https://portal.usahockey.com/cx/president/hockey-devlopment/recommended_youth_hockey_program_structure.pdf)). В российском стандарте на этапе начальной подготовки (8–10 лет) официальных матчей нет вообще ([ФССП № 782, прил. 4](http://publication.pravo.gov.ru/document/0001202511050026)).
+5. **Отдых — часть подготовки.** Методички ФХР для малышей советуют не меньше двух дней отдыха в неделю и длинный перерыв после сезона ([ФХР, 5 лет](https://fhr.ru/upload/iblock/64a/Prakticheskoe-rukovodstvo-5-let-_-interaktivnaya-_-versiya-20200107.pdf); [ФХР, 6 лет](https://fhr.ru/upload/iblock/708/Prakticheskoe-rukovodstvo-6-let-_-interaktivnaya-_-versiya-20200107.pdf)).
+6. **Боль — повод остановиться.** МОК: ребёнок не должен тренироваться и играть с болью или до полного восстановления после травмы или болезни ([МОК 2015](https://www.sportaus.gov.au/__data/assets/pdf_file/0004/689647/IOC_consensus_statement_on_youth_athletic_development.pdf)).
+7. **Раннему отбору нельзя доверять.** В 6–9 лет он во многом выбирает тех, кто раньше вырос и родился в начале года, а не тех, кто станет лучшим взрослым игроком ([МОК 2015](https://www.sportaus.gov.au/__data/assets/pdf_file/0004/689647/IOC_consensus_statement_on_youth_athletic_development.pdf); [Cobley 2009](https://europepmc.org/article/MED/19290678)).
+8. **Силовая подготовка детям не запрещена**, если её грамотно строят и тренер присматривает ([NSCA 2009](https://www.nsca.com/globalassets/about/position-statements/position_stand_youth_resistance_training---2009.pdf)).
 
 Почти все цифры ниже — ориентиры федераций или данные отдельных исследований, а не законы природы. Где доказательства слабые, мы так и пишем.
+
+---
+
+## Роль родителя: поддержка, а не давление {#rol-roditelya}
+
+Это важнее всех цифр ниже. Ребёнок держится в хоккее, пока ему нравится, а не пока этого хотят взрослые. ФХР пишет родителям прямо: «Ожидания родителей — важны, но не должны становиться главными» и «Если ребёнок не хочет — дайте время» ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)).
+
+### Поддерживать
+
+- **Интерес, а не контроль.** Спрашивайте «Что понравилось?», «Что получилось?». ФХР: «Один искренний разговор значит больше, чем десятки советов после матча» ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)).
+- **После игры — без разбора.** «Молчание после игры — тоже поддержка. Лучше обнять, чем анализировать» ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)). Ваше отношение к ребёнку не зависит от счёта и от его ошибок.
+- **Хвалите за старание, а не за результат.** В исследовании с юными теннисистами 13–14 лет дети просили родителей не давать технических и тактических советов, а говорить про старание и настрой ([Knight, Boden, Holt 2010](https://doi.org/10.1080/10413200.2010.495324)). Это другой вид спорта, но вывод совпадает с советами ФХР.
+
+### Не лезть в работу тренера
+
+- **У тренера своя задача.** ФХР: «У вас один игрок. У тренера — двадцать два. Это — разные задачи» ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)). Не подсказывайте ребёнку с трибуны и не давайте установок, которые расходятся с тренерскими: ребёнок не должен выбирать, кого слушать.
+- **Не обсуждайте тренера при ребёнке.** Детско-юношеская федерация Миннесоты (входит в USA Hockey) советует: не подрывать авторитет тренера при ребёнке, «пусть тренер тренирует», а если есть серьёзный вопрос — спокойно обсудить его с тренером наедине ([Minnesota Hockey](https://www.minnesotahockey.org/news_article/show/436809-the-hockey-parent-challenge-)).
+- **Ваша часть — режим и здоровье.** Сон, питание, отдых, дорога на тренировку и вовремя сказать тренеру, что ребёнок устал или заболел ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)). Вопросы о позиции, звене и игровом времени — к тренеру лично, не к ребёнку.
+
+### Тревожный сигнал
+
+Ребёнок ходит на хоккей «ради родителей», радость ушла. Это повод снизить ожидания, а не добавить тренировок ([ФХР, родителям, гл. 1](https://fhr.ru/news/item/112256/)).
 
 ---
 
@@ -319,6 +342,8 @@ sections: zachem, glavnoe, do-6-let, 7-8-let, 9-12-let, 12-15-let, 16-plus, silo
 33. Ford P et al. The long-term athlete development model: physiological evidence and application. J Sports Sci 2011. https://europepmc.org/article/MED/21259156
 34. Macnamara BN et al. Deliberate practice and performance in music, games, sports, education, and professions: a meta-analysis. Psychol Sci 2014. https://europepmc.org/article/MED/24986855
 35. Güllich A et al. What Makes a Champion? Early Multidisciplinary Practice, Not Early Specialization, Predicts World-Class Performance. Perspect Psychol Sci 2022. https://europepmc.org/article/MED/34260336
+36. Knight CJ, Boden CM, Holt NL. Junior tennis players' preferences for parental behaviors. J Appl Sport Psychol 2010;22(4):377–391. https://doi.org/10.1080/10413200.2010.495324
+37. Minnesota Hockey. The Hockey Parent Challenge. https://www.minnesotahockey.org/news_article/show/436809-the-hockey-parent-challenge-
 
 ---
 
@@ -330,6 +355,10 @@ sections: zachem, glavnoe, do-6-let, 7-8-let, 9-12-let, 12-15-let, 16-plus, silo
 
 - **Тезис ниши «у ФХР нет содержания для детей младше 8 лет» неверен.** У ФХР есть практические руководства для тренеров групп «5, 6 и 7 лет и младше» (2020) и серия статей «Красная Машина — родителям» (2025–2026, минимум 20 глав). Верная формулировка, которая использована в разделе «Зачем»: **государственный стандарт (ФССП) начинается с 8 лет; у ФХР есть методички для тренеров 5–7 лет, но нет сведённого и проверяемого по источникам гайда для родителей со сравнением с Канадой и США.** Серия ФХР для родителей частично занимает нашу нишу. Нужно решение владельца: позиционировать гайд как дополнение (сводка плюс сравнение систем плюс доказательность), а не как «первый».
 - **ФССП № 997 утратил силу с 01.01.2026.** Гайд ссылается на действующий приказ № 782. Главное отличие: на этапе начальной подготовки матчей нет (в № 997 было 15 игр со второго года НП).
+
+### Раздел «Роль родителя» (добавлен 25.10.2026 по просьбе владельца)
+
+- Цитаты ФХР сверены по тексту главы 1 (fhr.ru/news/item/112256), фраза «пусть тренер тренирует» — по странице Minnesota Hockey. Knight 2010 сверен по аннотации (DOI), полный текст не открывали. Медицинских утверждений в разделе нет; ревью методиста — по желанию.
 
 ### Что осталось непроверенным
 
