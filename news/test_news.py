@@ -458,6 +458,41 @@ def test_photo_caption_or_split():
         os.environ.pop("NEWS_BOT_TOKEN")
 
 
+def test_levels():
+    import tempfile
+    from pathlib import Path
+
+    from news import levels
+
+    calls = []
+    lv = levels.Levels(-100, lambda m, b: calls.append((m, b)) or {"ok": True}, Path(tempfile.mkdtemp()) / "l.json")
+    ann, bob = {"id": 1, "first_name": "Аня"}, {"id": 2, "first_name": "Боб"}
+
+    def msg(mid, user, **kw):
+        return {"message": {"message_id": mid, "chat": {"id": -100}, "from": user, "text": "шайба", **kw}}
+
+    def react(mid, user, old=()):
+        return {"message_reaction": {"chat": {"id": -100}, "message_id": mid, "user": user,
+                                     "old_reaction": list(old), "new_reaction": [{"type": "emoji", "emoji": "🔥"}]}}
+
+    for i in range(12):  # в зачёт только 10 сообщений в сутки
+        lv.on_update(msg(i, ann))
+    assert lv.points["1"] == 10
+    assert ("setChatMemberTag", {"chat_id": -100, "user_id": 1, "tag": "Фарм"}) in calls
+    assert calls[-1] == ("sendMessage", {"chat_id": -100, "text": "🌾 Аня — теперь «Фарм»"})
+    lv.on_update(react(0, bob))
+    lv.on_update(react(0, bob, old=[{"type": "emoji", "emoji": "🔥"}]))  # сменил реакцию — не второй раз
+    lv.on_update(react(0, bob))  # снял и поставил снова — тоже нет
+    lv.on_update(react(1, ann))  # своё сообщение
+    assert lv.points["1"] == 12
+    lv.on_update(msg(50, None, sender_chat={"id": -5}, is_automatic_forward=True))  # пост канала — мимо
+    lv.on_update({"message": {"message_id": 51, "chat": {"id": -100}, "from": ann, "text": "/level"}})
+    assert calls[-1][1]["text"] == "🌾 «Фарм» · 12 баллов · до «Дебютант» — 38"
+    assert levels.Levels(-100, lambda m, b: {}, lv.path).points == {"1": 12}  # пережило рестарт
+    assert levels.level(9) is None and levels.level(1000)[1] == "Капитан"
+    assert all(len(name) <= 16 for _, name, _ in levels.LEVELS)  # лимит тега Telegram
+
+
 if __name__ == "__main__":
     tests = [v for k, v in dict(globals()).items() if k.startswith("test_")]
     for t in tests:

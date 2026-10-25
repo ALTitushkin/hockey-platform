@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, injuries, intrigue, names, nhl, publish, service
+from news import events, guard, injuries, intrigue, levels, names, nhl, publish, service
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight
 from news.llm import lead
@@ -260,6 +260,17 @@ def cmd_night(args) -> int:
     return 1 if build_night(msk, args.llm, args.review) == "guard" else 0
 
 
+def discussion_levels():
+    """Уровни в чате обсуждений канала; чат не привязан или Telegram не ответил — без уровней."""
+    chat_id = publish.tg_call("getChat", {"chat_id": os.environ.get("NEWS_CHANNEL", "")}) \
+        .get("result", {}).get("linked_chat_id")
+    if not chat_id:
+        print("уровни: чат обсуждений не найден — выключены", flush=True)
+        return None
+    print(f"уровни: чат обсуждений {chat_id}", flush=True)
+    return levels.Levels(chat_id).on_update
+
+
 def cmd_serve(_args) -> int:
     # гард не чист — черновик всё равно у владельца (без кнопки «Опубликовать»), день закрыт
     def night(msk: str, last_try: bool) -> str:
@@ -282,7 +293,8 @@ def cmd_serve(_args) -> int:
     service.run_forever([("league", "NEWS_LEAGUE_AT", "09:00", league),
                          ("night", "NEWS_REVIEW_AT", "09:30", night),
                          ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)],
-                        ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck)])
+                        ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck)],
+                        chat=discussion_levels())
     return 0
 
 

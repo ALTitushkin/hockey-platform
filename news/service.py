@@ -88,10 +88,12 @@ Build = Callable[[str, bool], str]
 
 
 def run_forever(jobs: list[tuple[str, str, str, Build]],
-                ticks: list[tuple[int, Callable[[datetime], list[str]]]] = ()) -> None:
+                ticks: list[tuple[int, Callable[[datetime], list[str]]]] = (),
+                chat: Callable[[dict], str | None] | None = None) -> None:
     """jobs: (рубрика, переменная со временем, время по умолчанию, build).
     build(дата, последняя_попытка) → "ok" | "nogames" | "pending" (матчи ещё идут).
-    ticks: (раз в сколько секунд, fn(сейчас) → строки для лога) — перепроверки вышедших постов."""
+    ticks: (раз в сколько секунд, fn(сейчас) → строки для лога) — перепроверки вышедших постов.
+    chat: обработчик сообщений и реакций чата обсуждений (уровни); None — бот слушает только кнопки."""
     owner = os.environ["OWNER_CHAT_ID"]
     deadline = parse_hhmm(os.environ.get("NEWS_DEADLINE", ""), "12:00")
     plan = [(kind, parse_hhmm(os.environ.get(var, ""), default), build) for kind, var, default, build in jobs]
@@ -123,13 +125,20 @@ def run_forever(jobs: list[tuple[str, str, str, Build]],
                 lines = [f"перепроверка: ошибка {type(e).__name__}: {e}"]
             for line in lines:
                 print(f"{now:%Y-%m-%d %H:%M} {line}", flush=True)
-        body = {"timeout": 50, "allowed_updates": ["callback_query"]}
+        # message_reaction по умолчанию не приходит — только если указать явно
+        kinds = ["callback_query"] + (["message", "message_reaction"] if chat else [])
+        body = {"timeout": 50, "allowed_updates": kinds}
         if offset is not None:
             body["offset"] = offset
         r = publish.tg_call("getUpdates", body)
         for upd in r.get("result", []):
             offset = upd["update_id"] + 1
             line = handle_update(upd, owner)
+            if chat and not line:
+                try:
+                    line = chat(upd)
+                except Exception as e:  # уровни — не повод ронять публикации
+                    line = f"уровни: ошибка {type(e).__name__}: {e}"
             if line:
                 print(f"{datetime.now(MSK):%H:%M} {line}", flush=True)
         if not r.get("ok"):
