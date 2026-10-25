@@ -64,15 +64,16 @@ SITE_HEADER = """  <header class="site-header">
     <div class="rules"></div>
     <div class="logo">
       <a href="../index.html">
-        <img class="logo-img" src="../logo.png" alt="Хоккейный словарь" width="68" height="68">
+        <img class="logo-img" src="../logo.png" alt="Культура хоккея" width="68" height="68">
       </a>
     </div>
-    <p class="site-name">Хоккейный словарь</p>
+    <p class="site-name">Культура хоккея</p>
     <p class="tagline">Исторический раздел</p>
-    <p class="channel">приложение к каналу «Хоккейный Овертайм»</p>
+    <p class="channel"><a href="https://t.me/hockey_culture" rel="noopener">Telegram-канал «Культура хоккея»</a></p>
   </header>"""
 SITE_FOOTER = """  <footer class="site-footer">
-    <a href="https://t.me/lifeinovertime" rel="noopener">Telegram · Хоккейный Овертайм</a><br>
+    <a href="https://t.me/hockey_culture" rel="noopener">Telegram · Культура хоккея</a> ·
+    автор — канал <a href="https://t.me/lifeinovertime" rel="noopener">«Хоккейный овертайм»</a><br>
     <a href="https://github.com/altitushkin/hockey-platform" rel="noopener">GitHub · hockey-platform</a>
   </footer>"""
 NAV_RE = re.compile(r'    <nav class="nav-footer">.*?</nav>', re.S)
@@ -288,7 +289,7 @@ def build(cid: str, hist: list[dict]) -> None:
 
     org = {"@type": "Organization", "@id": BASE + "#org", "name": "Культура хоккея", "url": BASE,
            "logo": BASE + "logo.png",
-           "sameAs": ["https://t.me/lifeinovertime", "https://github.com/altitushkin/hockey-platform"]}
+           "sameAs": ["https://t.me/hockey_culture", "https://github.com/altitushkin/hockey-platform"]}
     site = {"@type": "WebSite", "@id": BASE + "#website", "name": "Культура хоккея", "url": BASE,
             "inLanguage": "ru", "publisher": {"@id": BASE + "#org"}}
     art = {"@type": "Article", "headline": ch["title"], "description": meta["article_desc"],

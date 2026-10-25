@@ -3,7 +3,7 @@
 Образовательная хоккейная платформа: от англо-русского словаря терминов до базы знаний по истории и тактике. Для тех, кто работает с английскими материалами, статистикой и разборами — и хочет понимать игру глубже.
 
 **Живой сайт:** https://altitushkin.github.io/hockey-platform/
-**Телеграм-бот:** [@hockey_platform_bot](https://t.me/hockey_platform_bot) · при поддержке канала [«Хоккейный Овертайм»](https://t.me/lifeinovertime)
+**Телеграм-бот:** [@hockey_platform_bot](https://t.me/hockey_platform_bot) · канал [«Культура хоккея | НХЛ»](https://t.me/hockey_culture) · автор — канал [«Хоккейный овертайм»](https://t.me/lifeinovertime)
 
 ---
 
