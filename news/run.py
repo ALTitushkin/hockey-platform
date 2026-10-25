@@ -19,7 +19,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from news import events, guard, names, nhl, publish, service
-from news.card import render_card
+from news.card import render_card, render_tonight_card
 from news.digest import render_caption, render_league, render_night, render_tonight
 from news.llm import lead
 
@@ -134,7 +134,8 @@ def build_tonight(msk: str, review: bool) -> str:
         print(f"{msk}: матчей впереди нет — поста нет")
         return "nogames"
     issues = guard.check(text, facts, players, teams)
-    path = publish.save_draft(msk, text, issues, "шаблон", None, kind="tonight")
+    card = render_tonight_card(games, ours, teams, msk, ZoneInfo("Europe/Moscow"), publish.OUT / f"{msk}_tonight.png")
+    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="tonight")
     print(text, f"\n\n— гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
     if review and not issues and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
         ok, info = publish.auto_publish(msk, kind="tonight")

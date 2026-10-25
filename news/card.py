@@ -64,6 +64,71 @@ def stars_line(r: GameReport, names: dict[int, str]) -> str:
     return " · ".join(parts)
 
 
+def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], teams: dict,
+                        msk_date: str, tz, path: Path) -> Path:
+    """Афиша «Сегодня ночью»: время по Москве крупно слева, клубы с логотипами, под матчем — наши."""
+    from datetime import datetime
+
+    _, m, d = (int(x) for x in msk_date.split("-"))
+    row_h, head_h, hero_h, foot_h = 124, 250, 190, 110
+    h = max(1350, head_h + hero_h + row_h * len(games) + foot_h + 40)
+    img = Image.new("RGB", (W, h), PAPER)
+    dr = ImageDraw.Draw(img)
+    mono, small = font("PTSans-Bold.ttf", 26), font("PTSans-Regular.ttf", 30)
+
+    dr.text((PAD, 58), "КУЛЬТУРА ХОККЕЯ  ·  НХЛ", font=mono, fill=FAINT)
+    dr.text((PAD, 92), "СЕГОДНЯ НОЧЬЮ", font=font("Oswald.ttf", 104, "Bold"), fill=INK)
+    date = f"{d} {MONTHS[m - 1]}".upper()
+    df = font("Oswald.ttf", 44, "Medium")
+    dr.text((W - PAD - dr.textlength(date, font=df), 40), date, font=df, fill=BRICK)
+    for dy in (head_h - 14, head_h - 6):
+        dr.line((PAD, dy, W - PAD, dy), fill=INK, width=3)
+
+    top = head_h + 24
+    dr.rounded_rectangle((PAD, top, W - PAD, top + hero_h - 40), radius=6, fill=NAVY)
+    n_ours = sum(len(ours_by_team.get(g["home"], [])) + len(ours_by_team.get(g["away"], [])) for g in games)
+    dr.text((PAD + 36, top + 18), "В ПРОГРАММЕ", font=mono, fill="#C9D3DF")
+    dr.text((PAD + 36, top + 46), f"{len(games)} {plural(len(games), ('матч', 'матча', 'матчей'))}",
+            font=font("Oswald.ttf", 64, "SemiBold"), fill="#FFFFFF")
+    if n_ours:
+        label = f"{n_ours} {plural(n_ours, ('наш', 'наших', 'наших'))}"
+        sf = font("Oswald.ttf", 64, "SemiBold")
+        dr.text((W - PAD - 36 - dr.textlength(label, font=sf), top + 46), label, font=sf, fill="#F2B8A6")
+
+    y0 = head_h + hero_h
+    tm, tf = font("Oswald.ttf", 44, "Bold"), font("Oswald.ttf", 36, "Medium")
+    time_w = int(dr.textlength("00:00", font=tm)) + 28
+    for i, g in enumerate(games):
+        yy = y0 + i * row_h
+        if i:
+            dr.line((PAD, yy - 10, W - PAD, yy - 10), fill=LINE, width=2)
+        start = datetime.fromisoformat(g["start"].replace("Z", "+00:00")).astimezone(tz)
+        dr.text((PAD, yy), f"{start:%H:%M}", font=tm, fill=BRICK)
+        x = PAD + time_w
+        for k, abbrev in enumerate((g["home"], g["away"])):
+            if k:
+                dash = int(dr.textlength(" — ", font=tf))
+                dr.text((x, yy + 4), " — ", font=tf, fill=INK)
+                x += dash
+            used = paste_logo(img, abbrev, x, yy + 6, 54)
+            x += used + (12 if used else 0)
+            dr.text((x, yy + 4), teams[abbrev], font=tf, fill=INK)
+            x += int(dr.textlength(teams[abbrev], font=tf))
+        ours = [name for _, name in ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])]
+        line = "наши: " + ", ".join(ours) if ours else "без наших"
+        dr.text((PAD + time_w, yy + 56), fit(dr, line, small, W - 2 * PAD - time_w), font=small,
+                fill=STEEL if ours else FAINT)
+
+    fy = h - foot_h + 20
+    dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
+    dr.text((PAD, fy + 24), "Время московское · данные NHL", font=small, fill=SOFT)
+    tag, tg = "Культура хоккея", font("Oswald.ttf", 34, "SemiBold")
+    dr.text((W - PAD - dr.textlength(tag, font=tg), fy + 20), tag, font=tg, fill=INK)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path, "PNG", optimize=True)
+    return path
+
+
 def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date: str, path: Path,
                 highlights: list | None = None, league: bool = False) -> Path:
     """league=False — «Ночь наших» (под матчем — наши), True — «Ночь в НХЛ» (под матчем — звёзды матча)."""
