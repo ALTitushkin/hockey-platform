@@ -315,6 +315,31 @@ def test_tonight():
     assert render_tonight([], {}, TEAMS, "2026-10-25", MSK)[0] == ""
 
 
+def test_injuries_and_lineup():
+    from news import injuries, nhl
+
+    feed = {"injuries": [{"injuries": [
+        {"status": "Injured Reserve", "athlete": {"displayName": "Alexander Romanov"}},
+        {"status": "Day-To-Day", "athlete": {"displayName": "Kirill Kaprizov"}}]}]}
+    out = injuries.injured(lambda url: feed)
+    assert injuries.norm("Alexander  Romanov") in out and injuries.norm("Kirill Kaprizov") not in out
+    assert injuries.injured(lambda url: (_ for _ in ()).throw(RuntimeError("нет сети"))) == {}
+
+    schedule = {"games": [{"id": 1, "gameType": 2, "gameState": "OFF", "gameDate": "2026-10-22"},
+                          {"id": 2, "gameType": 2, "gameState": "FUT", "gameDate": "2026-10-25"}]}
+
+    def fetch(url):
+        return schedule if "club-schedule" in url else BOX
+
+    old = nhl.fetch_json
+    nhl.fetch_json = fetch
+    try:
+        # в прошлом матче Миннесоты: полевой 1 и оба вратаря, включая сидевшего на скамейке 5
+        assert nhl.last_lineup("MIN", "20262027", "2026-10-25") == {1, 4, 5}
+    finally:
+        nhl.fetch_json = old
+
+
 def test_http_post_survives_network_errors():
     from unittest import mock
 

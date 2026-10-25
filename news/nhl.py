@@ -108,6 +108,21 @@ def upcoming_games(nhl_date: str) -> list[dict]:
     return sorted(out, key=lambda g: g["start"])
 
 
+def last_lineup(team: str, season: str, before: str) -> set[int]:
+    """Кто сыграл в последнем завершённом матче регулярки клуба до даты (полевые и вратари с бросками).
+    Так отсекаем травмированных, «не в составе» и отправленных в фарм: в статистике сезона они есть."""
+    games = fetch_json(f"{WEB}/club-schedule-season/{team}/{season}").get("games", [])
+    done = [g for g in games
+            if g.get("gameType") == 2 and g.get("gameState") in FINAL_STATES and g["gameDate"] < before]
+    if not done:
+        return set()
+    box = fetch_json(f"{WEB}/gamecenter/{done[-1]['id']}/boxscore")
+    side = "homeTeam" if box["homeTeam"]["abbrev"] == team else "awayTeam"
+    stats = box["playerByGameStats"][side]
+    # вратари — оба заявленных: сменщик прошлого матча сегодня может выйти в старте
+    return {p["playerId"] for k in ("forwards", "defense", "goalies") for p in stats.get(k, [])}
+
+
 def fetch_nationals(season: str, codes: tuple[str, ...] = ("RUS", "BLR")) -> list[dict]:
     """Полевые и вратари сезона по гражданству — источник пополнения реестра."""
     out = []

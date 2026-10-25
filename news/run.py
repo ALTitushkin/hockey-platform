@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, names, nhl, publish, service
+from news import events, guard, injuries, names, nhl, publish, service
 from news.card import render_card, render_tonight_card
 from news.digest import render_caption, render_league, render_night, render_tonight
 from news.llm import lead
@@ -125,10 +125,22 @@ def build_tonight(msk: str, review: bool) -> str:
     games = nhl.upcoming_games(msk)
     players = {k: v for k, v in reg["players"].items() if v.get("ru")}
     ours: dict[str, list[tuple[int, str]]] = {}
+    # «наши в составах» = сыграл в прошлом матче клуба и не в списке травм ESPN. Статистика сезона одна
+    # не годится: Романов и Демидов на травме, а 25.10.2026 попали в пост (замечание владельца).
+    playing = {t for g in games for t in (g["home"], g["away"])}
+    lineups = {t: nhl.last_lineup(t, SEASON, msk) for t in playing}
+    out = injuries.injured()
+    skipped = []
     for p in nhl.fetch_nationals(SEASON):
         rec = players.get(str(p["pid"]))
-        if rec and p.get("team"):
-            ours.setdefault(p["team"], []).append((p["pid"], rec["surname"]))
+        if not rec or p.get("team") not in playing:
+            continue
+        if p["pid"] not in lineups[p["team"]] or injuries.norm(p["name"]) in out:
+            skipped.append(f"{rec['surname']} ({out.get(injuries.norm(p['name']), 'не играл прошлый матч')})")
+            continue
+        ours.setdefault(p["team"], []).append((p["pid"], rec["surname"]))
+    if skipped:
+        print("  ↳ не в составе: " + ", ".join(skipped))
     text, facts = render_tonight(games, ours, teams, msk, ZoneInfo("Europe/Moscow"))
     if not text:
         print(f"{msk}: матчей впереди нет — поста нет")
