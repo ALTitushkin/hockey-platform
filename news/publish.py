@@ -152,8 +152,13 @@ def auto_publish(msk: str, post: Post = http_post, kind: str = "night") -> tuple
     Те же проверки, что у кнопки: гард, отказ, дубль — внутри publish()."""
     ok, report = publish(msk, ["tg", "max"], post, kind)
     title = f"{TITLES.get(kind, kind)} {msk}"
-    note = (f"🤖 <b>{title}</b> вышло автоматически" if ok else f"⚠️ <b>{title}</b>: автопубликация не прошла") \
-        + "\n" + html.escape("\n".join(report))
+    if not any(": ок —" in line for line in report):  # ничего нового не ушло: уже было в канале или ошибка
+        if ok:
+            return ok, "; ".join(report)  # повтор той же даты — владельцу писать не о чем
+        note = f"⚠️ <b>{title}</b>: автопубликация не прошла"
+    else:
+        note = f"🤖 <b>{title}</b> вышло автоматически" if ok else f"⚠️ <b>{title}</b>: ушло не везде"
+    note += "\n" + html.escape("\n".join(report))
     tg_call("sendMessage", {"chat_id": os.environ.get("OWNER_CHAT_ID", ""), "text": note, "parse_mode": "HTML"}, post)
     return ok, "; ".join(report)
 

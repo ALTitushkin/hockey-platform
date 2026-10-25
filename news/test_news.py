@@ -162,13 +162,14 @@ def test_publish_gates():
         assert ok and len(sent) == 1 and "уже опубликовано" in report[0]  # дубль не уходит
         publish.save_draft("2026-10-24", "Пост v2", [], "шаблон")  # пересборка после выхода
         assert "уже опубликовано" in publish.publish("2026-10-24", ["tg"], fake_post)[1][0] and len(sent) == 1
-        # автопубликация: пост в канал, отчёт владельцу; повтор той же даты в канал не уходит
+        # автопубликация: пост в канал, отчёт владельцу; повтор той же даты не уходит ни в канал, ни владельцу
+        # (25.10.2026 повтор прислал владельцу «вышло автоматически», хотя в канал ничего не ушло)
         sent.clear()
         publish.save_draft("2026-10-25", "Пост", [], "шаблон")
         assert publish.auto_publish("2026-10-25", fake_post)[0]
         assert [c for _, c, _ in sent] == ["@ch", "42"]
         publish.auto_publish("2026-10-25", fake_post)
-        assert [c for _, c, _ in sent].count("@ch") == 1
+        assert [c for _, c, _ in sent] == ["@ch", "42"]
     finally:
         publish.OUT = old_out
         os.environ.clear()
