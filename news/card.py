@@ -41,12 +41,13 @@ def ours_line(r: GameReport, names: dict[int, str]) -> str:
     return " · ".join(parts) or "наши без очков"
 
 
-def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date: str, path: Path) -> Path:
+def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date: str, path: Path,
+                highlights: list | None = None) -> Path:
     y, m, d = (int(x) for x in msk_date.split("-"))
     names = display_names(reports, players)
     games = sorted(reports, key=lambda r: -sum(s.points for s in r.skaters) - len(r.goalies))
     row_h = 106 if len(games) <= 10 else 96
-    head_h, hero_h, foot_h = 250, 190, 110
+    head_h, hero_h, foot_h = 250, 230 if highlights else 190, 110
     h = max(1350, head_h + hero_h + row_h * len(games) + foot_h + 40)
 
     img = Image.new("RGB", (W, h), PAPER)
@@ -66,7 +67,19 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
     best = max((s for r in reports for s in r.skaters), key=lambda s: (s.points, s.goals), default=None)
     top = head_h + 24
     dr.rounded_rectangle((PAD, top, W - PAD, top + hero_h - 40), radius=6, fill=NAVY)
-    if best and best.points >= 2:
+    if highlights:
+        pid, evs = highlights[0]
+        line = next((s for r in reports for s in r.skaters if s.pid == pid), None)
+        big = str(max(evs[0].numbers)) if evs[0].numbers else (f"{line.goals}+{line.assists}" if line else "")
+        phrase = evs[0].text.split(":")[0]
+        sf = font("Oswald.ttf", 96, "Bold")
+        bw = dr.textlength(big, font=sf)
+        dr.text((PAD + 36, top + 18), "ГЛАВНОЕ", font=mono, fill="#C9D3DF")
+        dr.text((PAD + 36, top + 44), names[pid].upper(), font=font("Oswald.ttf", 60, "SemiBold"), fill="#FFFFFF")
+        dr.text((PAD + 36, top + 118), fit(dr, phrase[0].upper() + phrase[1:], small, int(W - 2 * PAD - bw - 100)),
+                font=small, fill="#F2B8A6")
+        dr.text((W - PAD - 36 - bw, top + 22), big, font=sf, fill="#F2B8A6")
+    elif best and best.points >= 2:
         dr.text((PAD + 36, top + 22), "ГЛАВНОЕ", font=mono, fill="#C9D3DF")
         dr.text((PAD + 36, top + 52), names[best.pid].upper(), font=font("Oswald.ttf", 64, "SemiBold"), fill="#FFFFFF")
         score = f"{best.goals}+{best.assists}"

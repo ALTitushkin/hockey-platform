@@ -35,8 +35,15 @@ def display_names(reports: list[GameReport], players: dict) -> dict[int, str]:
     return names
 
 
-def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date: str) -> tuple[str, dict]:
-    """→ (HTML-текст для Telegram, факты для гарда). Пустой список матчей → пустой текст."""
+def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date: str,
+                 highlights: list | None = None, compact: bool = False) -> tuple[str, dict]:
+    """→ (HTML-текст для Telegram, факты для гарда). Пустой список матчей → пустой текст.
+
+    highlights — `events.headline(...)`: [(pid, [Event, ...]), ...]. Есть события — блок «Главное»
+    строится из них (рекорд важнее двух очков); нет — главный тот, у кого больше очков.
+    compact — для тяжёлых ночей, когда пост не влезает в подпись к картинке: наши в матче
+    одной строкой, матчи без наших очков — только на картинке.
+    """
     y, m, d = (int(x) for x in msk_date.split("-"))
     facts = {"numbers": {d}, "pids": set(), "teams": set()}
     if not reports:
@@ -46,7 +53,14 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
     lines = [f"🌙 <b>Ночь наших</b> · {d} {MONTHS[m - 1]}", ""]
 
     best = max((s for r in reports for s in r.skaters), key=lambda s: (s.points, s.goals), default=None)
-    if best and best.points >= 2:
+    if highlights:
+        lines.append("⭐ <b>Главное</b>")
+        for pid, evs in highlights:
+            lines.append(f"<b>{names[pid]}</b> — {', '.join(e.text for e in evs)}")
+            for e in evs:
+                facts["numbers"] |= e.numbers
+        lines.append("")
+    elif best and best.points >= 2:
         lines.append(f"⭐ <b>Главное:</b> {names[best.pid]} — {best.points} "
                      f"{plural(best.points, ('очко', 'очка', 'очков'))} ({best.goals}+{best.assists})")
         lines.append("")
@@ -60,12 +74,13 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
         facts["teams"] |= {home, away}
         facts["numbers"] |= {r.home_score, r.away_score}
         head = f"{home} — {away} {r.home_score}:{r.away_score}{SUFFIX.get(r.last_period, '')}"
-        rows = []
+        rows, scored = [], []
         for s in sorted(r.skaters, key=lambda s: (-s.points, -s.goals)):
             facts["pids"].add(s.pid)
             facts["numbers"] |= {s.goals, s.assists, s.sog}
             if s.points:
-                rows.append(f"🏒 {names[s.pid]} — <b>{s.goals}+{s.assists}</b>")
+                scored.append(f"{names[s.pid]} <b>{s.goals}+{s.assists}</b>" if compact
+                              else f"🏒 {names[s.pid]} — <b>{s.goals}+{s.assists}</b>")
             else:
                 idle_players.append(names[s.pid])
         for g in r.goalies:
@@ -76,17 +91,19 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
             result = (f", {word}" if word else "") + (", на ноль" if against == 0 and g.saves == g.shots else "")
             rows.append(f"🥅 {names[g.pid]} — {g.saves} {plural(g.saves, ('сейв', 'сейва', 'сейвов'))} "
                         f"из {g.shots}{result}")
+        rows = (["🏒 " + ", ".join(scored)] if compact and scored else scored) + rows
         if rows:
-            lines += [f"<b>{head}</b>", *rows, ""]
+            lines += [f"<b>{head}</b>", *rows] + ([] if compact else [""])
         else:
             idle_games.append(head)
 
     idle = []
     if idle_players:
         idle.append("Без очков: " + ", ".join(idle_players))
-    if idle_games:
+    if idle_games and not compact:
         idle.append("Ещё матчи: " + "; ".join(idle_games))
     if idle:
+        lines += [""] if compact else []
         lines.append("<blockquote expandable>" + "\n".join(idle) + "</blockquote>")
     return "\n".join(lines).strip(), facts
 

@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import guard, nhl, publish
+from news import events, guard, nhl, publish
 from news.card import render_card
 from news.digest import render_night, with_lead
 from news.llm import lead
@@ -37,21 +37,30 @@ def cmd_night(args) -> int:
     nhl_date = (date.fromisoformat(msk) - timedelta(days=1)).isoformat()
 
     reports = nhl.collect_night(nhl_date, {int(p) for p in players})
-    text, facts = render_night(reports, players, teams, msk)
+    try:
+        highlights = events.headline(events.detect(reports, events.context(reports)))
+    except RuntimeError as e:  # нет событий — не повод молчать: «Главное» выберется по очкам
+        print(f"  ↳ события не собраны: {e}")
+        highlights = []
+    text, facts = render_night(reports, players, teams, msk, highlights)
     if not text:
         print(f"{msk}: наши не играли (НХЛ {nhl_date}) — поста нет")
         return 0
 
-    variant, final = "шаблон", text
-    issues = guard.check(text, facts, players, teams)
+    variant, phrase = "шаблон", None
     if args.llm is not None:  # голый --llm = цепочка из NEWS_LLM
         phrase, source, log = lead(text, lambda p: guard.check_lead(p, facts, players, teams), chain=args.llm or None)
         for line in log:
             print(f"  ↳ {line}")
         if phrase:
-            variant, final = f"шаблон + вводная {source}", with_lead(text, phrase)
+            variant = f"шаблон + вводная {source}"
+    final = with_lead(text, phrase) if phrase else text
+    if publish.visible_len(final) > publish.CAPTION_LIMIT:  # не влезает в подпись к картинке — сжимаем
+        text, _ = render_night(reports, players, teams, msk, highlights, compact=True)
+        final, variant = (with_lead(text, phrase) if phrase else text), variant + " · компактно"
+    issues = guard.check(final, facts, players, teams)
 
-    card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png")
+    card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png", highlights)
     path = publish.save_draft(msk, final, issues, variant, str(card))
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")

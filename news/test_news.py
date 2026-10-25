@@ -53,6 +53,8 @@ def test_render():
     assert "<blockquote expandable>Без очков: А. Протас</blockquote>" in text
     assert "🥅 Шестёркин — 30 сейвов из 33, победа" in text
     assert "московск" not in text
+    short, _ = render_night([parse_box(BOX, {1, 2, 3, 4, 5})], PLAYERS, TEAMS, "2026-10-24", compact=True)
+    assert "🏒 Капризов <b>2+1</b>, И. Протас <b>1+0</b>" in short and len(short) < len(text)
     assert "999" not in text
 
 
@@ -145,6 +147,37 @@ def test_publish_gates():
         publish.OUT = old_out
         os.environ.clear()
         os.environ.update(old_env)
+
+
+def test_events():
+    from news import events
+
+    rep = parse_box(BOX, {1, 2, 3, 4, 5})  # Миннесота выиграла 4:3 в ОТ, у Капризова 2+1, у И. Протаса 1+0
+    scoring = [{"periodDescriptor": {"periodType": "REG"}, "goals": [
+                   {"teamAbbrev": {"default": "MIN"}, "playerId": 1}, {"teamAbbrev": "WSH", "playerId": 2},
+                   {"teamAbbrev": "MIN", "playerId": 7}, {"teamAbbrev": "MIN", "playerId": 8},
+                   {"teamAbbrev": "WSH", "playerId": 9}, {"teamAbbrev": "WSH", "playerId": 10}]},
+               {"periodDescriptor": {"periodType": "OT"}, "goals": [{"teamAbbrev": "MIN", "playerId": 1}]}]
+    ctx = {"games": {100: {"scoring": scoring}}, "players": {
+        # Капризов: после матча 500 очков за клуб, прежний рекордсмен — 498 → рекорд и юбилей
+        1: {"this_game": True, "regular": True, "career": {"goals": 240, "assists": 260, "points": 500, "games": 600},
+            "franchise": {"points": [(1, 500), (77, 498)], "goals": [(77, 260), (1, 240)]}},
+        # И. Протас: первый гол; профиль Шестёркина не нужен — сухого матча нет
+        2: {"this_game": True, "regular": True, "career": {"goals": 1, "assists": 3, "points": 4, "games": 90},
+            "franchise": {}},
+        # А. Протас без очков — карьерные события не считаются
+    }}
+    by = {pid: [e.text for e in evs] for pid, evs in events.headline(events.detect([rep], ctx), 5)}
+    assert by[1] == ["лучший бомбардир в истории клуба: 500 очков", "500-е очко в НХЛ", "победный гол в овертайме"]
+    assert by[2] == ["первый гол в НХЛ"]
+    assert list(by)[0] == 1
+    # профиль не обновился — молчим, а не объявляем «первый гол»
+    ctx["players"][2]["this_game"] = False
+    assert 2 not in {e.pid for e in events.detect([rep], ctx)}
+    # блок «Главное» в тексте и числа событий в фактах гарда
+    text, facts = render_night([rep], PLAYERS, TEAMS, "2026-10-24", events.headline(events.detect([rep], ctx)))
+    assert "⭐ <b>Главное</b>\n<b>Капризов</b> — лучший бомбардир в истории клуба: 500 очков" in text
+    assert guard.check(text, facts, PLAYERS, TEAMS) == []
 
 
 def test_photo_caption_or_split():

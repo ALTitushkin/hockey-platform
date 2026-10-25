@@ -18,7 +18,8 @@ from pathlib import Path
 from news import guard, nhl
 from news.digest import render_night
 from news.llm import PROVIDERS, _clean, prompt_for
-from news.run import OUT, load
+from news.publish import OUT
+from news.run import load
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
