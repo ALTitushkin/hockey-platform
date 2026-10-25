@@ -24,6 +24,13 @@ def plural(n: int, forms: tuple[str, str, str]) -> str:
     return forms[2]
 
 
+def save_pct(saves: int, shots: int, facts: dict) -> str:
+    """%ОБ за матч: «93,9%», сухой матч — «100%». Числа процента — в факты для гарда."""
+    pct = "100" if saves == shots else f"{saves / shots * 100:.1f}".replace(".", ",")
+    facts["numbers"] |= {int(x) for x in pct.split(",")}
+    return f"{pct}%"
+
+
 def display_names(reports: list[GameReport], players: dict) -> dict[int, str]:
     """Фамилия, а при совпадении фамилий в одном посте — с инициалом (братья Протасы)."""
     pids = [ln.pid for r in reports for ln in r.skaters + r.goalies]
@@ -89,7 +96,7 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
             against = r.away_score if g.team == r.home else r.home_score
             result = (f", {word}" if word else "") + (", на ноль" if against == 0 and g.saves == g.shots else "")
             rows.append(f"🥅 {names[g.pid]} — {g.saves} {plural(g.saves, ('сейв', 'сейва', 'сейвов'))} "
-                        f"из {g.shots}{result}")
+                        f"из {g.shots} ({save_pct(g.saves, g.shots, facts)}){result}")
         if rows:
             lines += [f"<b>{head}</b>", *rows, ""]
         else:
@@ -175,7 +182,8 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
             facts["numbers"] |= {g.saves, g.shots}
             word = (DECISION_SO if r.last_period == "SO" else {}).get(g.decision) or DECISION.get(g.decision)
             result = f", {word}" if word else ""
-            keepers.append(f"🥅 <b>{names[g.pid]}</b> {g.saves} из {g.shots}{club(g.pid)}{result}")
+            keepers.append(f"🥅 <b>{names[g.pid]}</b> {g.saves} из {g.shots} ({save_pct(g.saves, g.shots, facts)})"
+                           f"{club(g.pid)}{result}")
     parts = ["\n".join(x) for x in (groups[True], groups[False], keepers) if x]
     if parts:
         blocks.append("📊 <b>Очки наших</b>\n" + "\n\n".join(parts))

@@ -51,7 +51,7 @@ def test_render():
     assert "⭐ <b>Главное:</b> Капризов — 3 очка (2+1)" in text
     assert "🏒 И. Протас — <b>1+0</b>" in text
     assert "<blockquote expandable>Без очков: А. Протас</blockquote>" in text
-    assert "🥅 Шестёркин — 30 сейвов из 33, победа" in text
+    assert "🥅 Шестёркин — 30 сейвов из 33 (90,9%), победа" in text
     assert "московск" not in text
 
 
@@ -69,7 +69,10 @@ def test_caption():
     assert blocks[2] == "⭐ <b>Ещё главное</b>\n✨ И. Протас — первый гол в НХЛ"
     assert blocks[3] == "📊 <b>Очки наших</b>\n<b>Капризов</b> 2+1 · Миннесота"
     assert blocks[4] == "<b>И. Протас</b> 1+0 · Вашингтон"  # группа «1 очко» — через пустую строку
-    assert blocks[5] == "🥅 <b>Шестёркин</b> 30 из 33 · Миннесота, победа"
+    assert blocks[5] == "🥅 <b>Шестёркин</b> 30 из 33 (90,9%) · Миннесота, победа"
+    from news.digest import save_pct
+    f = {"numbers": set()}
+    assert save_pct(27, 27, f) == "100%" and save_pct(18, 23, f) == "78,3%" and f["numbers"] == {100, 78, 3}
     assert blocks[-1] == "🌙 #НочьНаших · 24 октября"
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
     short, _ = render_caption([rep], PLAYERS, TEAMS, "2026-10-24", with_teams=False)
