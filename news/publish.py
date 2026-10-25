@@ -116,15 +116,37 @@ def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str |
     return path
 
 
-def review(msk: str, post: Post = http_post) -> tuple[bool, str]:
-    d = json.loads(draft_path(msk).read_text(encoding="utf-8"))
+def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
+    """Любой метод Bot API от имени бота новостника."""
+    return post(f"{TG_API}/bot{os.environ.get('NEWS_BOT_TOKEN', '')}/{method}", body, {})
+
+
+def control_text(d: dict) -> str:
     guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + "; ".join(d["issues"])
-    head = (f"📝 <b>Черновик на проверку</b> · {msk}\n{d['variant']} · {guard_line}\n"
-            f"Опубликовать: <code>python -m news.run publish --date {msk}</code>")
-    ok, info = tg_send(os.environ.get("OWNER_CHAT_ID", ""), head, post)
-    if ok:
-        ok, info = tg_send(os.environ.get("OWNER_CHAT_ID", ""), d["text"], post, d.get("card"))
-    return ok, info
+    return f"📝 <b>Черновик {d['date']}</b> выше\n{d['variant']} · {guard_line}"
+
+
+def review(msk: str, post: Post = http_post) -> tuple[bool, str]:
+    """Черновик владельцу: сам пост как он выйдет, следом — сообщение с кнопками.
+    Гард не чист — кнопки «Опубликовать» нет: такой пост не уходит ни кнопкой, ни командой."""
+    d = json.loads(draft_path(msk).read_text(encoding="utf-8"))
+    owner = os.environ.get("OWNER_CHAT_ID", "")
+    ok, info = tg_send(owner, d["text"], post, d.get("card"))
+    if not ok:
+        return ok, info
+    buttons = [{"text": "✖️ Отклонить", "callback_data": f"rej:{msk}"}]
+    if not d["issues"]:
+        buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{msk}"})
+    r = tg_call("sendMessage", {"chat_id": owner, "text": control_text(d), "parse_mode": "HTML",
+                                "reply_markup": {"inline_keyboard": [buttons]}}, post)
+    return bool(r.get("ok")), info if r.get("ok") else r.get("description", "")
+
+
+def reject(msk: str) -> None:
+    path = draft_path(msk)
+    d = json.loads(path.read_text(encoding="utf-8"))
+    d["rejected"] = True
+    path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def publish(msk: str, targets: list[str], post: Post = http_post) -> tuple[bool, list[str]]:
@@ -133,12 +155,17 @@ def publish(msk: str, targets: list[str], post: Post = http_post) -> tuple[bool,
     if not path.exists():
         return False, [f"нет черновика {path.name} — сначала night --review"]
     d = json.loads(path.read_text(encoding="utf-8"))
+    if d.get("rejected"):
+        return False, ["черновик отклонён владельцем — не публикую"]
     if d["issues"]:
         return False, ["гард не чист — не публикую: " + "; ".join(d["issues"])]
     report, all_ok = [], True
     for target in targets:
         if target in d["published"]:
             report.append(f"{target}: уже опубликовано, пропускаю")
+            continue
+        if target == "max" and not (os.environ.get("MAX_BOT_TOKEN") and os.environ.get("MAX_CHAT_ID")):
+            report.append("max: не подключён, пропускаю")  # не ошибка: канал ещё не заведён
             continue
         ok, info = tg_send(os.environ.get("NEWS_CHANNEL", ""), d["text"], post, d.get("card")) if target == "tg" \
             else max_send(d["text"], post)

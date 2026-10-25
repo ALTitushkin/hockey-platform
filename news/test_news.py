@@ -157,7 +157,7 @@ def test_publish_gates():
         assert publish.review("2026-10-24", fake_post)[0] and {c for _, c, _ in sent} == {"42"}  # только в личку
         sent.clear()
         ok, report = publish.publish("2026-10-24", ["tg", "max"], fake_post)
-        assert not ok and sent == [("sendMessage", "@ch", "Пост")] and "MAX не настроен" in report[1]
+        assert ok and sent == [("sendMessage", "@ch", "Пост")] and "max: не подключён" in report[1]
         ok, report = publish.publish("2026-10-24", ["tg"], fake_post)
         assert ok and len(sent) == 1 and "уже опубликовано" in report[0]  # дубль не уходит
         publish.save_draft("2026-10-24", "Пост v2", [], "шаблон")  # пересборка после выхода
@@ -197,6 +197,61 @@ def test_events():
     text, facts = render_night([rep], PLAYERS, TEAMS, "2026-10-24", events.headline(events.detect([rep], ctx)))
     assert "⭐ <b>Главное</b>\n<b>Капризов</b> — лучший бомбардир в истории клуба: 500 очков" in text
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
+
+
+def test_service_buttons_and_schedule():
+    import os
+    import tempfile
+    from datetime import datetime, time
+    from pathlib import Path
+
+    from news import publish, service
+
+    calls = []
+
+    def fake_post(url, body, headers, files=None):
+        calls.append((url.rsplit("/", 1)[-1], body))
+        return {"ok": True, "result": {"message_id": len(calls)}}
+
+    old_out = publish.OUT
+    publish.OUT = Path(tempfile.mkdtemp())
+    os.environ.update({"NEWS_BOT_TOKEN": "t", "NEWS_CHANNEL": "@ch", "OWNER_CHAT_ID": "42"})
+    try:
+        publish.save_draft("2026-10-25", "Пост", [], "шаблон")
+        assert publish.review("2026-10-25", fake_post)[0]
+        keys = [b["callback_data"] for b in calls[-1][1]["reply_markup"]["inline_keyboard"][0]]
+        assert keys == ["pub:2026-10-25", "rej:2026-10-25"]
+
+        def press(who, data):
+            calls.clear()
+            upd = {"callback_query": {"id": "c", "from": {"id": who}, "data": data,
+                                      "message": {"chat": {"id": 42}, "message_id": 7}}}
+            return service.handle_update(upd, "42", fake_post)
+
+        assert "игнор" in press(99, "pub:2026-10-25") and not any(m == "sendMessage" for m, _ in calls)
+        assert press(42, "pub:2026-10-25").startswith("pub")
+        assert ("sendMessage", "@ch") in [(m, b.get("chat_id")) for m, b in calls]  # ушло в канал
+        assert calls[-1][0] == "editMessageText" and calls[-1][1]["reply_markup"] == {"inline_keyboard": []}
+        publish.save_draft("2026-10-26", "Пост", [], "шаблон")
+        press(42, "rej:2026-10-26")
+        assert publish.publish("2026-10-26", ["tg"], fake_post)[0] is False  # отклонённый не уходит
+        publish.save_draft("2026-10-27", "Пост", ["выдумка"], "шаблон")
+        publish.review("2026-10-27", fake_post)
+        assert [b["text"] for b in calls[-1][1]["reply_markup"]["inline_keyboard"][0]] == ["✖️ Отклонить"]
+    finally:
+        publish.OUT = old_out
+        for k in ("NEWS_BOT_TOKEN", "NEWS_CHANNEL", "OWNER_CHAT_ID"):
+            os.environ.pop(k, None)
+
+    at, dl = time(9, 30), time(12, 0)
+    msk = service.MSK
+    assert service.due(datetime(2026, 10, 25, 9, 0, tzinfo=msk), {}, at, dl) is None  # рано
+    assert service.due(datetime(2026, 10, 25, 9, 31, tzinfo=msk), {}, at, dl) == "2026-10-25"
+    assert service.due(datetime(2026, 10, 25, 10, 0, tzinfo=msk), {"built": "2026-10-25"}, at, dl) is None
+    later = datetime(2026, 10, 25, 10, 0, tzinfo=msk)
+    assert service.due(later, {"next_try": later.timestamp() + 60}, at, dl) is None  # ждём повтора
+    noon = datetime(2026, 10, 25, 12, 1, tzinfo=msk)
+    assert service.due(noon, {"next_try": noon.timestamp() + 60}, at, dl) == "2026-10-25"  # дедлайн
 
 
 def test_photo_caption_or_split():

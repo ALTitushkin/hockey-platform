@@ -82,6 +82,12 @@ def parse_box(box: dict, ours: set[int]) -> GameReport:
     return rep
 
 
+def pending_games(nhl_date: str) -> int:
+    """Сколько матчей даты ещё не закончено (перенесённые и отменённые не ждём)."""
+    games = fetch_json(f"{WEB}/score/{nhl_date}").get("games", [])
+    return sum(1 for g in games if g.get("gameState") not in FINAL_STATES and g.get("gameScheduleState") == "OK")
+
+
 def collect_night(nhl_date: str, ours: set[int]) -> list[GameReport]:
     """Все завершённые матчи даты (по времени Северной Америки), где играли наши."""
     reports = []
