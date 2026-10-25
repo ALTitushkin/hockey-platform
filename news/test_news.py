@@ -95,6 +95,21 @@ def test_lead():
     assert with_lead("Заголовок\n\nТело", "Фраза") == "Заголовок\n\nФраза\n\nТело"
 
 
+def test_llm_chain_falls_through():
+    from news.llm import lead
+
+    def boom(_):
+        raise TimeoutError("лимит")
+
+    accept = lambda p: [] if "Капризов" in p else ["нет"]  # noqa: E731
+    fake = {"a": boom, "b": lambda _: None, "c": lambda _: "Кучеров молодец", "d": lambda _: "Капризов решил"}
+    phrase, source, log = lead("пост", accept, chain="a,b,c,d", providers=fake)
+    assert (phrase, source) == ("Капризов решил", "d")
+    assert len(log) == 3 and "ошибка TimeoutError" in log[0] and "отклонена" in log[2]
+    assert lead("пост", accept, chain="a,b", providers=fake)[:2] == (None, "шаблон")
+    assert lead("пост", accept, chain="none,d", providers=fake)[:2] == (None, "шаблон")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in dict(globals()).items() if k.startswith("test_")]
     for t in tests:

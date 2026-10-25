@@ -1,6 +1,6 @@
 """CLI новостника «Культура хоккея». Сейчас — теневой режим: ничего не публикует.
 
-    python -m news.run night [--date YYYY-MM-DD] [--llm]   # «Ночь наших» на утро даты (МСК)
+    python -m news.run night [--date YYYY-MM-DD] [--llm [claude_cli,gigachat,...]]  # «Ночь наших» (МСК)
     python -m news.run sync-registry                       # новые наши из НХЛ → реестр со status=new
 
 Черновики и отчёт гарда пишутся в news/out/ (в git не попадает).
@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 from news import guard, nhl
 from news.digest import render_night, with_lead
-from news.rewrite import lead
+from news.llm import lead
 
 ROOT = Path(__file__).parent
 PLAYERS = ROOT / "data" / "players.json"
@@ -43,13 +43,12 @@ def cmd_night(args) -> int:
 
     variant, final = "шаблон", text
     issues = guard.check(text, facts, players, teams)
-    if args.llm:
-        phrase = lead(text)
-        lead_issues = guard.check_lead(phrase, facts, players, teams) if phrase else ["модель не ответила"]
-        if not lead_issues:
-            variant, final = "шаблон + вводная claude", with_lead(text, phrase)
-        else:
-            print(f"Вводная отклонена гардом ({'; '.join(lead_issues)}): {phrase}")
+    if args.llm is not None:  # голый --llm = цепочка из NEWS_LLM
+        phrase, source, log = lead(text, lambda p: guard.check_lead(p, facts, players, teams), chain=args.llm or None)
+        for line in log:
+            print(f"  ↳ {line}")
+        if phrase:
+            variant, final = f"шаблон + вводная {source}", with_lead(text, phrase)
 
     OUT.mkdir(exist_ok=True)
     path = OUT / f"{msk}_night.html"
@@ -81,7 +80,8 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     n = sub.add_parser("night")
     n.add_argument("--date", help="дата поста по МСК, по умолчанию сегодня")
-    n.add_argument("--llm", action="store_true", help="добавить вводную фразу через claude -p")
+    n.add_argument("--llm", nargs="?", const="", default=None,
+                   help="вводная фраза от модели; цепочка провайдеров через запятую, по умолчанию NEWS_LLM")
     sub.add_parser("sync-registry")
     args = ap.parse_args()
     return {"night": cmd_night, "sync-registry": cmd_sync}[args.cmd](args)
