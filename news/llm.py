@@ -17,6 +17,7 @@
 
 import json
 import os
+import re
 import shutil
 import ssl
 import subprocess
@@ -24,26 +25,27 @@ import time
 import urllib.request
 import uuid
 from collections.abc import Callable
+from pathlib import Path
 
-PROMPT = """Ты редактор Telegram-канала «Культура хоккея». Ниже утренний пост о матчах НХЛ
-с участием российских и белорусских игроков. Напиши к нему ОДНУ вводную фразу (до 25 слов),
-живую, без канцелярита — о главном сюжете ночи.
-Жёсткие правила:
-- никаких чисел и числительных — ни цифрами, ни словами («два», «дубль», «хет-трик»);
-- никаких «впервые», «рекорд», «лучший», «серия», «подряд» — этого нет в данных;
-- фамилии и клубы бери ровно как в посте, в той же форме, не склоняй;
-- без оценок, слухов, прогнозов, эмодзи и HTML;
-- ответь только фразой, без кавычек и пояснений.
-
-Пост:
-"""
+PROMPTS = Path(__file__).parent / "prompts"
+# Профиль промпта под силу модели: сильной — полный с разбором примеров, слабым — компактный
+# с жёсткими пунктами и образцами. Любая правка промпта — только с прогоном `python -m news.eval`.
+PROFILE = {"claude_cli": "lead.md", "gigachat": "lead.compact.md", "yandexgpt": "lead.compact.md"}
 DEFAULT_CHAIN = "claude_cli,gigachat,yandexgpt"
 TIMEOUT = 120
+_LABEL = re.compile(r"^(вот\s+)?(вводная\s+)?(фраза|вариант|ответ)\s*[:—-]\s*", re.IGNORECASE)
+
+
+def prompt_for(provider: str, post: str) -> str:
+    return (PROMPTS / PROFILE.get(provider, "lead.md")).read_text(encoding="utf-8").replace("{post}", post)
 
 
 def _clean(text: str | None) -> str | None:
-    text = (text or "").strip().strip("«»\"' ")
-    return text or None
+    """Первая непустая строка без служебных подписей и кавычек — слабые модели любят «Вот фраза: …»."""
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    if not lines:
+        return None
+    return _LABEL.sub("", lines[0]).strip().strip("«»\"' ") or None
 
 
 def _post_json(url: str, body: dict, headers: dict, context: ssl.SSLContext | None = None) -> dict:
@@ -125,7 +127,7 @@ def lead(text: str, accept: Callable[[str], list[str]],
             log.append(f"{name}: неизвестный провайдер")
             continue
         try:
-            phrase = providers[name](PROMPT + text)
+            phrase = _clean(providers[name](prompt_for(name, text)))
         except Exception as e:  # сеть, 4xx/5xx, неожиданный ответ — пробуем следующего
             log.append(f"{name}: ошибка {type(e).__name__}: {e}"[:200])
             continue
