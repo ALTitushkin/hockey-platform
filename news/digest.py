@@ -237,40 +237,64 @@ NOT_PLAYED = "не играл прошлый матч"
 
 
 def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], teams: dict, msk_date: str,
-                   tz, out_by_team: dict[str, list[tuple[int, str, str]]] | None = None) -> tuple[str, dict]:
-    """«Сегодня ночью»: матчи по московскому времени, под матчем — наши в составах и кто из наших не сыграет.
-    games — `nhl.upcoming_games`, ours_by_team — {клуб: [(id, фамилия), ...]} из реестра,
-    out_by_team — {клуб: [(id, фамилия, причина), ...]}."""
-    out_by_team = out_by_team or {}
+                   tz, out_by_team: dict[str, list[tuple[int, str, str]]] | None = None,
+                   items: list[dict] | None = None) -> tuple[str, dict]:
+    """«Сегодня ночью»: расписание и наши — на карточке, в тексте то, чего на ней нет: интриги вечера
+    (`intrigue.pick`) и кто из наших не сыграет. games — `nhl.upcoming_games`,
+    ours_by_team — {клуб: [(id, фамилия), ...]}, out_by_team — {клуб: [(id, фамилия, причина), ...]}."""
     from datetime import datetime
 
+    out_by_team, items = out_by_team or {}, items or []
     _, m, d = (int(x) for x in msk_date.split("-"))
     facts = {"numbers": {d, len(games)}, "pids": set(), "teams": set()}
     if not games:
         return "", facts
-    word = plural(len(games), ("матч", "матча", "матчей"))
-    blocks = [f"📺 <b>Сегодня ночью в НХЛ</b> · {len(games)} {word}"]
-    rows = []
+    start_of, team_game = {}, {}
     for g in games:
         start = datetime.fromisoformat(g["start"].replace("Z", "+00:00")).astimezone(tz)
-        hh, mm = f"{start:%H}", f"{start:%M}"
-        facts["numbers"] |= {hh, mm}  # гард сверяет строки: «02» и «00» — не числа 2 и 0
+        start_of[id(g)] = (f"{start:%H}", f"{start:%M}")  # гард сверяет строки: «02» и «00» — не числа 2 и 0
+        team_game |= {g["home"]: g, g["away"]: g}
+    team_of = {pid: t for t, recs in ours_by_team.items() for pid, _ in recs}
+    n_ours = sum(len(v) for v in ours_by_team.values())
+    word = plural(len(games), ("матч", "матча", "матчей"))
+    title = f"📺 <b>Сегодня ночью в НХЛ</b> · {len(games)} {word}"
+    if n_ours:
+        title += f" · {n_ours} {plural(n_ours, ('наш', 'наших', 'наших'))}"
+        facts["numbers"].add(n_ours)
+    blocks = [title]
+
+    rows = []
+    for it in items:
+        hh, mm = start_of[id(team_game[it.get("team") or team_of[it["pid"]]])]
+        rows.append(f"{it['text']} · {hh}:{mm}")
+        facts["numbers"] |= set(it["numbers"]) | {hh, mm}
+        facts["teams"] |= set(it.get("teams", []))
+        if it.get("pid") is not None:
+            facts["pids"].add(it["pid"])
+    if not rows and n_ours:  # интриг нет — хотя бы где смотреть наших
+        g = max(games, key=lambda g: len(ours_by_team.get(g["home"], [])) + len(ours_by_team.get(g["away"], [])))
+        n = len(ours_by_team.get(g["home"], [])) + len(ours_by_team.get(g["away"], []))
+        hh, mm = start_of[id(g)]
         home, away = teams[g["home"]], teams[g["away"]]
+        rows.append(f"👀 Больше всего наших — <b>{hh}:{mm}</b> {home} — {away}: {n}")
+        facts["numbers"] |= {hh, mm, n}
         facts["teams"] |= {home, away}
-        ours = ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])
-        out = out_by_team.get(g["home"], []) + out_by_team.get(g["away"], [])
-        facts["pids"] |= {pid for pid, _ in ours} | {pid for pid, _, _ in out}
-        line = f"<b>{hh}:{mm}</b> {home} — {away}"  # как в утренних постах и на карточке: хозяева первыми
-        if ours:
-            line += f"\nнаши: {', '.join(name for _, name in ours)}"
+    if rows:
+        blocks.append("🔥 <b>Интриги вечера</b>\n" + "\n".join(rows))
+
+    skip = [x for v in out_by_team.values() for x in v]
+    if skip:
+        facts["pids"] |= {pid for pid, _, _ in skip}
+        by_why: dict[str, list[str]] = {}
+        for _, name, why in skip:
+            by_why.setdefault(why, []).append(name)
         # травма — точно не сыграет; не было в прошлом матче — под вопросом (может вернуться в состав)
-        for label, group in (("не сыграют", [x for x in out if x[2] != NOT_PLAYED]),
-                             ("под вопросом", [x for x in out if x[2] == NOT_PLAYED])):
-            if group:
-                line += f"\n<i>{label}: {', '.join(f'{name} ({why})' for _, name, why in group)}</i>"
-        rows.append(line)
-    blocks.append("\n\n".join(rows))
-    blocks.append(f"Время московское · 📺 #СегодняНочью · {d} {MONTHS[m - 1]}")
+        sure = [f"{', '.join(names)} — {why}" for why, names in by_why.items() if why != NOT_PLAYED]
+        if sure:
+            blocks.append("🚑 <b>Не сыграют</b>\n" + "\n".join(sure))
+        if NOT_PLAYED in by_why:
+            blocks.append(f"❔ <b>Под вопросом</b>\n{', '.join(by_why[NOT_PLAYED])} — {NOT_PLAYED}")
+    blocks.append(f"📺 #СегодняНочью · {d} {MONTHS[m - 1]} · время московское")
     return "\n\n".join(blocks), facts
 
 

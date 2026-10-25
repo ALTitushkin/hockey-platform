@@ -307,17 +307,44 @@ def test_tonight():
 
     games = [{"start": "2026-10-25T23:00:00Z", "home": "MIN", "away": "WSH"},
              {"start": "2026-10-26T00:30:00Z", "home": "TBL", "away": "NYR"}]
-    text, facts = render_tonight(games, {"MIN": [(1, "Капризов")], "TBL": [(5, "Кучеров")]}, TEAMS, "2026-10-25", MSK)
-    assert text.startswith("📺 <b>Сегодня ночью в НХЛ</b> · 2 матча")
-    assert "<b>02:00</b> Миннесота — Вашингтон\nнаши: Капризов" in text  # 23:00 UTC = 02:00 МСК
-    assert "<b>03:30</b> Тампа — Рейнджерс\nнаши: Кучеров" in text
+    ours = {"MIN": [(1, "Капризов")], "TBL": [(5, "Кучеров"), (4, "Шестёркин")]}
+    # интриг нет — где больше всего наших; расписание по матчам — только на карточке
+    text, facts = render_tonight(games, ours, TEAMS, "2026-10-25", MSK)
+    assert text.startswith("📺 <b>Сегодня ночью в НХЛ</b> · 2 матча · 3 наших")
+    assert "👀 Больше всего наших — <b>03:30</b> Тампа — Рейнджерс: 2" in text  # 00:30 UTC = 03:30 МСК
+    assert "Миннесота" not in text
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
     assert render_tonight([], {}, TEAMS, "2026-10-25", MSK)[0] == ""
-    # неиграющие наши — с пометкой, не пропадают
+    # интрига со временем матча; неиграющие — отдельными блоками
+    items = [{"pid": 1, "rank": 0, "text": "🎯 <b>Капризов</b> — 2 гола до 250 в НХЛ", "numbers": ["2", "250"]}]
     text, facts = render_tonight(games, {"MIN": [(1, "Капризов")]}, TEAMS, "2026-10-25", MSK,
-                                 {"TBL": [(5, "Кучеров", "травма")]})
-    assert "<b>03:30</b> Тампа — Рейнджерс\n<i>не сыграют: Кучеров (травма)</i>" in text
+                                 {"TBL": [(5, "Кучеров", "травма"), (4, "Шестёркин", "не играл прошлый матч")]}, items)
+    assert "🔥 <b>Интриги вечера</b>\n🎯 <b>Капризов</b> — 2 гола до 250 в НХЛ · 02:00" in text
+    assert "🚑 <b>Не сыграют</b>\nКучеров — травма" in text
+    assert "❔ <b>Под вопросом</b>\nШестёркин — не играл прошлый матч" in text
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
+
+
+def test_intrigue():
+    from news import intrigue
+
+    sk = {"position": "C", "careerTotals": {"regularSeason": {"goals": 248, "points": 494, "assists": 246,
+                                                              "gamesPlayed": 409}},
+          "last5Games": [{"gameTypeId": 2, "goals": 1, "points": 2}, {"gameTypeId": 2, "goals": 0, "points": 1},
+                         {"gameTypeId": 2, "goals": 1, "points": 1}, {"gameTypeId": 2, "goals": 1, "points": 1},
+                         {"gameTypeId": 2, "goals": 0, "points": 0}],
+          "featuredStats": {"regularSeason": {"subSeason": {"gamesPlayed": 12, "goals": 12}}}}
+    texts = [i["text"] for i in intrigue.player_items(1, "Капризов", sk)]
+    assert texts == ["🎯 <b>Капризов</b> — 2 гола до 250 в НХЛ",
+                     "🔥 <b>Капризов</b> набирает очки 4 матча подряд",
+                     "📊 <b>Капризов</b> — 12 голов в 12 матчах сезона"]
+    g = {"position": "G", "careerTotals": {"regularSeason": {"wins": 199, "shutouts": 30}},
+         "last5Games": [{"gameTypeId": 2, "decision": "W"}] * 3 + [{"gameTypeId": 2, "decision": "L"}]}
+    texts = [i["text"] for i in intrigue.player_items(4, "Шестёркин", g)]
+    assert texts == ["🎯 <b>Шестёркин</b> — одна победа до 200 в НХЛ", "🥅 <b>Шестёркин</b> — 3 победы подряд"]
+    items = intrigue.player_items(1, "Капризов", sk) + intrigue.player_items(4, "Шестёркин", g)
+    assert [i["pid"] for i in intrigue.pick(items, {1, 4})] == [1, 4]  # по одной на игрока, важнейшие
+    assert intrigue.pick(items, {4})[0]["pid"] == 4  # не в составе — без интриги
 
 
 def test_tonight_recheck():
@@ -358,7 +385,7 @@ def test_tonight_recheck():
             {"status": "Out", "athlete": {"displayName": "Nikita Kucherov"}},
             {"status": "Out", "athlete": {"displayName": "Kirill Kaprizov"}}]}]}  # его матч начался — не трогаем
         assert run.refresh_tonight("2026-10-25", now, lambda url: hurt) == "обновлено: не сыграют: Кучеров"
-        assert edits[0][0] == 7 and "Кучеров (травма)" in edits[0][1] and "наши: Капризов" in edits[0][1]
+        assert edits[0][0] == 7 and "Кучеров — травма" in edits[0][1] and "Капризов" not in edits[0][1]
         assert "обновил пост" in notes[-1]
         assert run.refresh_tonight("2026-10-25", now, lambda url: hurt) == "состав без изменений"
         assert len(edits) == 1  # повтор без изменений — канал не трогаем

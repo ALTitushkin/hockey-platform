@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, injuries, names, nhl, publish, service
+from news import events, guard, injuries, intrigue, names, nhl, publish, service
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight
 from news.llm import lead
@@ -154,10 +154,12 @@ def split_roster(roster: dict[str, list[dict]], out: dict[str, str]) -> tuple[di
     return ours, skip
 
 
-def render_tonight_post(games: list[dict], ours: dict, skip: dict, players: dict, teams: dict, msk: str):
-    text, facts = render_tonight(games, ours, teams, msk, MSK, skip)
+def render_tonight_post(games: list[dict], ours: dict, skip: dict, players: dict, teams: dict, msk: str,
+                        items: list[dict]):
+    playing = {pid for recs in ours.values() for pid, _ in recs}
+    text, facts = render_tonight(games, ours, teams, msk, MSK, skip, intrigue.pick(items, playing))
     issues = guard.check(text, facts, players, teams) if text else []
-    card = render_tonight_card(games, ours, teams, msk, MSK, publish.OUT / f"{msk}_tonight.png", skip) \
+    card = render_tonight_card(games, ours, teams, msk, MSK, publish.OUT / f"{msk}_tonight.png") \
         if text else None
     return text, issues, card
 
@@ -171,12 +173,14 @@ def build_tonight(msk: str, review: bool) -> str:
     roster = tonight_roster({t for g in games for t in (g["home"], g["away"])}, players, msk)
     out = injuries.injured()
     ours, skip = split_roster(roster, out)
-    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk)
+    # один запрос на нашего в составе + таблица — только при сборке, перепроверка их не повторяет
+    items = intrigue.collect(ours) + intrigue.team_items({t for g in games for t in (g["home"], g["away"])}, teams)
+    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk, items)
     if not text:
         print(f"{msk}: матчей впереди нет — поста нет")
         return "nogames"
     path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="tonight",
-                              data={"games": games, "roster": roster, "out": out})
+                              data={"games": games, "roster": roster, "out": out, "items": items})
     print(text, f"\n\n— гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
     if review and not issues and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
         ok, info = publish.auto_publish(msk, kind="tonight")
@@ -221,7 +225,7 @@ def refresh_tonight(msk: str, now: datetime, fetch=None) -> str | None:
         or "сменилась причина"
     reg, teams = load()
     players = {k: v for k, v in reg["players"].items() if v.get("ru")}
-    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk)
+    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk, data.get("items", []))
     owner = os.environ.get("OWNER_CHAT_ID", "")
     if issues:
         publish.tg_call("sendMessage", {"chat_id": owner, "text": f"⚠️ «Сегодня ночью»: состав изменился ({change}), "

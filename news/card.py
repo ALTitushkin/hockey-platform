@@ -10,7 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from news import logos
-from news.digest import MONTHS, NOT_PLAYED, SUFFIX, display_names, plural
+from news.digest import MONTHS, SUFFIX, display_names, plural
 from news.nhl import GameReport
 
 FONTS = Path(__file__).parent / "assets" / "fonts"
@@ -65,8 +65,7 @@ def stars_line(r: GameReport, names: dict[int, str]) -> str:
 
 
 def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], teams: dict,
-                        msk_date: str, tz, path: Path,
-                        out_by_team: dict[str, list[tuple[int, str, str]]] | None = None) -> Path:
+                        msk_date: str, tz, path: Path) -> Path:
     """Афиша «Сегодня ночью»: время по Москве крупно слева, клубы с логотипами, под матчем — наши."""
     from datetime import datetime
 
@@ -117,16 +116,9 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
             x += int(dr.textlength(teams[abbrev], font=tf))
         ours = [name for _, name in ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])]
         line = "наши: " + ", ".join(ours) if ours else "без наших"
-        skip = (out_by_team or {}).get(g["home"], []) + (out_by_team or {}).get(g["away"], [])
-        out = [name for _, name, why in skip if why != NOT_PLAYED] + [f"{name}?" for _, name, why in skip
-                                                                     if why == NOT_PLAYED]
+        # кто не сыграет — только в подписи: на афише — расписание и наши в составах, без дублей с текстом
         dr.text((PAD + time_w, yy + 56), fit(dr, line, small, W - 2 * PAD - time_w), font=small,
                 fill=STEEL if ours else FAINT)
-        if out:  # на афише без причин — они в подписи; места в строке мало
-            x = PAD + time_w + int(dr.textlength(fit(dr, line, small, W - 2 * PAD - time_w), font=small)) + 24
-            if x < W - PAD - 120:
-                dr.text((x, yy + 56), fit(dr, "вне: " + ", ".join(out), small, W - PAD - x),
-                        font=small, fill=FAINT)
 
     fy = h - foot_h + 20
     dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
