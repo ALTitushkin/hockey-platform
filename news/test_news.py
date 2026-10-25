@@ -497,12 +497,12 @@ def test_levels():
     assert lv.points["1"] == 12
     lv.on_update(msg(50, None, sender_chat={"id": -5}, is_automatic_forward=True))  # пост канала — мимо
     lv.on_update({"message": {"message_id": 51, "chat": {"id": -100}, "from": ann, "text": "/level"}})
-    assert calls[-1][1]["text"] == "🌾 «Фарм» · 12 баллов · до «Дебютант» — 13"
+    assert calls[-1][1]["text"] == "🌾 «Фарм» · 12 баллов · до «Основа» — 18"
     assert levels.Levels(-100, lambda m, b: {}, lv.path).points == {"1": 12}  # пережило рестарт
     own = levels.Levels(-100, lambda m, b: {}, Path(tempfile.mkdtemp()) / "o.json", skip={1})
     own.on_update(msg(60, ann))
     assert own.points == {}  # владельцу баллы не идут
-    assert levels.level(2) is None and levels.level(400)[1] == "Капитан" and levels.level(1000)[1] == "Легенда"
+    assert levels.level(2) is None and levels.level(300)[1] == "Капитан" and levels.level(1000)[1] == "Легенда"
     assert all(len(name) <= 16 for _, name, _ in levels.LEVELS)  # лимит тега Telegram
 
 
