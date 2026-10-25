@@ -47,36 +47,51 @@ def render_night(reports: list[GameReport], players: dict, teams: dict, msk_date
 
     best = max((s for r in reports for s in r.skaters), key=lambda s: (s.points, s.goals), default=None)
     if best and best.points >= 2:
-        lines.append(f"⭐ Главное: {names[best.pid]} — {best.points} {plural(best.points, ('очко', 'очка', 'очков'))}"
-                     f" ({best.goals}+{best.assists})")
+        lines.append(f"⭐ <b>Главное:</b> {names[best.pid]} — {best.points} "
+                     f"{plural(best.points, ('очко', 'очка', 'очков'))} ({best.goals}+{best.assists})")
         lines.append("")
         facts["numbers"] |= {best.points}
 
+    # Матч попадает в текст, если у наших есть очки или играл наш вратарь. Остальные — в
+    # свёрнутый блок: пост короче (подпись к картинке — до 1024 знаков), но никто не потерян.
+    idle_players, idle_games = [], []
     for r in reports:
         home, away = teams[r.home], teams[r.away]
         facts["teams"] |= {home, away}
         facts["numbers"] |= {r.home_score, r.away_score}
-        lines.append(f"<b>{home} — {away} {r.home_score}:{r.away_score}{SUFFIX.get(r.last_period, '')}</b>")
+        head = f"{home} — {away} {r.home_score}:{r.away_score}{SUFFIX.get(r.last_period, '')}"
+        rows = []
         for s in sorted(r.skaters, key=lambda s: (-s.points, -s.goals)):
             facts["pids"].add(s.pid)
             facts["numbers"] |= {s.goals, s.assists, s.sog}
-            score = f"{s.goals}+{s.assists}" if s.points else "без очков"
-            shots = f", {s.sog} {plural(s.sog, ('бросок', 'броска', 'бросков'))}" if s.sog else ""
-            lines.append(f"• {names[s.pid]} ({teams[s.team]}) — {score}{shots}")
+            if s.points:
+                rows.append(f"🏒 {names[s.pid]} — <b>{s.goals}+{s.assists}</b>")
+            else:
+                idle_players.append(names[s.pid])
         for g in r.goalies:
             facts["pids"].add(g.pid)
             facts["numbers"] |= {g.saves, g.shots}
             word = (DECISION_SO if r.last_period == "SO" else {}).get(g.decision) or DECISION.get(g.decision)
-            result = f", {word}" if word else ""
-            lines.append(f"• {names[g.pid]} ({teams[g.team]}) — {g.saves} "
-                         f"{plural(g.saves, ('сейв', 'сейва', 'сейвов'))} из {g.shots}{result}")
-        lines.append("")
+            against = r.away_score if g.team == r.home else r.home_score
+            result = (f", {word}" if word else "") + (", на ноль" if against == 0 and g.saves == g.shots else "")
+            rows.append(f"🥅 {names[g.pid]} — {g.saves} {plural(g.saves, ('сейв', 'сейва', 'сейвов'))} "
+                        f"из {g.shots}{result}")
+        if rows:
+            lines += [f"<b>{head}</b>", *rows, ""]
+        else:
+            idle_games.append(head)
 
-    lines.append("Матчи прошли ночью по московскому времени.")
+    idle = []
+    if idle_players:
+        idle.append("Без очков: " + ", ".join(idle_players))
+    if idle_games:
+        idle.append("Ещё матчи: " + "; ".join(idle_games))
+    if idle:
+        lines.append("<blockquote expandable>" + "\n".join(idle) + "</blockquote>")
     return "\n".join(lines).strip(), facts
 
 
 def with_lead(text: str, lead: str) -> str:
-    """Вставить вводную фразу сразу после заголовка; сам блок статистики не трогаем."""
+    """Вставить вводную фразу цитатой сразу после заголовка; сам блок статистики не трогаем."""
     title, _, body = text.partition("\n\n")
-    return f"{title}\n\n{lead}\n\n{body}"
+    return f"{title}\n\n<blockquote>{lead}</blockquote>\n\n{body}"

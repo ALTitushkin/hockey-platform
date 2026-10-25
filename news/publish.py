@@ -10,11 +10,14 @@ MAX_BOT_TOKEN, MAX_CHAT_ID. Переменные окружения сильне
 API MAX (platform-api2.max.ru, POST /messages) написан по документации и живьём ещё не проверен.
 """
 
+import html
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 
@@ -23,8 +26,9 @@ ENV = ROOT / ".env"
 OUT = ROOT / "out"
 TG_API = "https://api.telegram.org"
 MAX_API = "https://platform-api2.max.ru"
+CAPTION_LIMIT = 1024
 
-Post = Callable[[str, dict, dict], dict]
+Post = Callable[..., dict]
 
 
 def load_env(path: Path = ENV) -> None:
@@ -38,23 +42,54 @@ def load_env(path: Path = ENV) -> None:
                 os.environ.setdefault(key.strip(), value.strip())
 
 
-def http_post(url: str, body: dict, headers: dict) -> dict:
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
-                                 headers={"Content-Type": "application/json", **headers})
+def http_post(url: str, body: dict, headers: dict, files: dict | None = None) -> dict:
+    """POST JSON или, если есть files ({поле: путь}), multipart/form-data — так Telegram принимает картинку."""
+    if files:
+        boundary = uuid.uuid4().hex
+        parts = []
+        for key, value in body.items():
+            value = value if isinstance(value, str) else json.dumps(value)
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
+        for key, path in files.items():
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"; filename="{Path(path).name}"'
+                         f'\r\nContent-Type: image/png\r\n\r\n'.encode() + Path(path).read_bytes() + b"\r\n")
+        data, ctype = b"".join(parts) + f"--{boundary}--\r\n".encode(), f"multipart/form-data; boundary={boundary}"
+    else:
+        data, ctype = json.dumps(body).encode(), "application/json"
+    req = urllib.request.Request(url, data=data, method="POST", headers={"Content-Type": ctype, **headers})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=60) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
         return {"ok": False, "error_code": e.code, "description": e.read().decode(errors="replace")[:300]}
 
 
-def tg_send(chat: str, text: str, post: Post = http_post) -> tuple[bool, str]:
+def visible_len(text: str) -> int:
+    """Длина так, как её считает Telegram: после разбора HTML-разметки."""
+    return len(html.unescape(re.sub(r"<[^>]+>", "", text)))
+
+
+def tg_send(chat: str, text: str, post: Post = http_post, photo: str | None = None) -> tuple[bool, str]:
+    """Текст или картинка с подписью. Не влезает в подпись — картинка, следом текст отдельным сообщением."""
     token = os.environ.get("NEWS_BOT_TOKEN")
     if not token or not chat:
         return False, "не настроен NEWS_BOT_TOKEN или чат"
-    r = post(f"{TG_API}/bot{token}/sendMessage",
-             {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": True}}, {})
-    return bool(r.get("ok")), r.get("description", "") if not r.get("ok") else f"message_id {r['result']['message_id']}"
+    api, ids = f"{TG_API}/bot{token}", []
+    msg = {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": True}}
+    if photo and Path(photo).exists():
+        fits = visible_len(text) <= CAPTION_LIMIT
+        body = {"chat_id": chat, **({"caption": text, "parse_mode": "HTML"} if fits else {})}
+        r = post(f"{api}/sendPhoto", body, {}, files={"photo": photo})
+        if not r.get("ok"):
+            return False, r.get("description", "")
+        ids.append(r["result"]["message_id"])
+        if fits:
+            return True, f"картинка с подписью, message_id {ids[0]}"
+    r = post(f"{api}/sendMessage", msg, {})
+    if not r.get("ok"):
+        return False, r.get("description", "")
+    ids.append(r["result"]["message_id"])
+    return True, ("картинка + текст, " if len(ids) > 1 else "") + f"message_id {', '.join(map(str, ids))}"
 
 
 def max_send(text: str, post: Post = http_post) -> tuple[bool, str]:
@@ -71,13 +106,13 @@ def draft_path(msk: str) -> Path:
     return OUT / f"{msk}_night.json"
 
 
-def save_draft(msk: str, text: str, issues: list[str], variant: str) -> Path:
+def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str | None = None) -> Path:
     OUT.mkdir(exist_ok=True)
     path = draft_path(msk)
     # пересборка черновика не сбрасывает отметки о публикации — иначе дата ушла бы в канал дважды
     done = json.loads(path.read_text(encoding="utf-8"))["published"] if path.exists() else []
     path.write_text(json.dumps({"date": msk, "text": text, "issues": issues, "variant": variant,
-                                "published": done}, ensure_ascii=False, indent=2), encoding="utf-8")
+                                "card": card, "published": done}, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
 
 
@@ -88,7 +123,7 @@ def review(msk: str, post: Post = http_post) -> tuple[bool, str]:
             f"Опубликовать: <code>python -m news.run publish --date {msk}</code>")
     ok, info = tg_send(os.environ.get("OWNER_CHAT_ID", ""), head, post)
     if ok:
-        ok, info = tg_send(os.environ.get("OWNER_CHAT_ID", ""), d["text"], post)
+        ok, info = tg_send(os.environ.get("OWNER_CHAT_ID", ""), d["text"], post, d.get("card"))
     return ok, info
 
 
@@ -105,7 +140,7 @@ def publish(msk: str, targets: list[str], post: Post = http_post) -> tuple[bool,
         if target in d["published"]:
             report.append(f"{target}: уже опубликовано, пропускаю")
             continue
-        ok, info = tg_send(os.environ.get("NEWS_CHANNEL", ""), d["text"], post) if target == "tg" \
+        ok, info = tg_send(os.environ.get("NEWS_CHANNEL", ""), d["text"], post, d.get("card")) if target == "tg" \
             else max_send(d["text"], post)
         report.append(f"{target}: {'ок' if ok else 'ошибка'} — {info}")
         if ok:

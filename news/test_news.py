@@ -48,10 +48,11 @@ def test_parse_box_keeps_only_ours_who_played():
 def test_render():
     text, _ = build()
     assert "Вашингтон — Миннесота 3:4 ОТ" in text
-    assert "⭐ Главное: Капризов — 3 очка (2+1)" in text
-    assert "И. Протас (Вашингтон) — 1+0, 2 броска" in text
-    assert "А. Протас (Вашингтон) — без очков" in text
-    assert "Шестёркин (Миннесота) — 30 сейвов из 33, победа" in text
+    assert "⭐ <b>Главное:</b> Капризов — 3 очка (2+1)" in text
+    assert "🏒 И. Протас — <b>1+0</b>" in text
+    assert "<blockquote expandable>Без очков: А. Протас</blockquote>" in text
+    assert "🥅 Шестёркин — 30 сейвов из 33, победа" in text
+    assert "московск" not in text
     assert "999" not in text
 
 
@@ -92,7 +93,7 @@ def test_lead():
     assert guard.check_lead(ok, facts, PLAYERS, TEAMS) == []
     for bad in ("Капризов оформил дубль", "Два гола Капризова", "Капризов впервые решил", "Капризов — 3 очка"):
         assert guard.check_lead(bad, facts, PLAYERS, TEAMS), bad
-    assert with_lead("Заголовок\n\nТело", "Фраза") == "Заголовок\n\nФраза\n\nТело"
+    assert with_lead("Заголовок\n\nТело", "Фраза") == "Заголовок\n\n<blockquote>Фраза</blockquote>\n\nТело"
 
 
 def test_llm_chain_falls_through():
@@ -119,8 +120,8 @@ def test_publish_gates():
 
     sent = []
 
-    def fake_post(url, body, headers):
-        sent.append((url.split("/")[-1].split("?")[0], body.get("chat_id"), body["text"][:12]))
+    def fake_post(url, body, headers, files=None):
+        sent.append((url.split("/")[-1].split("?")[0], body.get("chat_id"), body.get("text", "")[:12]))
         return {"ok": True, "result": {"message_id": len(sent)}} if "telegram" in url else {"message": {}}
 
     old_out, old_env = publish.OUT, dict(os.environ)
@@ -144,6 +145,33 @@ def test_publish_gates():
         publish.OUT = old_out
         os.environ.clear()
         os.environ.update(old_env)
+
+
+def test_photo_caption_or_split():
+    import os
+    import tempfile
+    from pathlib import Path
+
+    from news import publish
+
+    calls = []
+
+    def fake_post(url, body, headers, files=None):
+        calls.append((url.rsplit("/", 1)[-1], "caption" in body, bool(files)))
+        return {"ok": True, "result": {"message_id": len(calls)}}
+
+    png = Path(tempfile.mkdtemp()) / "c.png"
+    png.write_bytes(b"png")
+    os.environ["NEWS_BOT_TOKEN"] = "t"
+    try:
+        assert publish.visible_len("<b>а&amp;б</b>") == 3
+        assert publish.tg_send("@ch", "<b>Коротко</b>", fake_post, str(png))[0]
+        assert calls == [("sendPhoto", True, True)]
+        calls.clear()
+        publish.tg_send("@ch", "<b>" + "я" * 1025 + "</b>", fake_post, str(png))
+        assert calls == [("sendPhoto", False, True), ("sendMessage", False, False)]
+    finally:
+        os.environ.pop("NEWS_BOT_TOKEN")
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from news import guard, nhl, publish
+from news.card import render_card
 from news.digest import render_night, with_lead
 from news.llm import lead
 
@@ -50,7 +51,8 @@ def cmd_night(args) -> int:
         if phrase:
             variant, final = f"шаблон + вводная {source}", with_lead(text, phrase)
 
-    path = publish.save_draft(msk, final, issues, variant)
+    card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png")
+    path = publish.save_draft(msk, final, issues, variant, str(card))
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")
     print(f"— черновик: {path}")
