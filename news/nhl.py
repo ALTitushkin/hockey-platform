@@ -100,6 +100,14 @@ def collect_night(nhl_date: str, ours: set[int] | None) -> list[GameReport]:
     return reports
 
 
+def upcoming_games(nhl_date: str) -> list[dict]:
+    """Матчи даты, которые ещё не начались: {"start": UTC ISO, "home", "away"} по времени начала."""
+    games = fetch_json(f"{WEB}/score/{nhl_date}").get("games", [])
+    out = [{"start": g["startTimeUTC"], "home": g["homeTeam"]["abbrev"], "away": g["awayTeam"]["abbrev"]}
+           for g in games if g.get("gameState") in ("FUT", "PRE") and g.get("gameScheduleState") == "OK"]
+    return sorted(out, key=lambda g: g["start"])
+
+
 def fetch_nationals(season: str, codes: tuple[str, ...] = ("RUS", "BLR")) -> list[dict]:
     """Полевые и вратари сезона по гражданству — источник пополнения реестра."""
     out = []

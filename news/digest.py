@@ -233,6 +233,34 @@ def render_league(reports: list[GameReport], players: dict, teams: dict, msk_dat
     return "\n\n".join(blocks), facts
 
 
+def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], teams: dict, msk_date: str,
+                   tz) -> tuple[str, dict]:
+    """«Сегодня ночью»: матчи по московскому времени, под матчем — наши в составах.
+    games — `nhl.upcoming_games`, ours_by_team — {клуб: [(id, фамилия), ...]} из реестра."""
+    from datetime import datetime
+
+    _, m, d = (int(x) for x in msk_date.split("-"))
+    facts = {"numbers": {d, len(games)}, "pids": set(), "teams": set()}
+    if not games:
+        return "", facts
+    word = plural(len(games), ("матч", "матча", "матчей"))
+    blocks = [f"📺 <b>Сегодня ночью в НХЛ</b> · {len(games)} {word}"]
+    rows = []
+    for g in games:
+        start = datetime.fromisoformat(g["start"].replace("Z", "+00:00")).astimezone(tz)
+        hh, mm = f"{start:%H}", f"{start:%M}"
+        facts["numbers"] |= {hh, mm}  # гард сверяет строки: «02» и «00» — не числа 2 и 0
+        home, away = teams[g["home"]], teams[g["away"]]
+        facts["teams"] |= {home, away}
+        ours = ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])
+        facts["pids"] |= {pid for pid, _ in ours}
+        line = f"<b>{hh}:{mm}</b> {home} — {away}"  # как в утренних постах и на карточке: хозяева первыми
+        rows.append(line + (f"\nнаши: {', '.join(name for _, name in ours)}" if ours else ""))
+    blocks.append("\n\n".join(rows))
+    blocks.append(f"Время московское · 📺 #СегодняНочью · {d} {MONTHS[m - 1]}")
+    return "\n\n".join(blocks), facts
+
+
 def with_lead(text: str, lead: str) -> str:
     """Вставить вводную фразу цитатой сразу после заголовка; сам блок статистики не трогаем."""
     title, _, body = text.partition("\n\n")

@@ -301,6 +301,20 @@ def test_league_names_and_post():
     assert "999" not in text and "Макдэвид" not in text
 
 
+def test_tonight():
+    from news.digest import render_tonight
+    from news.service import MSK
+
+    games = [{"start": "2026-10-25T23:00:00Z", "home": "MIN", "away": "WSH"},
+             {"start": "2026-10-26T00:30:00Z", "home": "TBL", "away": "NYR"}]
+    text, facts = render_tonight(games, {"MIN": [(1, "Капризов")], "TBL": [(5, "Кучеров")]}, TEAMS, "2026-10-25", MSK)
+    assert text.startswith("📺 <b>Сегодня ночью в НХЛ</b> · 2 матча")
+    assert "<b>02:00</b> Миннесота — Вашингтон\nнаши: Капризов" in text  # 23:00 UTC = 02:00 МСК
+    assert "<b>03:30</b> Тампа — Рейнджерс\nнаши: Кучеров" in text
+    assert guard.check(text, facts, PLAYERS, TEAMS) == []
+    assert render_tonight([], {}, TEAMS, "2026-10-25", MSK)[0] == ""
+
+
 def test_http_post_survives_network_errors():
     from unittest import mock
 

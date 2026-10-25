@@ -27,7 +27,7 @@ OUT = ROOT / "out"
 TG_API = "https://api.telegram.org"
 MAX_API = "https://platform-api2.max.ru"
 CAPTION_LIMIT = 1024
-TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»"}
+TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»", "tonight": "«Сегодня ночью»"}
 
 Post = Callable[..., dict]
 

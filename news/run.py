@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 from news import events, guard, names, nhl, publish, service
 from news.card import render_card
-from news.digest import render_caption, render_league, render_night
+from news.digest import render_caption, render_league, render_night, render_tonight
 from news.llm import lead
 
 ROOT = Path(__file__).parent
@@ -118,6 +118,38 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     return "guard" if issues else "ok"
 
 
+def build_tonight(msk: str, review: bool) -> str:
+    """«Сегодня ночью»: матчи НХЛ, которые ещё не начались, по московскому времени, и наши в составах.
+    Вечер по Москве = та же дата в Северной Америке. Клуб игрока — из статистики сезона НХЛ."""
+    reg, teams = load()
+    games = nhl.upcoming_games(msk)
+    players = {k: v for k, v in reg["players"].items() if v.get("ru")}
+    ours: dict[str, list[tuple[int, str]]] = {}
+    for p in nhl.fetch_nationals(SEASON):
+        rec = players.get(str(p["pid"]))
+        if rec and p.get("team"):
+            ours.setdefault(p["team"], []).append((p["pid"], rec["surname"]))
+    text, facts = render_tonight(games, ours, teams, msk, ZoneInfo("Europe/Moscow"))
+    if not text:
+        print(f"{msk}: матчей впереди нет — поста нет")
+        return "nogames"
+    issues = guard.check(text, facts, players, teams)
+    path = publish.save_draft(msk, text, issues, "шаблон", None, kind="tonight")
+    print(text, f"\n\n— гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
+    if review and not issues and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
+        ok, info = publish.auto_publish(msk, kind="tonight")
+        print(f"— автопубликация: {'ок' if ok else 'ошибка'} — {info}")
+    elif review:
+        ok, info = publish.review(msk, kind="tonight")
+        print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
+    return "guard" if issues else "ok"
+
+
+def cmd_tonight(args) -> int:
+    msk = args.date or datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
+    return 1 if build_tonight(msk, args.review) == "guard" else 0
+
+
 def cmd_league(args) -> int:
     msk = args.date or datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
     return 1 if build_league(msk, args.review) == "guard" else 0
@@ -143,8 +175,13 @@ def cmd_serve(_args) -> int:
         result = build_league(msk, True, last_try)
         return "ok" if result == "guard" else result
 
+    def tonight(msk: str, _last_try: bool) -> str:
+        result = build_tonight(msk, True)
+        return "ok" if result == "guard" else result
+
     service.run_forever([("league", "NEWS_LEAGUE_AT", "09:00", league),
-                         ("night", "NEWS_REVIEW_AT", "09:30", night)])
+                         ("night", "NEWS_REVIEW_AT", "09:30", night),
+                         ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)])
     return 0
 
 
@@ -182,17 +219,20 @@ def main() -> int:
     p = sub.add_parser("publish")
     p.add_argument("--date", help="дата черновика по МСК, по умолчанию сегодня")
     p.add_argument("--to", default="tg,max", help="куда: tg, max или оба через запятую")
-    p.add_argument("--kind", default="night", choices=["night", "league"], help="рубрика")
+    p.add_argument("--kind", default="night", choices=["night", "league", "tonight"], help="рубрика")
     lg = sub.add_parser("league")
     lg.add_argument("--date", help="дата поста по МСК, по умолчанию сегодня")
     lg.add_argument("--review", action="store_true", help="опубликовать (автопубликация) или в личку владельцу")
+    tn = sub.add_parser("tonight")
+    tn.add_argument("--date", help="дата по МСК, по умолчанию сегодня")
+    tn.add_argument("--review", action="store_true", help="опубликовать (автопубликация) или в личку владельцу")
     sub.add_parser("sync-registry")
     sub.add_parser("sync-names")
     sub.add_parser("serve", help="сервис: утренний сбор + кнопки «Опубликовать/Отклонить» в личке")
     args = ap.parse_args()
     publish.load_env()
-    cmds = {"night": cmd_night, "league": cmd_league, "publish": cmd_publish, "sync-registry": cmd_sync,
-            "sync-names": cmd_sync_names, "serve": cmd_serve}
+    cmds = {"night": cmd_night, "league": cmd_league, "tonight": cmd_tonight, "publish": cmd_publish,
+            "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve}
     return cmds[args.cmd](args)
 
 
