@@ -86,6 +86,15 @@ def render_md(md: str) -> str:
     return "\n".join(out)
 
 
+HOLD = re.compile(r"<!-- hold:doctor -->(.*?)<!-- /hold -->", re.S)
+
+
+def apply_hold(md: str, keep: bool) -> str:
+    """Блоки «на ревью врача» (`<!-- hold:doctor -->…<!-- /hold -->`): на сайте их нет, в превью — есть.
+    Решение владельца 25.10.2026: публикуем без медицинских блоков, врач посмотрит — вернём."""
+    return HOLD.sub(lambda m: m.group(1) if keep else "", md)
+
+
 def sections(md: str) -> list[tuple[str, str, str]]:
     md = re.sub(r"\A---\n.*?\n---\n", "", md, flags=re.S)
     parts = re.split(r"^## (.+?) \{#([\w-]+)\}\s*$", md, flags=re.M)
@@ -111,6 +120,10 @@ def block_short(d: dict) -> str:
             f'<li><b>Делать:</b> {esc(a["do"])}</li><li><b>Не делать:</b> {esc(a["dont"])}</li>{norm}</ul>'
             f'<a class="more" href="#{a["id"]}">Подробно →</a></article>')
     doctor = "".join(f"<li>{esc(x)}</li>" for x in d["doctor"])
+    # блок «К врачу, если» — тоже на ревью врача: пока флаг стоит, вместо списка — общее правило
+    doctor_box = (f'<section class="note note--alarm"><h3>Если болит</h3><p>{esc(d["disclaimer"])}</p></section>'
+                  if d["_meta"].get("hold_doctor") else
+                  f'<section class="note note--alarm"><h3>К врачу, если</h3><ul>{doctor}</ul></section>')
     top = "".join(f'<li><b>{esc(q["q"])}</b><span class="good">Хороший ответ: {esc(q["good"])}</span></li>'
                   for q in d["questions"] if q.get("top"))
     role = d["role"]  # первым после тезиса: важнее любых цифр (решение владельца 25.10.2026)
@@ -119,8 +132,7 @@ def block_short(d: dict) -> str:
             f'<section class="note note--role"><h3>{esc(role["title"])}</h3><ul>{points}</ul>'
             f'<a class="more" href="#rol-roditelya">Подробно →</a>{src_links(role["src"], d["sources"])}</section>'
             f'<div class="ages">{"".join(cards)}</div>'
-            f'<div class="aside-row"><section class="note note--alarm"><h3>К врачу, если</h3>'
-            f'<ul>{doctor}</ul></section>'
+            f'<div class="aside-row">{doctor_box}'
             f'<section class="note"><h3>Не взяли в 7–9 лет?</h3><p>Это почти ничего не говорит о будущем: ранний '
             f'отбор выбирает тех, кто раньше вырос и родился в начале года. <a href="#otbor-mesyac-rozhdeniya">'
             f'Подробно →</a></p></section></div>'
@@ -210,7 +222,7 @@ def main() -> int:
     ap.add_argument("--preview", help="путь превью-файла вместо docs/parents.html")
     args = ap.parse_args()
     d = json.loads(DATA.read_text(encoding="utf-8"))
-    md = DRAFT.read_text(encoding="utf-8")
+    md = apply_hold(DRAFT.read_text(encoding="utf-8"), keep=bool(args.preview))
     body, review = build_body(d, md)
     tpl = (ROOT / "docs" / "parents" / ("preview.tpl.html" if args.preview else "page.tpl.html"))
     tpl = tpl.read_text(encoding="utf-8")
@@ -220,6 +232,13 @@ def main() -> int:
             .replace("{{CSS}}", (ROOT / "docs" / "parents" / "parents.css").read_text(encoding="utf-8"))
             .replace("{{JS}}", (ROOT / "docs" / "parents" / "parents.js").read_text(encoding="utf-8")))
     out = Path(args.preview) if args.preview else OUT
+    if not args.preview:  # поиск сайта и бота ведёт на якоря страницы — каждый должен существовать
+        missing = [e["id"] for e in d.get("search", []) if f'id="{e["id"]}"' not in page]
+        if missing:
+            print(f"❌ поиск ведёт на несуществующие разделы: {', '.join(missing)}")
+            return 1
+        mirror = ROOT / "docs" / "data" / "parents.json"  # главная ищет по зеркалу
+        mirror.write_text(DATA.read_text(encoding="utf-8"), encoding="utf-8")
     out.write_text(page, encoding="utf-8")
     print(f"{out}: {len(page) // 1024} КБ")
     return 0

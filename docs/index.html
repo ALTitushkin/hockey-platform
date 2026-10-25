@@ -190,11 +190,11 @@ a.entry:hover{transform:translateY(-2px);box-shadow:3px 3px 0 rgba(32,36,44,0.18
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
 <script>
 const CATS={stat:"Статистика",tactic:"Тактика",rule:"Правила",position:"Позиции"};
-const DICT="dictionary.html",HIST="history.html",LEARN="learn.html";
+const DICT="dictionary.html",HIST="history.html",LEARN="learn.html",PARENTS="parents.html";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const norm=s=>String(s||"").toLowerCase().replace(/[ё]/g,"е").replace(/[^a-zа-я0-9 ]/gi," ").replace(/\s+/g," ").trim();
 
-let TERMS=[],HISTORY=[],QUICK=[],fuse=null;
+let TERMS=[],HISTORY=[],QUICK=[],PARENTS_IDX=[],fuse=null;
 
 const CHIPS=[
   {q:"что такое",label:"xG",query:"что такое xG"},
@@ -223,6 +223,22 @@ function chapterMatch(q){
   return null;
 }
 
+/* родителям: по ключевым словам разделов (data/parents.json → search) */
+/* как find_parents_section в bot/search.py: каждое слово фразы — по грубой основе (падежи), числа — точно */
+const pstem=w=>/^\d+$/.test(w)?w:w.length>5?w.slice(0,-2):w.length>4?w.slice(0,-1):w;
+function parentsMatch(q){
+  const ws=norm(q).split(" ").filter(Boolean);if(ws.join("").length<3)return null;
+  const hit=s=>ws.some(w=>/^\d+$/.test(s)?w===s:w.startsWith(s));
+  for(const e of PARENTS_IDX){
+    if((e.keywords||[]).some(k=>{const ss=norm(k).split(" ").filter(Boolean).map(pstem);return ss.length&&ss.every(hit);}))return e;
+  }
+  return null;
+}
+function tplParents(e){
+  return `<div class="ans"><div class="ans__tag">Родителям</div>
+    <h3 class="ans__title">${esc(e.title)}</h3><p class="ans__sum">${esc(e.summary)}</p>
+    <a class="ans__go" href="${PARENTS}#${esc(e.id)}"><span>Читать</span><span class="arr">→</span></a></div>`;
+}
 function tplQuick(a){
   const isHist=/history\//.test(a.target_url);
   const href=isHist?`${esc(a.target_url)}#${esc(a.anchor_id)}`:`${esc(a.target_url)}#t-${esc(a.anchor_id)}`;
@@ -262,6 +278,8 @@ function update(){
   if(fr.length&&fr[0].score<=0.5){slot.innerHTML=tplTerm(fr[0].item);chips.style.display="none";return;}
   const ch=chapterMatch(v);
   if(ch){slot.innerHTML=tplChapter(ch);chips.style.display="none";return;}
+  const pa=parentsMatch(v);
+  if(pa){slot.innerHTML=tplParents(pa);chips.style.display="none";return;}
   slot.innerHTML=tplEmpty();chips.style.display="flex";
 }
 input.addEventListener("input",update);
@@ -275,7 +293,7 @@ function renderEntries(){
     {n:"01",title:"Словарь",desc:`${TERMS.length} терминов: статистика, тактика, правила и позиции — по-русски и in English.`,cta:"Открыть",live:true,href:DICT},
     {n:"02",title:"История",desc:`Как игра пришла на лёд: ${HISTORY.length} глав от первого матча до КХЛ${pub&&pub<HISTORY.length?` (опубликовано: ${pub})`:""}.`,cta:"Читать",live:true,href:HIST},
     {n:"03",title:"Обучение",desc:"Маршруты по шагам: тактика с нуля и продвинутая статистика — со схемами и самопроверкой.",cta:"Начать",live:true,href:LEARN},
-    {n:"04",title:"Сообщество",desc:"Вопросы экспертам и совместная выверка терминов. Раздел в разработке.",cta:"Скоро",live:false}
+    {n:"04",title:"Родителям",desc:"Как строить развитие юного хоккеиста по возрастам — по рекомендациям ФХР, Hockey Canada и USA Hockey.",cta:"Читать",live:true,href:PARENTS}
   ];
   document.getElementById("entries").innerHTML=ENTRIES.map(e=>{
     const tag=e.live?"a":"div";
@@ -288,12 +306,13 @@ function renderEntries(){
 
 async function init(){
   try{
-    const [terms,history,quick]=await Promise.all([
+    const [terms,history,quick,parents]=await Promise.all([
       fetch("./data/terms.json").then(r=>r.json()),
       fetch("./data/history.json").then(r=>r.json()),
-      fetch("./data/quick_answers.json").then(r=>r.json())
+      fetch("./data/quick_answers.json").then(r=>r.json()),
+      fetch("./data/parents.json").then(r=>r.json()).catch(()=>({}))
     ]);
-    TERMS=terms;HISTORY=history;QUICK=quick;
+    TERMS=terms;HISTORY=history;QUICK=quick;PARENTS_IDX=parents.search||[];
     fuse=new Fuse(TERMS,{keys:[{name:"en",weight:0.4},{name:"ru",weight:0.35},{name:"abbr",weight:0.2},{name:"id",weight:0.1},{name:"definition",weight:0.05}],threshold:0.4,includeScore:true,minMatchCharLength:2});
     renderEntries();
   }catch(e){console.error(e);renderEntries();}

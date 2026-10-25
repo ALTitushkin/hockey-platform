@@ -195,3 +195,44 @@ def find_history_chapter(query: str, history: list[dict]) -> dict | None:
             if re.search(rf"(?<!\w){re.escape(kw)}(?!\w)", q):
                 return chapter
     return None
+
+
+# ─── Родителям ──────────────────────────────────────────────────────────────
+
+PARENTS_URL = f"{SITE_URL}parents.html"
+
+
+def load_parents() -> list[dict]:
+    """Поисковый слой гайда для родителей (data/parents.json → search). Пусто, если не опубликован."""
+    path = DATA_DIR / "parents.json"
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data.get("search", []) if data.get("_meta", {}).get("published") else []
+
+
+def _stem(word: str) -> str:
+    """Грубая основа для падежей: «хоккейную школу» ≈ «хоккейная школа». Числа — как есть."""
+    if word.isdigit():
+        return word
+    return word[:-2] if len(word) > 5 else word[:-1] if len(word) > 4 else word
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"\w+", text.lower().replace("ё", "е"))
+
+
+def find_parents_section(query: str, sections: list[dict]) -> dict | None:
+    """Раздел «Родителям» по ключевым фразам — только при miss в словаре и истории.
+    Фраза совпала, если каждое её слово (по основе) есть в запросе; «ё» = «е».
+    Та же логика — в parentsMatch на главной сайта (docs/index.html)."""
+    q = _words(query)
+    if len("".join(q)) < _MIN_HISTORY_LEN:
+        return None
+    for sec in sections:
+        for kw in sec.get("keywords", []):
+            stems = [_stem(w) for w in _words(kw)]
+            if stems and all(any(w == s if s.isdigit() else w.startswith(s) for w in q) for s in stems):
+                return sec
+    return None
+

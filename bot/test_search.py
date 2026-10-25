@@ -2,9 +2,11 @@
 
 from search import (
     find_history_chapter,
+    find_parents_section,
     fix_layout,
     format_card,
     load_history,
+    load_parents,
     load_terms,
     search,
     suggest,
@@ -120,6 +122,22 @@ def main() -> None:
     check_history("русская пятёрка", "exodus")
     check_history("локаут и аналитика", "modern-game")
     check_history("кубок гагарина", "russia-future")
+
+    print("Родителям (find_parents_section):")
+    parents = load_parents()
+    assert parents, "раздел опубликован — поисковый слой не пуст"
+    for query, expected in (("как поддержать ребёнка после игры", "rol-roditelya"),
+                            ("конфликт с тренером", "rol-roditelya"),
+                            ("сколько тренировок в 10 лет", "9-12-let"),
+                            ("сына не взяли в школу", "otbor-mesyac-rozhdeniya"),
+                            ("как выбрать хоккейную школу", "voprosy")):
+        sec = find_parents_section(query, parents)
+        got = sec["id"] if sec else None
+        assert got == expected, f"'{query}': ожидал {expected}, получил {got}"
+        # бот спрашивает родительский раздел только после словаря и истории — они не должны перехватывать
+        assert not search(query, TERMS) and not find_history_chapter(query, HISTORY), query
+        print(f"  ok: '{query}' → {got}")
+    assert find_parents_section("форчек", parents) is None and find_parents_section("xG", parents) is None
 
     print(f"\nВсе тесты пройдены. Терминов в базе: {len(TERMS)}, глав истории: {len(HISTORY)}")
 
