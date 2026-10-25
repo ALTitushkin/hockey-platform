@@ -1,0 +1,11 @@
+# Раз в 10 минут — сторож. Таймер, а не cron: на сервере нет crontab (как docker-prune.timer).
+[Unit]
+Description=Run hockey watchdog every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

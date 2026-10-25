@@ -35,7 +35,7 @@ runtime/
 
 # Сторож (deploy/watchdog.sh): токен служебного бота и флаг состояния — только на сервере
 .watchdog.env
-.watchdog-down
+.watchdog-down*
 
 # Локальные настройки Claude Code
 .claude/settings.local.json

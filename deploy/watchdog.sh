@@ -1,57 +1,71 @@
 #!/usr/bin/env bash
-# Сторож хоккей-бота: раз в 10 минут из cron на app-VPS.
-# Контейнер не running ИЛИ боевой токен не отвечает на getMe → сообщение владельцу.
+# Сторож «Культуры хоккея»: раз в 10 минут из systemd-таймера на app-VPS (cron на сервере нет).
+# По каждому сервису: контейнер не running ИЛИ его токен не отвечает на getMe → сообщение владельцу.
 #
-# Алерт шлёт ОТДЕЛЬНЫЙ служебный бот: на боевом токене сторож промолчал бы ровно
-# тогда, когда сломан боевой токен. Настройки — в /opt/hockey-platform/.watchdog.env
-# (в git не попадает, см. .gitignore):
+# Алерт шлёт ОТДЕЛЬНЫЙ служебный бот: на боевом токене сторож промолчал бы ровно тогда,
+# когда сломан боевой токен, а бот словаря публичный — служебное в него не пишем.
+# Настройки — в /opt/hockey-platform/.watchdog.env (в git не попадает, см. .gitignore):
 #   WATCHDOG_TOKEN=...   токен служебного бота (@BotFather → /newbot)
-#   WATCHDOG_CHAT=...    chat_id владельца (@userinfobot)
-# Боевой BOT_TOKEN берётся из .env рядом с compose — тот же файл, что у контейнера.
+#   WATCHDOG_CHAT=...    chat_id владельца
+# Боевые токены берутся из тех же файлов, что у контейнеров: .env (бот) и news/.env (новостник).
 #
-# Анти-спам: пока бот лежит, повторный алерт не чаще раза в час; при подъёме —
-# одно сообщение «восстановился». Состояние — в файле-флаге /opt/hockey-platform/.watchdog-down.
+# Анти-спам: пока сервис лежит, повторный алерт не чаще раза в час; при подъёме —
+# одно сообщение «снова работает». Флаги — /opt/hockey-platform/.watchdog-down-<контейнер>.
 # Установка и проверка: deploy/README.md → «Алерт о падении».
 set -uo pipefail
 
-main() {
-    local root=/opt/hockey-platform
-    local flag="$root/.watchdog-down"   # не в runtime/: тот принадлежит UID 1000 контейнера, cron идёт от deploy
-    local repeat_after=3600
+ROOT=/opt/hockey-platform
+REPEAT_AFTER=3600
 
-    # shellcheck disable=SC1091
-    source "$root/.watchdog.env" || { echo "нет $root/.watchdog.env"; return 1; }
-    local bot_token
-    bot_token="$(grep -E '^BOT_TOKEN=' "$root/.env" | cut -d= -f2-)"
+# контейнер | человеческое имя | файл с токеном | переменная токена
+SERVICES=(
+    "hockey-bot|Бот словаря|$ROOT/.env|BOT_TOKEN"
+    "hockey-news|Новостник|$ROOT/news/.env|NEWS_BOT_TOKEN"
+)
 
-    local problem=""
-    local state
-    state="$(docker inspect -f '{{.State.Status}}' hockey-bot 2>/dev/null || echo "нет контейнера")"
+check() {
+    local container="$1" env_file="$2" var="$3"
+    local state token resp
+    state="$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || echo "нет контейнера")"
     if [ "$state" != "running" ]; then
-        problem="контейнер hockey-bot: $state"
-    else
-        # Ответ getMe забираем в переменную, а не в конвейер с grep -q — см. грабли pipefail в deploy.sh.
-        local resp
-        resp="$(curl -s -m 15 "https://api.telegram.org/bot${bot_token}/getMe" || true)"
-        if [[ "$resp" != *'"ok":true'* ]]; then
-            # Токен в сообщение и в лог не попадает — только описание ответа.
-            problem="getMe не ответил ok (${resp:0:80})"
-            problem="${problem//$bot_token/***}"
-        fi
+        echo "контейнер $container: $state"
+        return
     fi
+    token="$(grep -E "^${var}=" "$env_file" 2>/dev/null | cut -d= -f2-)"
+    [ -n "$token" ] || { echo "нет $var в $env_file"; return; }
+    # Ответ getMe забираем в переменную, а не в конвейер с grep -q — см. грабли pipefail в deploy.sh.
+    resp="$(curl -s -m 15 "https://api.telegram.org/bot${token}/getMe" || true)"
+    if [[ "$resp" != *'"ok":true'* ]]; then
+        local problem="getMe не ответил ok (${resp:0:80})"
+        echo "${problem//$token/***}"  # токен в сообщение и в лог не попадает
+    fi
+}
 
-    if [ -n "$problem" ]; then
-        local now last=0
-        now="$(date +%s)"
-        [ -f "$flag" ] && last="$(cat "$flag")"
-        if [ $((now - last)) -ge $repeat_after ]; then
-            send "🔴 Хоккей-бот лежит: $problem"
-            echo "$now" > "$flag"
+main() {
+    # shellcheck disable=SC1091
+    source "$ROOT/.watchdog.env" || { echo "нет $ROOT/.watchdog.env"; return 1; }
+    local entry container name env_file var problem flag now last
+    for entry in "${SERVICES[@]}"; do
+        IFS='|' read -r container name env_file var <<< "$entry"
+        flag="$ROOT/.watchdog-down-$container"  # не в runtime/: тот принадлежит UID 1000 контейнера
+        problem="$(check "$container" "$env_file" "$var")"
+        if [ -n "$problem" ]; then
+            now="$(date +%s)"
+            last=0
+            [ -f "$flag" ] && last="$(cat "$flag")"
+            if [ $((now - last)) -ge $REPEAT_AFTER ]; then
+                send "🔴 $name лежит: $problem"
+                echo "$now" > "$flag"
+            fi
+            echo "$container: $problem"
+        elif [ -f "$flag" ]; then
+            send "🟢 $name снова работает"
+            rm -f "$flag"
+            echo "$container: восстановился"
+        else
+            echo "$container: ок"
         fi
-    elif [ -f "$flag" ]; then
-        send "🟢 Хоккей-бот снова отвечает"
-        rm -f "$flag"
-    fi
+    done
 }
 
 send() {

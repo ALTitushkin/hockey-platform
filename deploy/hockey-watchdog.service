@@ -1,0 +1,10 @@
+# Сторож «Культуры хоккея» — один прогон deploy/watchdog.sh. Запускается таймером hockey-watchdog.timer.
+# Установка: deploy/README.md → «Алерт о падении».
+[Unit]
+Description=Hockey platform watchdog (bot + news)
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/usr/bin/bash /opt/hockey-platform/deploy/watchdog.sh

@@ -113,29 +113,34 @@ docker compose logs --tail 30 bot
 
 ## Алерт о падении
 
-`deploy/watchdog.sh` раз в 10 минут проверяет: контейнер `hockey-bot` в состоянии `running` и боевой токен отвечает на `getMe`. Если нет — сообщение владельцу в Telegram от **отдельного служебного бота** (алерт на боевом токене промолчал бы ровно тогда, когда сломан боевой токен). Пока бот лежит, повтор — не чаще раза в час; когда поднялся — одно сообщение «снова отвечает».
+`deploy/watchdog.sh` раз в 10 минут проверяет два сервиса: `hockey-bot` (бот словаря, токен `BOT_TOKEN` из `.env`) и `hockey-news` (новостник, `NEWS_BOT_TOKEN` из `news/.env`). Для каждого: контейнер в состоянии `running` и токен отвечает на `getMe`. Если нет — сообщение владельцу от **отдельного служебного бота** (алерт на боевом токене промолчал бы ровно тогда, когда сломан боевой токен; бот словаря публичный — служебное в него не пишем). Пока сервис лежит, повтор — не чаще раза в час; когда поднялся — одно «🟢 снова работает». Флаги — `.watchdog-down-<контейнер>`.
 
-Включение — один раз, руками:
+Служебный бот только отправляет: входящие он не читает, сообщения шлёт одному `WATCHDOG_CHAT`. Кто-то другой может нажать у него /start, но ничего не получит.
+
+Включение — один раз:
 
 ```
-# 1. @BotFather → /newbot → служебный бот (например hockey_watchdog_bot), взять токен.
-#    Написать этому боту /start — иначе он не сможет прислать сообщение.
-#    Свой chat_id прислать @userinfobot.
+# 1. @BotFather → /newbot → служебный бот, взять токен. Написать ему /start.
+#    Токен в чат с агентом НЕ вставлять — сразу в файл на сервере, из своего терминала.
 
 # 2. На app-VPS под deploy:
 cd /opt/hockey-platform
-printf 'WATCHDOG_TOKEN=%s
-WATCHDOG_CHAT=%s
-' '<токен служебного бота>' '<chat_id>' > .watchdog.env
+printf 'WATCHDOG_TOKEN=%s\nWATCHDOG_CHAT=%s\n' '<токен>' '<chat_id>' > .watchdog.env
 chmod 600 .watchdog.env
-bash deploy/watchdog.sh && echo "сторож отработал без алерта"
+bash deploy/watchdog.sh        # обе строки «ок»
 
-# 3. Cron (crontab -e под deploy):
-*/10 * * * * bash /opt/hockey-platform/deploy/watchdog.sh >/dev/null 2>&1
+# 3. Таймер (cron на сервере нет):
+sudo cp deploy/hockey-watchdog.service deploy/hockey-watchdog.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now hockey-watchdog.timer
+systemctl list-timers hockey-watchdog.timer
 
 # 4. Проверка по-настоящему — непроверенный алерт не считается сделанным:
-docker stop hockey-bot      # ждём до 10 минут → 🔴
-docker start hockey-bot     # следующий прогон → 🟢
+docker stop hockey-news; sudo systemctl start hockey-watchdog.service   # → 🔴
+docker start hockey-news; sudo systemctl start hockey-watchdog.service  # → 🟢
 ```
 
-`.watchdog.env` и флаг состояния `.watchdog-down` — в `.gitignore`, `git pull` их не трогает.
+Откат: `sudo systemctl disable --now hockey-watchdog.timer` и удалить оба юнита из `/etc/systemd/system/`.
+
+Сторож живёт на том же сервере и о падении самого VPS не сообщит — это фаза 2: внешний «пульс» (healthchecks.io), см. `project/planning/backlog.md`.
+
+`.watchdog.env` и флаги `.watchdog-down-*` — в `.gitignore`, `git pull` их не трогает.
