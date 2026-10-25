@@ -111,14 +111,26 @@ def draft_path(msk: str, kind: str = "night") -> Path:
 
 
 def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str | None = None,
-               kind: str = "night") -> Path:
+               kind: str = "night", data: dict | None = None) -> Path:
+    """data — исходные данные поста для перепроверки после выхода («Сегодня ночью»: матчи и составы)."""
     OUT.mkdir(exist_ok=True)
     path = draft_path(msk, kind)
     # пересборка черновика не сбрасывает отметки о публикации — иначе дата ушла бы в канал дважды
-    done = json.loads(path.read_text(encoding="utf-8"))["published"] if path.exists() else []
-    path.write_text(json.dumps({"date": msk, "text": text, "issues": issues, "variant": variant,
-                                "card": card, "published": done}, ensure_ascii=False, indent=2), encoding="utf-8")
+    old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    d = {"date": msk, "text": text, "issues": issues, "variant": variant, "card": card,
+         "published": old.get("published", []), "messages": old.get("messages", {})}
+    if data is not None:
+        d["data"] = data
+    path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+def edit_photo(chat: str, message_id: int, text: str, photo: str, post: Post = http_post) -> tuple[bool, str]:
+    """Заменить картинку и подпись вышедшего поста (editMessageMedia)."""
+    media = {"type": "photo", "media": "attach://photo", "caption": text, "parse_mode": "HTML"}
+    r = post(f"{TG_API}/bot{os.environ.get('NEWS_BOT_TOKEN', '')}/editMessageMedia",
+             {"chat_id": chat, "message_id": message_id, "media": media}, {}, files={"photo": photo})
+    return bool(r.get("ok")), r.get("description", "ок")
 
 
 def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
@@ -193,6 +205,8 @@ def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "n
         report.append(f"{target}: {'ок' if ok else 'ошибка'} — {info}")
         if ok:
             d["published"].append(target)
+            if target == "tg":  # для правки поста потом (перепроверка состава)
+                d.setdefault("messages", {})["tg"] = [int(x) for x in re.findall(r"\d+", info.split("message_id")[-1])]
         all_ok &= ok
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
     return all_ok, report

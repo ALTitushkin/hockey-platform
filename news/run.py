@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 from news import events, guard, injuries, names, nhl, publish, service
 from news.card import render_card, render_tonight_card
-from news.digest import render_caption, render_league, render_night, render_tonight
+from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight
 from news.llm import lead
 
 ROOT = Path(__file__).parent
@@ -118,36 +118,65 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     return "guard" if issues else "ok"
 
 
+MSK = ZoneInfo("Europe/Moscow")
+# статус ESPN → пометка в посте; «Day-To-Day» в injuries.OUT не входит — такие часто играют
+WHY = {"Injured Reserve": "травма", "Long Term Injured Reserve": "травма", "Out": "травма",
+       "Suspension": "дисквалификация"}
+
+
+def tonight_roster(teams_playing: set[str], players: dict, msk: str) -> dict[str, list[dict]]:
+    """Наши в клубах вечера и сыграл ли каждый в прошлом матче клуба. Дорогая часть (2 запроса на клуб),
+    поэтому один раз при сборке: до сегодняшних матчей прошлый матч не меняется."""
+    lineups = {t: nhl.last_lineup(t, SEASON, msk) for t in teams_playing}
+    roster: dict[str, list[dict]] = {}
+    for p in nhl.fetch_nationals(SEASON):
+        rec = players.get(str(p["pid"]))
+        if rec and p.get("team") in teams_playing:
+            roster.setdefault(p["team"], []).append({"pid": p["pid"], "surname": rec["surname"],
+                                                     "name": p["name"], "played": p["pid"] in lineups[p["team"]]})
+    return roster
+
+
+def split_roster(roster: dict[str, list[dict]], out: dict[str, str]) -> tuple[dict, dict]:
+    """→ (наши в составах, не сыграют с причиной). Статистика сезона одна не годится: Романов и Демидов
+    на травме, а 25.10.2026 попали в пост (замечание владельца). Теперь такие — с пометкой, не пропадают."""
+    ours: dict[str, list[tuple[int, str]]] = {}
+    skip: dict[str, list[tuple[int, str, str]]] = {}
+    for team, recs in roster.items():
+        for r in recs:
+            status = out.get(injuries.norm(r["name"]))
+            if status:
+                skip.setdefault(team, []).append((r["pid"], r["surname"], WHY.get(status, "травма")))
+            elif not r["played"]:
+                skip.setdefault(team, []).append((r["pid"], r["surname"], NOT_PLAYED))
+            else:
+                ours.setdefault(team, []).append((r["pid"], r["surname"]))
+    return ours, skip
+
+
+def render_tonight_post(games: list[dict], ours: dict, skip: dict, players: dict, teams: dict, msk: str):
+    text, facts = render_tonight(games, ours, teams, msk, MSK, skip)
+    issues = guard.check(text, facts, players, teams) if text else []
+    card = render_tonight_card(games, ours, teams, msk, MSK, publish.OUT / f"{msk}_tonight.png", skip) \
+        if text else None
+    return text, issues, card
+
+
 def build_tonight(msk: str, review: bool) -> str:
     """«Сегодня ночью»: матчи НХЛ, которые ещё не начались, по московскому времени, и наши в составах.
-    Вечер по Москве = та же дата в Северной Америке. Клуб игрока — из статистики сезона НХЛ."""
+    Вечер по Москве = та же дата в Северной Америке. Травмы потом перепроверяет refresh_tonight."""
     reg, teams = load()
     games = nhl.upcoming_games(msk)
     players = {k: v for k, v in reg["players"].items() if v.get("ru")}
-    ours: dict[str, list[tuple[int, str]]] = {}
-    # «наши в составах» = сыграл в прошлом матче клуба и не в списке травм ESPN. Статистика сезона одна
-    # не годится: Романов и Демидов на травме, а 25.10.2026 попали в пост (замечание владельца).
-    playing = {t for g in games for t in (g["home"], g["away"])}
-    lineups = {t: nhl.last_lineup(t, SEASON, msk) for t in playing}
+    roster = tonight_roster({t for g in games for t in (g["home"], g["away"])}, players, msk)
     out = injuries.injured()
-    skipped = []
-    for p in nhl.fetch_nationals(SEASON):
-        rec = players.get(str(p["pid"]))
-        if not rec or p.get("team") not in playing:
-            continue
-        if p["pid"] not in lineups[p["team"]] or injuries.norm(p["name"]) in out:
-            skipped.append(f"{rec['surname']} ({out.get(injuries.norm(p['name']), 'не играл прошлый матч')})")
-            continue
-        ours.setdefault(p["team"], []).append((p["pid"], rec["surname"]))
-    if skipped:
-        print("  ↳ не в составе: " + ", ".join(skipped))
-    text, facts = render_tonight(games, ours, teams, msk, ZoneInfo("Europe/Moscow"))
+    ours, skip = split_roster(roster, out)
+    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk)
     if not text:
         print(f"{msk}: матчей впереди нет — поста нет")
         return "nogames"
-    issues = guard.check(text, facts, players, teams)
-    card = render_tonight_card(games, ours, teams, msk, ZoneInfo("Europe/Moscow"), publish.OUT / f"{msk}_tonight.png")
-    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="tonight")
+    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="tonight",
+                              data={"games": games, "roster": roster, "out": out})
     print(text, f"\n\n— гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
     if review and not issues and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
         ok, info = publish.auto_publish(msk, kind="tonight")
@@ -156,6 +185,55 @@ def build_tonight(msk: str, review: bool) -> str:
         ok, info = publish.review(msk, kind="tonight")
         print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
     return "guard" if issues else "ok"
+
+
+def refresh_tonight(msk: str, now: datetime, fetch=None) -> str | None:
+    """Перепроверка вышедшей «Сегодня ночью»: травмы объявляют днём и вечером. Один запрос к ESPN, без
+    повторного обхода клубов; клубы, чей матч уже начался, не трогаем. Изменилось — правим пост в канале
+    (editMessageMedia), владельцу отчёт. → строка для лога или None, если проверять нечего."""
+    path = publish.draft_path(msk, "tonight")
+    if not path.exists():
+        return None
+    d = json.loads(path.read_text(encoding="utf-8"))
+    data, mids = d.get("data"), d.get("messages", {}).get("tg")
+    if not data or "roster" not in data or not mids or "tg" not in d.get("published", []):
+        return None
+    if len(mids) > 1:  # подпись не влезла и ушла отдельным текстом — правкой картинки не обновить
+        return None
+    games, roster, old_out = data["games"], data["roster"], data["out"]
+    soon = {t for g in games if datetime.fromisoformat(g["start"].replace("Z", "+00:00")) > now
+            for t in (g["home"], g["away"])}
+    if not soon:
+        return None
+    fresh = injuries.injured(fetch) if fetch else injuries.injured()
+    if not fresh:  # ESPN не ответил — не путаем «нет данных» с «все выздоровели»
+        return "травмы недоступны"
+    names = {injuries.norm(r["name"]) for t in soon for r in roster.get(t, [])}
+    out = {k: v for k, v in old_out.items() if k not in names} | {k: v for k, v in fresh.items() if k in names}
+    old_ours, old_skip = split_roster(roster, old_out)
+    ours, skip = split_roster(roster, out)
+    if ours == old_ours and skip == old_skip:
+        return "состав без изменений"
+    was = {s for v in old_ours.values() for _, s in v}
+    now_in = {s for v in ours.values() for _, s in v}
+    change = "; ".join(x for x in ("не сыграют: " + ", ".join(sorted(was - now_in)) if was - now_in else "",
+                                   "вернулись: " + ", ".join(sorted(now_in - was)) if now_in - was else "") if x) \
+        or "сменилась причина"
+    reg, teams = load()
+    players = {k: v for k, v in reg["players"].items() if v.get("ru")}
+    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk)
+    owner = os.environ.get("OWNER_CHAT_ID", "")
+    if issues:
+        publish.tg_call("sendMessage", {"chat_id": owner, "text": f"⚠️ «Сегодня ночью»: состав изменился ({change}), "
+                                        "но гард не пропустил правку — пост не тронут"})
+        return f"гард: {'; '.join(issues)}"
+    ok, info = publish.edit_photo(os.environ.get("NEWS_CHANNEL", ""), mids[0], text, str(card))
+    if not ok:
+        return f"правка не прошла: {info}"
+    d.update(text=text, card=str(card), data={**data, "out": out})
+    path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    publish.tg_call("sendMessage", {"chat_id": owner, "text": f"🔄 «Сегодня ночью»: обновил пост — {change}"})
+    return f"обновлено: {change}"
 
 
 def cmd_tonight(args) -> int:
@@ -192,9 +270,15 @@ def cmd_serve(_args) -> int:
         result = build_tonight(msk, True)
         return "ok" if result == "guard" else result
 
+    def recheck(now: datetime) -> list[str]:
+        # матчи западного побережья начинаются до 06:00 МСК — после полуночи пост ещё вчерашний
+        dates = [(now - timedelta(days=k)).date().isoformat() for k in (0, 1)]
+        return [f"перепроверка {msk}: {r}" for msk in dates if (r := refresh_tonight(msk, now))]
+
     service.run_forever([("league", "NEWS_LEAGUE_AT", "09:00", league),
                          ("night", "NEWS_REVIEW_AT", "09:30", night),
-                         ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)])
+                         ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)],
+                        ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck)])
     return 0
 
 

@@ -87,13 +87,15 @@ def save_state(state: dict) -> None:
 Build = Callable[[str, bool], str]
 
 
-def run_forever(jobs: list[tuple[str, str, str, Build]]) -> None:
+def run_forever(jobs: list[tuple[str, str, str, Build]],
+                ticks: list[tuple[int, Callable[[datetime], list[str]]]] = ()) -> None:
     """jobs: (рубрика, переменная со временем, время по умолчанию, build).
-    build(дата, последняя_попытка) → "ok" | "nogames" | "pending" (матчи ещё идут)."""
+    build(дата, последняя_попытка) → "ok" | "nogames" | "pending" (матчи ещё идут).
+    ticks: (раз в сколько секунд, fn(сейчас) → строки для лога) — перепроверки вышедших постов."""
     owner = os.environ["OWNER_CHAT_ID"]
     deadline = parse_hhmm(os.environ.get("NEWS_DEADLINE", ""), "12:00")
     plan = [(kind, parse_hhmm(os.environ.get(var, ""), default), build) for kind, var, default, build in jobs]
-    offset = None
+    offset, last_tick = None, [0.0] * len(ticks)
     times = ", ".join(f"{kind} {at:%H:%M}" for kind, at, _ in plan)
     print(f"новостник: сбор после {times} МСК, дедлайн {deadline:%H:%M}, владелец {owner}", flush=True)
     while True:
@@ -111,6 +113,16 @@ def run_forever(jobs: list[tuple[str, str, str, Build]]) -> None:
             done = result in ("ok", "nogames")
             state[kind] = {"built": msk} if done else {**job, "next_try": now.timestamp() + RETRY}
             save_state(state)
+        for i, (every, fn) in enumerate(ticks):
+            if now.timestamp() - last_tick[i] < every:
+                continue
+            last_tick[i] = now.timestamp()
+            try:
+                lines = fn(now)
+            except Exception as e:  # сеть/API: перепроверка подождёт следующего раза
+                lines = [f"перепроверка: ошибка {type(e).__name__}: {e}"]
+            for line in lines:
+                print(f"{now:%Y-%m-%d %H:%M} {line}", flush=True)
         body = {"timeout": 50, "allowed_updates": ["callback_query"]}
         if offset is not None:
             body["offset"] = offset

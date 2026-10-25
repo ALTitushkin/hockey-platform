@@ -313,6 +313,60 @@ def test_tonight():
     assert "<b>03:30</b> Тампа — Рейнджерс\nнаши: Кучеров" in text
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
     assert render_tonight([], {}, TEAMS, "2026-10-25", MSK)[0] == ""
+    # неиграющие наши — с пометкой, не пропадают
+    text, facts = render_tonight(games, {"MIN": [(1, "Капризов")]}, TEAMS, "2026-10-25", MSK,
+                                 {"TBL": [(5, "Кучеров", "травма")]})
+    assert "<b>03:30</b> Тампа — Рейнджерс\n<i>не сыграют: Кучеров (травма)</i>" in text
+    assert guard.check(text, facts, PLAYERS, TEAMS) == []
+
+
+def test_tonight_recheck():
+    import json
+    import os
+    import tempfile
+    from datetime import datetime
+    from pathlib import Path
+
+    from news import publish, run
+    from news.service import MSK
+
+    roster = {"MIN": [{"pid": 1, "surname": "Капризов", "name": "Kirill Kaprizov", "played": True}],
+              "TBL": [{"pid": 5, "surname": "Кучеров", "name": "Nikita Kucherov", "played": True},
+                      {"pid": 4, "surname": "Шестёркин", "name": "Igor Shesterkin", "played": False}]}
+    ours, skip = run.split_roster(roster, {"nikita kucherov": "Suspension"})
+    assert ours == {"MIN": [(1, "Капризов")]}
+    assert skip == {"TBL": [(5, "Кучеров", "дисквалификация"), (4, "Шестёркин", "не играл прошлый матч")]}
+
+    games = [{"start": "2026-10-25T23:00:00Z", "home": "MIN", "away": "WSH"},
+             {"start": "2026-10-26T00:30:00Z", "home": "TBL", "away": "NYR"}]
+    old_out, old_load = publish.OUT, run.load
+    publish.OUT = Path(tempfile.mkdtemp())
+    run.load = lambda: ({"players": PLAYERS}, TEAMS)
+    edits, notes = [], []
+    old_edit, old_call = publish.edit_photo, publish.tg_call
+    publish.edit_photo = lambda chat, mid, text, card: (edits.append((mid, text)), (True, "ок"))[1]
+    publish.tg_call = lambda method, body: notes.append(body["text"]) or {"ok": True}
+    try:
+        publish.save_draft("2026-10-25", "пост", [], "шаблон", None, kind="tonight",
+                           data={"games": games, "roster": roster, "out": {}})
+        path = publish.draft_path("2026-10-25", "tonight")
+        now = datetime(2026, 10, 26, 2, 30, tzinfo=MSK)  # Миннесота уже играет, Тампа — впереди
+        assert run.refresh_tonight("2026-10-25", now, lambda url: {}) is None  # ещё не в канале — не трогаем
+        d = json.loads(path.read_text(encoding="utf-8"))
+        path.write_text(json.dumps({**d, "published": ["tg"], "messages": {"tg": [7]}}), encoding="utf-8")
+        hurt = {"injuries": [{"injuries": [
+            {"status": "Out", "athlete": {"displayName": "Nikita Kucherov"}},
+            {"status": "Out", "athlete": {"displayName": "Kirill Kaprizov"}}]}]}  # его матч начался — не трогаем
+        assert run.refresh_tonight("2026-10-25", now, lambda url: hurt) == "обновлено: не сыграют: Кучеров"
+        assert edits[0][0] == 7 and "Кучеров (травма)" in edits[0][1] and "наши: Капризов" in edits[0][1]
+        assert "обновил пост" in notes[-1]
+        assert run.refresh_tonight("2026-10-25", now, lambda url: hurt) == "состав без изменений"
+        assert len(edits) == 1  # повтор без изменений — канал не трогаем
+        later = datetime(2026, 10, 26, 4, 0, tzinfo=MSK)
+        assert run.refresh_tonight("2026-10-25", later, lambda url: hurt) is None  # всё началось — не проверяем
+    finally:
+        publish.OUT, run.load, publish.edit_photo, publish.tg_call = old_out, old_load, old_edit, old_call
+        os.environ.pop("OWNER_CHAT_ID", None)
 
 
 def test_injuries_and_lineup():

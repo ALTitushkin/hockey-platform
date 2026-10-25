@@ -233,10 +233,15 @@ def render_league(reports: list[GameReport], players: dict, teams: dict, msk_dat
     return "\n\n".join(blocks), facts
 
 
+NOT_PLAYED = "не играл прошлый матч"
+
+
 def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], teams: dict, msk_date: str,
-                   tz) -> tuple[str, dict]:
-    """«Сегодня ночью»: матчи по московскому времени, под матчем — наши в составах.
-    games — `nhl.upcoming_games`, ours_by_team — {клуб: [(id, фамилия), ...]} из реестра."""
+                   tz, out_by_team: dict[str, list[tuple[int, str, str]]] | None = None) -> tuple[str, dict]:
+    """«Сегодня ночью»: матчи по московскому времени, под матчем — наши в составах и кто из наших не сыграет.
+    games — `nhl.upcoming_games`, ours_by_team — {клуб: [(id, фамилия), ...]} из реестра,
+    out_by_team — {клуб: [(id, фамилия, причина), ...]}."""
+    out_by_team = out_by_team or {}
     from datetime import datetime
 
     _, m, d = (int(x) for x in msk_date.split("-"))
@@ -253,9 +258,17 @@ def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, st
         home, away = teams[g["home"]], teams[g["away"]]
         facts["teams"] |= {home, away}
         ours = ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])
-        facts["pids"] |= {pid for pid, _ in ours}
+        out = out_by_team.get(g["home"], []) + out_by_team.get(g["away"], [])
+        facts["pids"] |= {pid for pid, _ in ours} | {pid for pid, _, _ in out}
         line = f"<b>{hh}:{mm}</b> {home} — {away}"  # как в утренних постах и на карточке: хозяева первыми
-        rows.append(line + (f"\nнаши: {', '.join(name for _, name in ours)}" if ours else ""))
+        if ours:
+            line += f"\nнаши: {', '.join(name for _, name in ours)}"
+        # травма — точно не сыграет; не было в прошлом матче — под вопросом (может вернуться в состав)
+        for label, group in (("не сыграют", [x for x in out if x[2] != NOT_PLAYED]),
+                             ("под вопросом", [x for x in out if x[2] == NOT_PLAYED])):
+            if group:
+                line += f"\n<i>{label}: {', '.join(f'{name} ({why})' for _, name, why in group)}</i>"
+        rows.append(line)
     blocks.append("\n\n".join(rows))
     blocks.append(f"Время московское · 📺 #СегодняНочью · {d} {MONTHS[m - 1]}")
     return "\n\n".join(blocks), facts
