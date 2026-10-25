@@ -62,6 +62,8 @@ def http_post(url: str, body: dict, headers: dict, files: dict | None = None) ->
             return json.load(r)
     except urllib.error.HTTPError as e:
         return {"ok": False, "error_code": e.code, "description": e.read().decode(errors="replace")[:300]}
+    except (OSError, ValueError) as e:  # обрыв, таймаут, битый JSON — сервис не падает, а пробует снова
+        return {"ok": False, "description": f"сеть: {type(e).__name__}"}
 
 
 def visible_len(text: str) -> int:

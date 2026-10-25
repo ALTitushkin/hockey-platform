@@ -254,6 +254,16 @@ def test_service_buttons_and_schedule():
     assert service.due(noon, {"next_try": noon.timestamp() + 60}, at, dl) == "2026-10-25"  # дедлайн
 
 
+def test_http_post_survives_network_errors():
+    from unittest import mock
+
+    from news import publish
+
+    with mock.patch("urllib.request.urlopen", side_effect=TimeoutError("read timed out")):
+        r = publish.http_post("https://api.telegram.org/x", {}, {})
+    assert r == {"ok": False, "description": "сеть: TimeoutError"}
+
+
 def test_photo_caption_or_split():
     import os
     import tempfile
