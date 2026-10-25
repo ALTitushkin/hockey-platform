@@ -12,3 +12,8 @@ bot/.env
 bot/venv/
 *.log
 runtime/
+# новостник: промпты — .md, но нужны в образе; секреты и черновики — нет
+!news/prompts/*.md
+news/.env
+news/out/
+news/fixtures/

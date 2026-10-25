@@ -39,3 +39,6 @@ runtime/
 
 # Локальные настройки Claude Code
 .claude/settings.local.json
+
+# Новостник: черновики теневого режима
+news/out/

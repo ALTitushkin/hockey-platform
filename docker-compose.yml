@@ -37,3 +37,40 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Новостник «Культура хоккея» (news/). Профиль news: обычный `docker compose up` его не трогает,
+  # поднимает deploy.sh, только если на сервере есть news/.env (выключатель — см. deploy/README.md).
+  # Образ НЕ собирается на сервере: CI кладёт его в GHCR, deploy.sh тянет по SHA и ставит тег latest;
+  # прошлый получает тег previous — откат без сборки (workflow_dispatch, news_image=previous).
+  # Тоже ровно ОДИН инстанс: свой токен NEWS_BOT_TOKEN, второй getUpdates → 409.
+  news:
+    profiles: ["news"]
+    image: ghcr.io/altitushkin/hockey-news:latest
+    pull_policy: never
+    container_name: hockey-news
+    restart: unless-stopped
+    env_file: news/.env
+    environment:
+      # На сервере вводную пишет только Claude: GigaChat прошёл гард, но путал факты (news/prompts/README.md).
+      NEWS_LLM: claude_cli
+    init: true
+    # Харденинг по стандарту: файловая система только на чтение, без capabilities и повышения прав.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=32m
+      # конфиг Claude Code CLI (~/.claude*) живёт только в памяти контейнера
+      - /home/app:size=32m,uid=1000,gid=1000,mode=0700
+    # Черновики, карточки и состояние сервиса переживают пересоздание. Владелец — UID 1000.
+    volumes:
+      - ./news-runtime:/app/news/out
+    # Python + Pillow ~60 МБ, остальное — Claude Code CLI в момент вызова (раз в сутки).
+    # Сумма лимитов на app-VPS с ним — в project/process/ops_notes.md (замер перед выкатом).
+    mem_limit: 384m
+    memswap_limit: 384m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -7,16 +7,28 @@
 #   DEPLOY_ENABLED — 'true' включает выкат (включён с 30.08.2026). Ставить 'false'
 #                    на время любого переезда бота: иначе случайный пуш поднимет
 #                    второй инстанс → 409 Conflict на getUpdates.
+#
+# Новостник (news/): образ собирает CI (job news-image) и кладёт в GHCR
+# ghcr.io/altitushkin/hockey-news:<sha>; сервер только тянет его — без сборки.
+# Откат новостника: Actions → CI/CD bot → Run workflow → news_image=previous (или SHA).
 
 name: CI/CD bot
 
 on:
+  # Ручной выкат/откат новостника без сборки: news_image = previous | <sha>.
+  workflow_dispatch:
+    inputs:
+      news_image:
+        description: "Тег образа новостника: previous (откат) или SHA коммита"
+        required: true
+        default: previous
   push:
     branches: [main]
     paths:
       - "bot/**"
       - "data/**"
       - "tools/**"
+      - "news/**"
       - "Dockerfile"
       - "docker-compose.yml"
       - "deploy/**"
@@ -29,6 +41,7 @@ on:
       - "bot/**"
       - "data/**"
       - "tools/**"
+      - "news/**"
       - "Dockerfile"
       - "docker-compose.yml"
       - "deploy/**"
@@ -50,7 +63,7 @@ jobs:
       - name: Lint (ruff)
         run: |
           pip install -q ruff
-          ruff check bot/ tools/
+          ruff check bot/ tools/ news/
       - name: Validate data (целостность реестров + паритет зеркал + status)
         run: python tools/validate_data.py
       - name: Validate calendar (формат событий + отчёт покрытия)
@@ -60,21 +73,64 @@ jobs:
           cd bot
           python test_search.py
           python test_calendar.py
+      - name: News tests (без сети)
+        run: |
+          pip install -q -r news/requirements.txt
+          python -m news.test_news
+
+  # ── Образ новостника собирается в CI: ошибка Dockerfile видна до сервера ──
+  news-image:
+    # на ручном откате образ не собираем — откат обязан работать без сборки
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build news image
+        run: docker build -f news/Dockerfile -t ghcr.io/altitushkin/hockey-news:${{ github.sha }} .
+      - name: Smoke test (импорт, шрифты, логотипы, промпты, Claude CLI, read-only)
+        run: |
+          IMG=ghcr.io/altitushkin/hockey-news:${{ github.sha }}
+          docker run --rm --read-only --tmpfs /home/app:uid=1000,gid=1000 "$IMG"             python -c "import news.run, news.card; from PIL import Image; print('python ok')"
+          docker run --rm --read-only --tmpfs /home/app:uid=1000,gid=1000 "$IMG"             sh -c 'claude --version && ls news/prompts/lead.md news/assets/logos/TBL.png news/assets/fonts/Oswald.ttf'
+      - name: Push to GHCR (только main)
+        if: github.event_name == 'push'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push ghcr.io/altitushkin/hockey-news:${{ github.sha }}
 
   # ── Деплой только после зелёных тестов и только при включённом флаге ──
   deploy:
-    needs: test
-    if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    needs: [test, news-image]
+    if: >-
+      always() && vars.DEPLOY_ENABLED == 'true' && needs.test.result == 'success'
+      && ((github.event_name == 'push' && needs.news-image.result == 'success')
+          || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
+        env:
+          NEWS_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.news_image || github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          # Токен джоба живёт, пока идёт джоб: на сервере не остаётся постоянного секрета.
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          envs: NEWS_TAG,GHCR_USER,GHCR_TOKEN
           # Через `bash`, а не напрямую — не зависим от exec-бита файла:
           # git на Windows его не трекает, иначе SSH падает с 126 Permission denied.
           # Healthcheck («Бот запущен» в логах контейнера) внутри deploy.sh —
           # так ручной деплой защищён тем же гейтом, что и автоматический.
-          script: bash /opt/hockey-platform/deploy/deploy.sh
+          script: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+            NEWS_TAG="$NEWS_TAG" bash /opt/hockey-platform/deploy/deploy.sh; rc=$?
+            docker logout ghcr.io >/dev/null
+            exit $rc

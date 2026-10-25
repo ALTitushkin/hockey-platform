@@ -95,8 +95,61 @@ main() {
         fi
     fi
 
+    deploy_news
+
     echo "==> чистка старых образов"
     docker image prune -f >/dev/null
+}
+
+# Новостник (профиль news). Образ НЕ собираем: CI положил его в GHCR, тег приходит в NEWS_TAG.
+# Выключатель — файл news/.env на сервере: нет файла — сервис не поднимаем, запущенный гасим.
+# Теги на сервере: latest (работает) + previous (точка отката). NEWS_TAG=previous — откат без сети.
+deploy_news() {
+    local img=ghcr.io/altitushkin/hockey-news
+    if [ ! -f news/.env ]; then
+        if [ -n "$(docker compose --profile news ps -q news 2>/dev/null || true)" ]; then
+            echo "==> новостник: news/.env нет — останавливаю"
+            docker compose --profile news stop news
+        else
+            echo "==> новостник: выключен (нет news/.env)"
+        fi
+        return 0
+    fi
+    if [ -z "${NEWS_TAG:-}" ]; then
+        echo "==> новостник: тег образа не передан (ручной запуск без NEWS_TAG) — не трогаю"
+        return 0
+    fi
+
+    if [ "$NEWS_TAG" = "previous" ]; then
+        echo "==> новостник: откат на previous"
+        docker image inspect "$img:previous" >/dev/null 2>&1 || { echo "FAILED: образа previous нет"; return 1; }
+        docker image inspect "$img:latest" >/dev/null 2>&1 && docker tag "$img:latest" "$img:before-rollback"
+        docker tag "$img:previous" "$img:latest"
+    else
+        echo "==> новостник: образ $NEWS_TAG"
+        # Сначала тянем новый образ: не скачался — работающий контейнер не тронут.
+        docker pull -q "$img:$NEWS_TAG" || { echo "FAILED: не скачался $img:$NEWS_TAG"; return 1; }
+        local cur new
+        cur="$(docker image inspect -f '{{.Id}}' "$img:latest" 2>/dev/null || true)"
+        new="$(docker image inspect -f '{{.Id}}' "$img:$NEWS_TAG")"
+        if [ -n "$cur" ] && [ "$cur" != "$new" ]; then docker tag "$img:latest" "$img:previous"; fi
+        docker tag "$img:$NEWS_TAG" "$img:latest"
+        docker rmi "$img:$NEWS_TAG" >/dev/null 2>&1 || true   # тег-SHA не храним: есть latest/previous
+    fi
+
+    mkdir -p news-runtime
+    docker compose --profile news up -d --no-build --force-recreate news
+    sleep 8
+    local logs
+    logs="$(docker compose --profile news logs --since 60s news 2>&1 || true)"
+    if [[ "$logs" == *"новостник: сбор после"* ]]; then
+        echo "OK: новостник запущен"
+        [ "$NEWS_TAG" = "previous" ] || docker rmi "$img:before-rollback" >/dev/null 2>&1 || true
+    else
+        echo "FAILED: новостник не стартовал. Логи — на сервере: docker compose --profile news logs --tail 50 news"
+        echo "Откат: Actions → CI/CD bot → Run workflow → news_image=previous"
+        return 1
+    fi
 }
 
 main "$@"
