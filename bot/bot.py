@@ -29,11 +29,14 @@ from calendar_feature import (
     today_mmdd,
 )
 from search import (
+    PARENTS_URL,
     SITE_URL,
     find_history_chapter,
+    find_parents_section,
     fix_layout,
     format_card,
     load_history,
+    load_parents,
     load_review,
     load_terms,
     search,
@@ -78,6 +81,7 @@ def _load_or_die(name: str, loader):
 
 TERMS = _load_or_die("data/terms.json / expert_review.json", load_terms)
 HISTORY = _load_or_die("data/history.json", load_history)
+PARENTS = _load_or_die("data/parents.json", load_parents)
 CALENDAR = _load_or_die("data/calendar.json", load_calendar)
 # Счётчики по файлам (вариант 1): база = terms.json, «на выверке» = expert_review.json.
 N_REVIEW = len(_load_or_die("data/expert_review.json", load_review))
@@ -284,6 +288,22 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             f"Это из истории хоккея, а не термин аналитики.\n\n"
             f"📚 <b>{chapter['title']}</b>\n"
             f"<i>{chapter['summary']}</i>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+        return
+
+    # Не термин и не история — может, вопрос родителя юного хоккеиста
+    section = find_parents_section(query, PARENTS)
+    if section:
+        log_query(query, hit=True)
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("👨‍👩‍👦 Читать на сайте", url=f"{PARENTS_URL}#{section['id']}")]]
+        )
+        await update.message.reply_text(
+            f"Это из раздела «Родителям».\n\n"
+            f"<b>{section['title']}</b>\n"
+            f"<i>{section['summary']}</i>",
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
         )

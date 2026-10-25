@@ -31,6 +31,7 @@ STATIC_PAGES = [
     ("dictionary.html", "0.9"),
     ("history.html", "0.8"),
     ("learn.html", "0.7"),
+    ("parents.html", "0.7"),
 ]
 
 MARK_START = "<!-- SEO:DEFINEDTERMS:START (генерится tools/build_seo.py — вручную не править) -->"

@@ -151,7 +151,7 @@ def main() -> int:
                 err(f"{where}: check.answer вне списка options")
 
     # зеркала
-    for name in ("terms.json", "clusters.json", "quick_answers.json", "history.json", "learning.json"):
+    for name in ("terms.json", "clusters.json", "quick_answers.json", "history.json", "learning.json", "parents.json"):
         check_mirror(name)
 
     if errors:
