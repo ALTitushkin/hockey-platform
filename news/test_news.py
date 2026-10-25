@@ -110,6 +110,42 @@ def test_llm_chain_falls_through():
     assert lead("пост", accept, chain="none,d", providers=fake)[:2] == (None, "шаблон")
 
 
+def test_publish_gates():
+    import os
+    import tempfile
+    from pathlib import Path
+
+    from news import publish
+
+    sent = []
+
+    def fake_post(url, body, headers):
+        sent.append((url.split("/")[-1].split("?")[0], body.get("chat_id"), body["text"][:12]))
+        return {"ok": True, "result": {"message_id": len(sent)}} if "telegram" in url else {"message": {}}
+
+    old_out, old_env = publish.OUT, dict(os.environ)
+    publish.OUT = Path(tempfile.mkdtemp())
+    os.environ.update({"NEWS_BOT_TOKEN": "t", "NEWS_CHANNEL": "@ch", "OWNER_CHAT_ID": "42"})
+    os.environ.pop("MAX_BOT_TOKEN", None)
+    try:
+        assert publish.publish("2026-10-24", ["tg"], fake_post)[0] is False  # черновика нет
+        publish.save_draft("2026-10-24", "Пост", ["выдумка: 7"], "шаблон")
+        assert publish.publish("2026-10-24", ["tg"], fake_post)[0] is False and not sent  # гард не чист
+        publish.save_draft("2026-10-24", "Пост", [], "шаблон")
+        assert publish.review("2026-10-24", fake_post)[0] and {c for _, c, _ in sent} == {"42"}  # только в личку
+        sent.clear()
+        ok, report = publish.publish("2026-10-24", ["tg", "max"], fake_post)
+        assert not ok and sent == [("sendMessage", "@ch", "Пост")] and "MAX не настроен" in report[1]
+        ok, report = publish.publish("2026-10-24", ["tg"], fake_post)
+        assert ok and len(sent) == 1 and "уже опубликовано" in report[0]  # дубль не уходит
+        publish.save_draft("2026-10-24", "Пост v2", [], "шаблон")  # пересборка после выхода
+        assert "уже опубликовано" in publish.publish("2026-10-24", ["tg"], fake_post)[1][0] and len(sent) == 1
+    finally:
+        publish.OUT = old_out
+        os.environ.clear()
+        os.environ.update(old_env)
+
+
 if __name__ == "__main__":
     tests = [v for k, v in dict(globals()).items() if k.startswith("test_")]
     for t in tests:

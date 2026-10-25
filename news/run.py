@@ -1,9 +1,10 @@
-"""CLI новостника «Культура хоккея». Сейчас — теневой режим: ничего не публикует.
+"""CLI новостника «Культура хоккея». В каналы — только командой publish после проверки владельцем.
 
-    python -m news.run night [--date YYYY-MM-DD] [--llm [claude_cli,gigachat,...]]  # «Ночь наших» (МСК)
+    python -m news.run night [--date YYYY-MM-DD] [--llm [chain]] [--review]  # «Ночь наших» (МСК)
+    python -m news.run publish [--date YYYY-MM-DD] [--to tg,max]            # черновик → каналы
     python -m news.run sync-registry                       # новые наши из НХЛ → реестр со status=new
 
-Черновики и отчёт гарда пишутся в news/out/ (в git не попадает).
+Черновики и отчёт гарда пишутся в news/out/ (в git не попадает). Секреты — news/.env.
 """
 
 import argparse
@@ -13,14 +14,13 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import guard, nhl
+from news import guard, nhl, publish
 from news.digest import render_night, with_lead
 from news.llm import lead
 
 ROOT = Path(__file__).parent
 PLAYERS = ROOT / "data" / "players.json"
 TEAMS = ROOT / "data" / "teams.json"
-OUT = ROOT / "out"
 SEASON = "20262027"
 
 
@@ -50,13 +50,21 @@ def cmd_night(args) -> int:
         if phrase:
             variant, final = f"шаблон + вводная {source}", with_lead(text, phrase)
 
-    OUT.mkdir(exist_ok=True)
-    path = OUT / f"{msk}_night.html"
-    path.write_text(final, encoding="utf-8")
+    path = publish.save_draft(msk, final, issues, variant)
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")
     print(f"— черновик: {path}")
+    if args.review:
+        ok, info = publish.review(msk)
+        print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
     return 1 if issues else 0
+
+
+def cmd_publish(args) -> int:
+    msk = args.date or datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
+    ok, report = publish.publish(msk, args.to.split(","))
+    print("\n".join(report))
+    return 0 if ok else 1
 
 
 def cmd_sync(_args) -> int:
@@ -82,9 +90,14 @@ def main() -> int:
     n.add_argument("--date", help="дата поста по МСК, по умолчанию сегодня")
     n.add_argument("--llm", nargs="?", const="", default=None,
                    help="вводная фраза от модели; цепочка провайдеров через запятую, по умолчанию NEWS_LLM")
+    n.add_argument("--review", action="store_true", help="отправить черновик владельцу в личку бота")
+    p = sub.add_parser("publish")
+    p.add_argument("--date", help="дата черновика по МСК, по умолчанию сегодня")
+    p.add_argument("--to", default="tg,max", help="куда: tg, max или оба через запятую")
     sub.add_parser("sync-registry")
     args = ap.parse_args()
-    return {"night": cmd_night, "sync-registry": cmd_sync}[args.cmd](args)
+    publish.load_env()
+    return {"night": cmd_night, "publish": cmd_publish, "sync-registry": cmd_sync}[args.cmd](args)
 
 
 if __name__ == "__main__":
