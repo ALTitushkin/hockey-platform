@@ -573,6 +573,13 @@ def test_stories():
     assert post.startswith("✍️ <b>Раймер вернулся</b>\n\nОн подписал.")
     assert post.endswith("NHL.com</a>\n⚡ #Контракты · 25 октября") and "nhl.com/news/nhl" in post
 
+    landing = {"8473503": {"position": "G", "featuredStats": {"season": 20252026, "regularSeason": {"subSeason": {
+        "gamesPlayed": 14, "goalsAgainstAvg": 2.421179, "savePctg": 0.885813}}}},
+        "4": {"position": "G", "featuredStats": {"season": 20262027, "regularSeason": {"subSeason": {}}}}}
+    lines = stories.goalie_lines(nhl, names, {4}, lambda url: landing[url.split("/")[-2]])
+    assert lines == ["🥅 <b>Раймер</b> · 2025/26: 14 матчей, КН 2,42, %ОБ 88,6"]  # без матчей в сезоне — без строки
+    assert "%ОБ 88,6\n\n🔗" in stories.render(nhl, "З\n\nТ", "2026-10-25", lines)
+
     # полный проход: черновик сохранён и отдан на доставку; гард не прошёл — владелец узнаёт о новости
     out = Path(tempfile.mkdtemp())
     publish.OUT, stories.STATE = out, out / "stories_state.json"

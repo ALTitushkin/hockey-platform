@@ -21,7 +21,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from news import guard, publish
-from news.digest import MONTHS
+from news.digest import MONTHS, plural
+from news.nhl import WEB
 
 FEED = "https://forge-dapi.d3.nhle.com/v2/content/en-us/stories?$limit=40"
 STATE = publish.OUT / "stories_state.json"
@@ -30,6 +31,7 @@ KEEP = timedelta(days=3)
 # Пресс-релиз клуба выходит раньше, через 20–30 минут NHL.com пишет свой текст — с контекстом
 # (у Раймера — травма Шестёркина). Релиз клуба ждёт столько, чтобы взять текст NHL.com.
 HOLD_TEAM = timedelta(minutes=60)
+Fetch = Callable[[str], dict]
 
 SKIP_TAGS = {"game-recap", "game-preview", "postgame", "pregame", "game-coverage", "feature", "player-feature",
              "column", "nhl-history", "blog", "nhl-insider", "fantasy", "betting", "video"}
@@ -240,15 +242,41 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
     return issues, notes
 
 
-def render(s: Story, body: str, msk: str) -> str:
+def ru_num(x: float, digits: int) -> str:
+    return f"{x:.{digits}f}".replace(".", ",")
+
+
+def goalie_lines(s: Story, names: dict, ours: set[int], fetch: Fetch) -> list[str]:
+    """КН и %ОБ вратарей новости — шаблоном из API НХЛ, не из пересказа: герой новости и наши
+    из текста. Сезон — текущий, а если в нём вратарь ещё не играл, последний сыгранный (так отдаёт API)."""
+    lines = []
+    for pid in sorted(s.pids | (s.mentioned & ours)):
+        rec = names.get(str(pid))
+        if not rec:
+            continue
+        try:
+            d = fetch(f"{WEB}/player/{pid}/landing")
+        except RuntimeError:
+            continue
+        featured = d.get("featuredStats", {})
+        st = featured.get("regularSeason", {}).get("subSeason") or {}
+        if d.get("position") != "G" or not st.get("gamesPlayed"):
+            continue
+        season = str(featured.get("season", ""))
+        gp = st["gamesPlayed"]
+        lines.append(f"🥅 <b>{html.escape(rec['surname'])}</b> · {season[:4]}/{season[6:]}: "
+                     f"{gp} {plural(gp, ('матч', 'матча', 'матчей'))}, КН {ru_num(st['goalsAgainstAvg'], 2)}, "
+                     f"%ОБ {ru_num(st['savePctg'] * 100, 1)}")
+    return lines
+
+
+def render(s: Story, body: str, msk: str, stats: list[str] = ()) -> str:
     emoji, tag, _ = KINDS[s.kind]
     head, _, rest = body.partition("\n\n")
     _, m, d = (int(x) for x in msk.split("-"))
-    return (f"{emoji} <b>{html.escape(head)}</b>\n\n{html.escape(rest)}\n\n"
+    block = "\n".join(stats) + "\n\n" if stats else ""
+    return (f"{emoji} <b>{html.escape(head)}</b>\n\n{html.escape(rest)}\n\n{block}"
             f"🔗 <a href=\"{s.link}\">NHL.com</a>\n⚡ {tag} · {d} {MONTHS[m - 1]}")
-
-
-Fetch = Callable[[str], dict]
 
 
 def ours_by_name(state: dict, today: str, nationals: Callable[[], list[dict]]) -> dict[str, int]:
@@ -297,7 +325,9 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             log.append(f"инфоповод {s.slug}: пересказ не прошёл гард — {why[:300]}")
             continue
         variant = f"пересказ {source}" + (f" · 👀 проверь: {'; '.join(notes)}" if notes else "")
-        publish.save_draft(msk, render(s, body, msk), [], variant, kind=kind, data={"slug": s.slug, "auto": not notes})
+        stats = goalie_lines(s, names, ours, fetch)
+        publish.save_draft(msk, render(s, body, msk, stats), [], variant, kind=kind,
+                           data={"slug": s.slug, "auto": not notes})
         log.append(f"инфоповод {s.slug} ({s.kind}): {deliver(msk, kind)}")
     save_state(state)
     return log
