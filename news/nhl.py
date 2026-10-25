@@ -131,5 +131,6 @@ def fetch_nationals(season: str, codes: tuple[str, ...] = ("RUS", "BLR")) -> lis
             exp = urllib.request.quote(f'seasonId={season} and nationalityCode="{code}"')
             data = fetch_json(f"{STATS}/{kind}/bios?limit=-1&cayenneExp={exp}")
             for p in data.get("data", []):
-                out.append({"pid": p["playerId"], "name": p[name_key], "country": code, "team": p["currentTeamAbbrev"]})
+                out.append({"pid": p["playerId"], "name": p[name_key], "country": code, "team": p["currentTeamAbbrev"],
+                            "goalie": kind == "goalie"})
     return out

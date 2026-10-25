@@ -324,6 +324,15 @@ def test_tonight():
     assert "❔ <b>Под вопросом</b>\nШестёркин — не играл прошлый матч" in text
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
 
+    # хук: играет наш полевой — «кто из наших забьёт»; только вратари или никого — прогноз на матч
+    from news.digest import tonight_hook
+    assert tonight_hook(games, {"TBL": [(5, "Кучеров")]}, set(), TEAMS)[0].startswith("💬 Кто из наших забьёт")
+    line, used = tonight_hook(games, {"TBL": [(4, "Шестёркин")]}, {4}, TEAMS)
+    assert line == "💬 Ваш прогноз на матч Тампа — Рейнджерс? Пишите в комментариях" and used == ["Тампа", "Рейнджерс"]
+    assert "наших" not in tonight_hook(games, {}, set(), TEAMS)[0]
+    text, facts = render_tonight(games, {}, TEAMS, "2026-10-25", MSK, hook=(line, used))
+    assert line in text and guard.check(text, facts, PLAYERS, TEAMS) == []
+
 
 def test_intrigue():
     from news import intrigue
@@ -478,6 +487,7 @@ def test_levels():
     for i in range(12):  # в зачёт только 10 сообщений в сутки
         lv.on_update(msg(i, ann))
     assert lv.points["1"] == 10
+    assert ("setChatMemberTag", {"chat_id": -100, "user_id": 1, "tag": "Проспект"}) in calls  # с 3 баллов
     assert ("setChatMemberTag", {"chat_id": -100, "user_id": 1, "tag": "Фарм"}) in calls
     assert calls[-1] == ("sendMessage", {"chat_id": -100, "text": "🌾 Аня — теперь «Фарм»"})
     lv.on_update(react(0, bob))
@@ -487,12 +497,12 @@ def test_levels():
     assert lv.points["1"] == 12
     lv.on_update(msg(50, None, sender_chat={"id": -5}, is_automatic_forward=True))  # пост канала — мимо
     lv.on_update({"message": {"message_id": 51, "chat": {"id": -100}, "from": ann, "text": "/level"}})
-    assert calls[-1][1]["text"] == "🌾 «Фарм» · 12 баллов · до «Дебютант» — 38"
+    assert calls[-1][1]["text"] == "🌾 «Фарм» · 12 баллов · до «Дебютант» — 13"
     assert levels.Levels(-100, lambda m, b: {}, lv.path).points == {"1": 12}  # пережило рестарт
     own = levels.Levels(-100, lambda m, b: {}, Path(tempfile.mkdtemp()) / "o.json", skip={1})
     own.on_update(msg(60, ann))
     assert own.points == {}  # владельцу баллы не идут
-    assert levels.level(9) is None and levels.level(1000)[1] == "Капитан"
+    assert levels.level(2) is None and levels.level(400)[1] == "Капитан" and levels.level(1000)[1] == "Легенда"
     assert all(len(name) <= 16 for _, name, _ in levels.LEVELS)  # лимит тега Telegram
 
 

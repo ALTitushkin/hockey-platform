@@ -238,7 +238,7 @@ NOT_PLAYED = "не играл прошлый матч"
 
 def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], teams: dict, msk_date: str,
                    tz, out_by_team: dict[str, list[tuple[int, str, str]]] | None = None,
-                   items: list[dict] | None = None) -> tuple[str, dict]:
+                   items: list[dict] | None = None, hook: tuple[str, list[str]] | None = None) -> tuple[str, dict]:
     """«Сегодня ночью»: расписание и наши — на карточке, в тексте то, чего на ней нет: интриги вечера
     (`intrigue.pick`) и кто из наших не сыграет. games — `nhl.upcoming_games`,
     ours_by_team — {клуб: [(id, фамилия), ...]}, out_by_team — {клуб: [(id, фамилия, причина), ...]}."""
@@ -294,8 +294,25 @@ def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, st
             blocks.append("🚑 <b>Не сыграют</b>\n" + "\n".join(sure))
         if NOT_PLAYED in by_why:
             blocks.append(f"❔ <b>Под вопросом</b>\n{', '.join(by_why[NOT_PLAYED])} — {NOT_PLAYED}")
+    if hook:
+        blocks.append(hook[0])
+        facts["teams"] |= set(hook[1])
     blocks.append(f"📺 #СегодняНочью · {d} {MONTHS[m - 1]} · время московское")
     return "\n\n".join(blocks), facts
+
+
+def tonight_hook(games: list[dict], ours_by_team: dict[str, list[tuple[int, str]]], goalies: set[int],
+                 teams: dict) -> tuple[str, list[str]] | None:
+    """Вопрос в комментарии — один на день, только в вечернем посте (просьба владельца: «не переборщить»).
+    «Кто из наших забьёт» — только если играет наш полевой: иначе вопрос был бы про пустоту.
+    → (строка, клубы в ней) или None."""
+    if not games:
+        return None
+    if any(pid not in goalies for recs in ours_by_team.values() for pid, _ in recs):
+        return "💬 Кто из наших забьёт сегодня? Пишите в комментариях", []
+    g = max(games, key=lambda g: len(ours_by_team.get(g["home"], [])) + len(ours_by_team.get(g["away"], [])))
+    home, away = teams[g["home"]], teams[g["away"]]
+    return f"💬 Ваш прогноз на матч {home} — {away}? Пишите в комментариях", [home, away]
 
 
 def with_lead(text: str, lead: str) -> str:

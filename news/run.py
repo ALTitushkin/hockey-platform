@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 from news import events, guard, injuries, intrigue, levels, names, nhl, publish, service
 from news.card import render_card, render_tonight_card
-from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight
+from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
 from news.llm import lead
 
 ROOT = Path(__file__).parent
@@ -133,7 +133,8 @@ def tonight_roster(teams_playing: set[str], players: dict, msk: str) -> dict[str
         rec = players.get(str(p["pid"]))
         if rec and p.get("team") in teams_playing:
             roster.setdefault(p["team"], []).append({"pid": p["pid"], "surname": rec["surname"],
-                                                     "name": p["name"], "played": p["pid"] in lineups[p["team"]]})
+                                                     "name": p["name"], "played": p["pid"] in lineups[p["team"]],
+                                                     "goalie": p.get("goalie", False)})
     return roster
 
 
@@ -155,9 +156,11 @@ def split_roster(roster: dict[str, list[dict]], out: dict[str, str]) -> tuple[di
 
 
 def render_tonight_post(games: list[dict], ours: dict, skip: dict, players: dict, teams: dict, msk: str,
-                        items: list[dict]):
+                        items: list[dict], roster: dict):
     playing = {pid for recs in ours.values() for pid, _ in recs}
-    text, facts = render_tonight(games, ours, teams, msk, MSK, skip, intrigue.pick(items, playing))
+    goalies = {r["pid"] for recs in roster.values() for r in recs if r.get("goalie")}
+    text, facts = render_tonight(games, ours, teams, msk, MSK, skip, intrigue.pick(items, playing),
+                                 tonight_hook(games, ours, goalies, teams))
     issues = guard.check(text, facts, players, teams) if text else []
     card = render_tonight_card(games, ours, teams, msk, MSK, publish.OUT / f"{msk}_tonight.png") \
         if text else None
@@ -175,7 +178,7 @@ def build_tonight(msk: str, review: bool) -> str:
     ours, skip = split_roster(roster, out)
     # один запрос на нашего в составе + таблица — только при сборке, перепроверка их не повторяет
     items = intrigue.collect(ours) + intrigue.team_items({t for g in games for t in (g["home"], g["away"])}, teams)
-    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk, items)
+    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk, items, roster)
     if not text:
         print(f"{msk}: матчей впереди нет — поста нет")
         return "nogames"
@@ -225,7 +228,7 @@ def refresh_tonight(msk: str, now: datetime, fetch=None) -> str | None:
         or "сменилась причина"
     reg, teams = load()
     players = {k: v for k, v in reg["players"].items() if v.get("ru")}
-    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk, data.get("items", []))
+    text, issues, card = render_tonight_post(games, ours, skip, players, teams, msk, data.get("items", []), roster)
     owner = os.environ.get("OWNER_CHAT_ID", "")
     if issues:
         publish.tg_call("sendMessage", {"chat_id": owner, "text": f"⚠️ «Сегодня ночью»: состав изменился ({change}), "
