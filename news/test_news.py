@@ -652,6 +652,20 @@ def test_night_card_rows():
     assert idle == ["А. Протас"]
 
 
+def test_tonight_ours_flow():
+    from PIL import Image, ImageDraw
+
+    from news.card import font, ours_flow
+    dr = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+    f, chip = font("PTSans-Regular.ttf", 30), font("PTSans-Bold.ttf", 23)
+    rows = ours_flow(dr, [("UTA", ["Сергачёв", "Симашев"]), ("MIN", ["Капризов"])], f, chip, 2000)
+    assert [(k, t) for k, t, _ in rows[0]] == [("chip", "UTA"), ("name", "Сергачёв,"), ("name", "Симашев"),
+                                               ("chip", "MIN"), ("name", "Капризов")]
+    narrow = ours_flow(dr, [("UTA", ["Сергачёв", "Симашев"]), ("MIN", ["Капризов"])], f, chip, 260)
+    for row in narrow:  # плашка клуба не остаётся в конце строки без фамилии
+        assert row[-1][0] == "name"
+
+
 def test_registry():
     import json
     import tempfile

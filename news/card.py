@@ -98,15 +98,12 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
     tm = font("Oswald.ttf", 44, "Bold")
     probe = ImageDraw.Draw(Image.new("RGB", (W, 10)))
     time_w = int(probe.textlength("00:00", font=tm)) + 28
-    # наши — строкой на каждый клуб с его логотипом: видно, кто за кого; длинный список переносится
-    mini, bold = 40, font("PTSans-Bold.ttf", 30)
-    ours_rows = []
-    for g in games:
-        rows = [(abbrev, wrap(probe, f"{teams[abbrev]}: " + ", ".join(name for _, name in ours_by_team[abbrev]),
-                              bold, W - 2 * PAD - time_w - mini - 14, 3))
-                for abbrev in (g["home"], g["away"]) if ours_by_team.get(abbrev)]
-        ours_rows.append(rows)
-    heights = [86 + 38 * max(1, sum(len(lines) for _, lines in rows)) + 6 * len(rows) for rows in ours_rows]
+    # наши — одной строкой под матчем, перед фамилиями плашка клуба (PHI, CBJ): кто за кого видно,
+    # логотипы второй раз не повторяем; длинный список переносится
+    chip_f = font("PTSans-Bold.ttf", 23)
+    ours_rows = [ours_flow(probe, [(a, [n for _, n in ours_by_team[a]]) for a in (g["home"], g["away"])
+                                   if ours_by_team.get(a)], small, chip_f, W - 2 * PAD - time_w) for g in games]
+    heights = [86 + 40 * max(1, len(rows)) for rows in ours_rows]
     h = max(1350, head_h + hero_h + sum(heights) + foot_h + 40)
     img = Image.new("RGB", (W, h), PAPER)
     dr = ImageDraw.Draw(img)
@@ -152,18 +149,16 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
         ly = yy + 56
         if not ours_rows[i]:
             dr.text((PAD + time_w, ly), "без наших", font=small, fill=FAINT)
-        for abbrev, lines in ours_rows[i]:
-            paste_logo(img, abbrev, PAD + time_w, ly + 1, mini, crop=True)
-            x0, prefix = PAD + time_w + mini + 14, f"{teams[abbrev]}:"
-            for k, ln in enumerate(lines):
-                if k == 0 and ln.startswith(prefix):  # клуб — жирным, фамилии — обычным
-                    dr.text((x0, ly), prefix, font=bold, fill=INK)
-                    dr.text((x0 + dr.textlength(prefix + " ", font=bold), ly), ln[len(prefix) + 1:],
-                            font=small, fill=STEEL)
+        for row in ours_rows[i]:
+            for kind, text, x in row:
+                x += PAD + time_w
+                if kind == "chip":
+                    cw = int(dr.textlength(text, font=chip_f)) + 16
+                    dr.rounded_rectangle((x, ly + 5, x + cw, ly + 35), radius=5, fill=NAVY)
+                    dr.text((x + 8, ly + 6), text, font=chip_f, fill="#FFFFFF")
                 else:
-                    dr.text((x0, ly), ln, font=small, fill=STEEL)
-                ly += 38
-            ly += 6
+                    dr.text((x, ly), text, font=small, fill=STEEL)
+            ly += 40
 
     fy = h - foot_h + 20
     dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
@@ -173,6 +168,32 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
     path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path, "PNG", optimize=True)
     return path
+
+
+def ours_flow(draw: ImageDraw.ImageDraw, by_team: list[tuple[str, list[str]]], f: ImageFont.FreeTypeFont,
+              chip_f: ImageFont.FreeTypeFont, width: int) -> list[list[tuple[str, str, int]]]:
+    """Раскладка «[PHI] Мичков   [CBJ] Воронков, Ничушкин» по строкам → строки из (вид, текст, x).
+    Плашка клуба не отрывается от первой фамилии; между клубами отступ шире, чем между фамилиями."""
+    units = []
+    for abbrev, names in by_team:
+        for k, name in enumerate(names):
+            word = name + ("," if k < len(names) - 1 else "")
+            units.append((k == 0, abbrev if k == 0 else "", word))
+    rows, row, x = [], [], 0
+    space, team_gap = int(draw.textlength(" ", font=f)), 30
+    for first, abbrev, word in units:
+        chip_w = int(draw.textlength(abbrev, font=chip_f)) + 16 + 10 if first else 0
+        w = chip_w + int(draw.textlength(word, font=f))
+        gap = (team_gap if first else space) if row else 0
+        if row and x + gap + w > width:
+            rows.append(row)
+            row, x, gap = [], 0, 0
+        x += gap
+        if first:
+            row.append(("chip", abbrev, x))
+        row.append(("name", word, x + chip_w))
+        x += w
+    return rows + [row] if row else rows
 
 
 def wrap(draw: ImageDraw.ImageDraw, text: str, f: ImageFont.FreeTypeFont, width: int, lines: int) -> list[str]:
