@@ -98,13 +98,15 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
     tm = font("Oswald.ttf", 44, "Bold")
     probe = ImageDraw.Draw(Image.new("RGB", (W, 10)))
     time_w = int(probe.textlength("00:00", font=tm)) + 28
-    # наших в матче бывает пятеро — строка «наши: …» переносится, высота строки матча растёт
-    ours_lines = []
+    # наши — строкой на каждый клуб с его логотипом: видно, кто за кого; длинный список переносится
+    mini, bold = 40, font("PTSans-Bold.ttf", 30)
+    ours_rows = []
     for g in games:
-        ours = [name for _, name in ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])]
-        text = "наши: " + ", ".join(ours) if ours else "без наших"
-        ours_lines.append((wrap(probe, text, small, W - 2 * PAD - time_w, 3), bool(ours)))
-    heights = [86 + 38 * len(lines) for lines, _ in ours_lines]
+        rows = [(abbrev, wrap(probe, f"{teams[abbrev]}: " + ", ".join(name for _, name in ours_by_team[abbrev]),
+                              bold, W - 2 * PAD - time_w - mini - 14, 3))
+                for abbrev in (g["home"], g["away"]) if ours_by_team.get(abbrev)]
+        ours_rows.append(rows)
+    heights = [86 + 38 * max(1, sum(len(lines) for _, lines in rows)) + 6 * len(rows) for rows in ours_rows]
     h = max(1350, head_h + hero_h + sum(heights) + foot_h + 40)
     img = Image.new("RGB", (W, h), PAPER)
     dr = ImageDraw.Draw(img)
@@ -147,9 +149,21 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
             dr.text((x, yy + 4), teams[abbrev], font=tf, fill=INK)
             x += int(dr.textlength(teams[abbrev], font=tf))
         # кто не сыграет — только в подписи: на афише — расписание и наши в составах, без дублей с текстом
-        lines, has_ours = ours_lines[i]
-        for k, ln in enumerate(lines):
-            dr.text((PAD + time_w, yy + 56 + 38 * k), ln, font=small, fill=STEEL if has_ours else FAINT)
+        ly = yy + 56
+        if not ours_rows[i]:
+            dr.text((PAD + time_w, ly), "без наших", font=small, fill=FAINT)
+        for abbrev, lines in ours_rows[i]:
+            paste_logo(img, abbrev, PAD + time_w, ly + 1, mini, crop=True)
+            x0, prefix = PAD + time_w + mini + 14, f"{teams[abbrev]}:"
+            for k, ln in enumerate(lines):
+                if k == 0 and ln.startswith(prefix):  # клуб — жирным, фамилии — обычным
+                    dr.text((x0, ly), prefix, font=bold, fill=INK)
+                    dr.text((x0 + dr.textlength(prefix + " ", font=bold), ly), ln[len(prefix) + 1:],
+                            font=small, fill=STEEL)
+                else:
+                    dr.text((x0, ly), ln, font=small, fill=STEEL)
+                ly += 38
+            ly += 6
 
     fy = h - foot_h + 20
     dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
