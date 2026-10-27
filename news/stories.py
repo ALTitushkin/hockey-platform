@@ -32,10 +32,13 @@ KEEP = timedelta(days=3)
 # Пресс-релиз клуба выходит раньше, через 20–30 минут NHL.com пишет свой текст — с контекстом
 # (у Раймера — травма Шестёркина). Релиз клуба ждёт столько, чтобы взять текст NHL.com.
 HOLD_TEAM = timedelta(minutes=60)
+REPORT_REPEAT = timedelta(days=3)
 Fetch = Callable[[str], dict]
 
 SKIP_TAGS = {"game-recap", "game-preview", "postgame", "pregame", "game-coverage", "feature", "player-feature",
              "column", "nhl-history", "blog", "nhl-insider", "fantasy", "betting", "video"}
+# 27.10.2026 трекер подписаний драфта вышел постом «часть игроков подписала контракты» — пустышка
+EVERGREEN = {"tracker", "rankings"}
 
 # вид → (эмодзи заголовка, хэштег рубрики, только про наших)
 KINDS = {
@@ -54,7 +57,7 @@ LABELS = {"trade": "ОБМЕН", "signing": "КОНТРАКТ", "injury": "ТР�
           "claim": "ВЕЙВЕРЫ", "return": "ВОЗВРАЩЕНИЕ", "recall": "ВЫЗОВ", "assign": "В ФАРМ"}
 # порядок важен: «activate … from injured reserve» — возвращение, а не травма
 RULES = [
-    ("return", r"\bactivat\w*|\boff (ir|injured)|\breturns? from\b"),
+    ("return", r"\bactivat\w*|\boff (ir|injured)|\breturns? from\b|\b(could|will|to|nears?) return\b"),
     ("trade", r"\bacquir\w*|\btraded?\b.*\bto\b|\btrades\b|\bdeal\b.*\bfor\b"),
     ("signing", r"\bsigns?\b|\bsigned\b|\bre-sign\w*|agrees? to terms|\bextension\b|\bcontract\b"),
     ("injury", r"season-ending|\bsurgery\b|week-to-week|month-to-month|\bout (indefinitely|for the season|\d+)"
@@ -124,6 +127,9 @@ def parse_item(it: dict) -> Story | None:
     slugs = {t.get("slug", "") for t in it.get("tags", [])}
     # колонки клубных «инсайдеров» (lak-insider…) — мнения и разборы, а не событие
     if slugs & SKIP_TAGS or any(s.endswith(("-insider", "day-to-day")) for s in slugs):
+        return None
+    # сводные страницы, которые редакция дописывает месяцами («…signings tracker»): дата свежая, новости нет
+    if set(it.get("slug", "").split("-")) & EVERGREEN:
         return None
     kind = kind_of(it.get("headline") or "", (it.get("summary") or "")[:200])
     if not kind:
@@ -210,8 +216,34 @@ def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_
             continue
         if not s.nhl and any(o.nhl for o in twins):
             continue  # возьмём текст NHL.com, когда до него дойдёт очередь
+        if report_repeat(s, state, now):
+            state["seen"][s.eid] = now.isoformat()
+            continue
         out.append(s)
     return out
+
+
+def report_keys(s: Story) -> set[str]:
+    """Герои заголовка сводки травм: «NHL Status Report: Hall could return for Hurricanes» → {"Hall"}."""
+    if not (s.nhl and "status report" in s.headline.lower()):
+        return set()
+    tail = s.headline.split(":", 1)[-1]
+    nicks = {n for _, nick in TEAM_EN.values() for n in nick.split()}
+    return set(re.findall(r"\b[A-Z][a-z]{2,}\b", tail)) - nicks - {"NHL", "Status", "Report", "The"}
+
+
+def report_repeat(s: Story, state: dict, now: datetime) -> bool:
+    """Сводка травм выходит каждый день и может неделю вести одного героя (Холл 26 и 27.10.2026) —
+    тот же герой в заголовке за 3 дня = повтор. Новых героев запоминаем."""
+    keys = report_keys(s)
+    heads = state.setdefault("report_heads", {})
+    for k, t in list(heads.items()):
+        if now - datetime.fromisoformat(t) > REPORT_REPEAT:
+            del heads[k]
+    if keys & heads.keys():
+        return True
+    heads.update({k: now.isoformat() for k in keys})
+    return False
 
 
 def load_state(now: datetime) -> dict:

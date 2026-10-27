@@ -557,6 +557,12 @@ def test_stories():
     assert [s.eid for s in stories.select([ir, back], st2, now, set(), {}, lambda p: p == 777)] == ["ir", "st"]
     st3 = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
     assert [s.eid for s in stories.select([ir], st3, now, set(), {}, lambda p: False)] == [] and "ir" in st3["seen"]
+    # тот же герой сводки травм на следующий день — повтор; трекер — не новость
+    again = stories.parse_item(item("st2", "NHL Status Report: Hall could return for Hurricanes", ["nhl-created"], 60))
+    assert stories.report_keys(again) == {"Hall"}
+    assert stories.select([again], st2, now + timedelta(days=1), set(), {}) == [] and "st2" in st2["seen"]
+    assert stories.parse_item(item("2026-nhl-draft-1st-round-pick-signings-tracker",
+                                   "2026 NHL Draft 1st-round pick signings tracker", ["nhl-created"], 5)) is None
     star = {"featuredStats": {"regularSeason": {"career": {"points": 700}, "subSeason": {"points": 10}}}}
     rookie = {"featuredStats": {"regularSeason": {"career": {"points": 20}, "subSeason": {"points": 20}}}}
     goalie = {"position": "G", "featuredStats": {"regularSeason": {"subSeason": {"gamesPlayed": 45}}}}
