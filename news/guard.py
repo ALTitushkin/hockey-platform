@@ -34,11 +34,19 @@ def check_lead(lead: str, facts: dict, players: dict, teams: dict) -> list[str]:
 
 def stem(word: str) -> str:
     """Основа для поиска склонённых форм: «Тампа» → «Тамп», «Кучеров» → «Кучеров» (+ «Кучерова»)."""
-    return word[:-1] if word[-1] in "аяиыеоу" and len(word) > 4 else word
+    if word.endswith(("ий", "ый", "ой")) and len(word) > 5:  # Ковалёвский → Ковалёвск(ого)
+        return word[:-2]
+    return word[:-1] if word[-1] in "аяиыеоуьй" and len(word) > 4 else word
+
+
+# После основы — только падежное окончание, а не любое продолжение: иначе «Джонс» находился
+# внутри «Джонстон» и «Ночь в НХЛ» 26.10.2026 не вышла из-за ложной «фамилии без данных».
+ENDINGS = ("(?:а|я|у|ю|е|ё|ы|и|о|й|ь|ом|ем|ём|ым|им|ой|ей|ою|ею|ов|ев|ых|их|ам|ям|ами|ями|ах|ях"
+           "|ий|ый|ого|его|ому|ему|ую|юю|ая|яя)?")
 
 
 def mentions(text: str, word: str) -> bool:
-    return re.search(rf"\b{re.escape(stem(word))}\w*", text) is not None
+    return re.search(rf"(?<!\w){re.escape(stem(word))}{ENDINGS}(?!\w)", text) is not None
 
 def check(text: str, facts: dict, players: dict, teams: dict, publish: bool = False) -> list[str]:
     issues = []

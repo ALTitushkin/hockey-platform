@@ -549,6 +549,19 @@ def test_stories():
     state["seen"].update({"rc": now.isoformat(), "nhl": now.isoformat()})
     assert stories.select([team, nhl], state, now, set(), {}) == [] and "pr" in state["seen"]  # дубль
 
+    # травма/возвращение не нашего — только заметного игрока; сводка NHL.com — всегда
+    ir = stories.parse_item(item("ir", "LA Kings Place Forward Mats Zuccarello On Injured Reserve",
+                                 ["press-release", "playerid-777"], 90))
+    back = stories.parse_item(item("st", "NHL Status Report: Hall activated by Hurricanes", ["nhl-created"], 90))
+    st2 = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
+    assert [s.eid for s in stories.select([ir, back], st2, now, set(), {}, lambda p: p == 777)] == ["ir", "st"]
+    st3 = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
+    assert [s.eid for s in stories.select([ir], st3, now, set(), {}, lambda p: False)] == [] and "ir" in st3["seen"]
+    star = {"featuredStats": {"regularSeason": {"career": {"points": 700}, "subSeason": {"points": 10}}}}
+    rookie = {"featuredStats": {"regularSeason": {"career": {"points": 20}, "subSeason": {"points": 20}}}}
+    goalie = {"position": "G", "featuredStats": {"regularSeason": {"subSeason": {"gamesPlayed": 45}}}}
+    assert stories.is_notable(star) and not stories.is_notable(rookie) and stories.is_notable(goalie)
+
     alone = stories.parse_item(item("solo", "Rangers Agree to Terms with Someone", ["press-release"], 10))
     later = stories.select([alone], {"since": state["since"], "seen": {}}, now, set(), {})
     assert later == []  # релиз клуба ждёт текст NHL.com час
@@ -617,6 +630,26 @@ def test_stories():
     run(good.replace("850", "900"))
     assert told and "Инфоповод без поста" in told[0] and len(sent) == 1
     assert publish.title("story-nhl") == "«Инфоповод»" and publish.title("night") == "«Ночь наших»"
+
+
+def test_guard_mentions():
+    from news.guard import mentions
+    # 26.10.2026: «Джонс» находился внутри «Джонстон» — «Ночь в НХЛ» не вышла
+    assert not mentions("Джонстон — победный гол", "Джонс") and mentions("гол Джонса", "Джонс")
+    for text, word in (("над Тампой", "Тампа"), ("Монреалем", "Монреаль"), ("Ковалёвского", "Ковалёвский"),
+                       ("Кучеровым", "Кучеров"), ("Лос-Анджелесом", "Лос-Анджелес"), ("братья Протасы", "Протас")):
+        assert mentions(text, word), (text, word)
+    assert not mentions("Ивановский", "Иванов") and not mentions("Ковальчук", "Коваль")
+
+
+def test_night_card_rows():
+    from news.card import player_rows
+    rows, idle = player_rows([parse_box(BOX, {1, 2, 3, 4, 5})], {1: "Капризов", 2: "И. Протас", 3: "А. Протас",
+                                                                 4: "Шестёркин", 5: "Кучеров"})
+    assert rows[0] == ("MIN", "Капризов", "2+1", "победа 4:3 ОТ", True)
+    assert rows[1] == ("WSH", "И. Протас", "1+0", "поражение 3:4 ОТ", True)
+    assert rows[2] == ("MIN", "Шестёркин", "30/33", "90,9% · победа 4:3 ОТ", False)
+    assert idle == ["А. Протас"]
 
 
 def test_registry():

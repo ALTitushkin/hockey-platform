@@ -163,8 +163,34 @@ def same_event(a: Story, b: Story) -> bool:
     return bool(a.teams & b.teams and words(a) & words(b))
 
 
-def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_en: dict[str, int]) -> list[Story]:
-    """Новые новости, которые пора обработать: не виденные, важные (или про наших), без дублей события."""
+# Травма со списком травмированных и возвращение в строй — по всей лиге, но только заметных игроков:
+# 26–27.10.2026 с правилом «только наши» за двое суток не вышло ни одного инфоповода (мимо прошли
+# Зуккарелло на IR и возвращение Холла). Сводку травм редакции NHL.com берём всегда: там уже отобрано.
+WIDER = {"injury_minor", "return"}
+CAREER_POINTS, SEASON_POINTS, GOALIE_GAMES = 300, 40, 30
+
+
+def wider(s: Story, notable: Callable[[int], bool] | None) -> bool:
+    if s.kind not in WIDER:
+        return False
+    if s.nhl and "status report" in s.headline.lower():
+        return True
+    return bool(notable) and any(notable(p) for p in s.pids)
+
+
+def is_notable(landing: dict) -> bool:
+    """Заметный игрок по карточке НХЛ: карьера, прошлый/текущий сезон; у вратаря — матчи сезона."""
+    reg = landing.get("featuredStats", {}).get("regularSeason", {})
+    season, career = reg.get("subSeason") or {}, reg.get("career") or {}
+    if landing.get("position") == "G":
+        return season.get("gamesPlayed", 0) >= GOALIE_GAMES or career.get("gamesPlayed", 0) >= 200
+    return career.get("points", 0) >= CAREER_POINTS or season.get("points", 0) >= SEASON_POINTS
+
+
+def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_en: dict[str, int],
+           notable: Callable[[int], bool] | None = None) -> list[Story]:
+    """Новые новости, которые пора обработать: не виденные, важные (или про наших), без дублей события.
+    notable(NHL ID) — заметен ли игрок (для травм и возвращений не наших)."""
     out = []
     since = datetime.fromisoformat(state["since"])
     for s in sorted(items, key=lambda s: s.date):
@@ -173,7 +199,7 @@ def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_
         for name, pid in ours_en.items():  # клуб не отметил игрока тегом — ищем нашего по имени
             if name in s.headline or name in s.summary:
                 s.pids.add(pid)
-        if KINDS[s.kind][2] and not s.pids & ours:
+        if KINDS[s.kind][2] and not s.pids & ours and not wider(s, notable):
             state["seen"][s.eid] = now.isoformat()  # мелкое движение не нашего — пропускаем навсегда
             continue
         if not s.nhl and now - s.date < HOLD_TEAM and not any(same_event(s, o) for o in items if o.nhl):
@@ -349,7 +375,17 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                 notify(f"Реестр наших: {line}")
             log += [f"реестр: {line}" for line in lines]
     ours = {int(p) for p, r in registry.items() if r.get("ru")}
-    for s in select(items, state, now, ours, ours_by_name(state, msk, nationals)):
+    cache = state.setdefault("notable", {})
+
+    def notable(pid: int) -> bool:  # 1 запрос карточки на игрока, ответ помним
+        if str(pid) not in cache:
+            try:
+                cache[str(pid)] = is_notable(fetch(f"{WEB}/player/{pid}/landing"))
+            except RuntimeError:
+                return False  # не ответил — решим на следующем проходе
+        return cache[str(pid)]
+
+    for s in select(items, state, now, ours, ours_by_name(state, msk, nationals), notable):
         state["seen"][s.eid] = now.isoformat()  # до работы: упадёт посередине — повторять не будем
         try:
             s.text, s.en = body_text(fetch(s.url))

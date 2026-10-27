@@ -57,6 +57,25 @@ def ours_line(r: GameReport, names: dict[int, str]) -> str:
     return " · ".join(parts) or "наши без очков"
 
 
+def result_word(r: GameReport, team: str) -> str:
+    """«победа 6:3» / «поражение 2:3 ОТ» — счёт со стороны клуба игрока."""
+    own, opp = (r.home_score, r.away_score) if team == r.home else (r.away_score, r.home_score)
+    return f"{'победа' if own > opp else 'поражение'} {own}:{opp}{SUFFIX.get(r.last_period, '')}"
+
+
+def player_rows(reports: list[GameReport], names: dict[int, str]) -> tuple[list[tuple], list[str]]:
+    """«Ночь наших» на карточке: → (строки (клуб, имя, крупно, мелко, выделить), без очков).
+    Полевые с очками — по очкам и голам, затем вратари; без очков — одним списком внизу."""
+    skaters = sorted(((s, r) for r in reports for s in r.skaters if s.points),
+                     key=lambda x: (-x[0].points, -x[0].goals))
+    rows = [(s.team, names[s.pid], f"{s.goals}+{s.assists}", result_word(r, s.team), True) for s, r in skaters]
+    for g, r in ((g, r) for r in reports for g in r.goalies):
+        pct = "100" if g.saves == g.shots else f"{g.saves / g.shots * 100:.1f}".replace(".", ",")
+        rows.append((g.team, names[g.pid], f"{g.saves}/{g.shots}", f"{pct}% · {result_word(r, g.team)}", False))
+    idle = [names[s.pid] for r in reports for s in r.skaters if not s.points]
+    return rows, idle
+
+
 def stars_line(r: GameReport, names: dict[int, str]) -> str:
     """Строка матча в «Ночи в НХЛ»: двое лучших по очкам (с русским именем) и вратарь на ноль."""
     top = sorted((s for s in r.skaters if s.points and s.pid in names), key=lambda s: (-s.points, -s.goals))[:2]
@@ -74,11 +93,21 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
     from datetime import datetime
 
     _, m, d = (int(x) for x in msk_date.split("-"))
-    row_h, head_h, hero_h, foot_h = 124, 250, 190, 110
-    h = max(1350, head_h + hero_h + row_h * len(games) + foot_h + 40)
+    head_h, hero_h, foot_h = 250, 190, 110
+    mono, small = font("PTSans-Bold.ttf", 26), font("PTSans-Regular.ttf", 30)
+    tm = font("Oswald.ttf", 44, "Bold")
+    probe = ImageDraw.Draw(Image.new("RGB", (W, 10)))
+    time_w = int(probe.textlength("00:00", font=tm)) + 28
+    # наших в матче бывает пятеро — строка «наши: …» переносится, высота строки матча растёт
+    ours_lines = []
+    for g in games:
+        ours = [name for _, name in ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])]
+        text = "наши: " + ", ".join(ours) if ours else "без наших"
+        ours_lines.append((wrap(probe, text, small, W - 2 * PAD - time_w, 3), bool(ours)))
+    heights = [86 + 38 * len(lines) for lines, _ in ours_lines]
+    h = max(1350, head_h + hero_h + sum(heights) + foot_h + 40)
     img = Image.new("RGB", (W, h), PAPER)
     dr = ImageDraw.Draw(img)
-    mono, small = font("PTSans-Bold.ttf", 26), font("PTSans-Regular.ttf", 30)
 
     dr.text((PAD, 58), "КУЛЬТУРА ХОККЕЯ  ·  НХЛ", font=mono, fill=FAINT)
     dr.text((PAD, 92), "СЕГОДНЯ НОЧЬЮ", font=font("Oswald.ttf", 104, "Bold"), fill=INK)
@@ -99,11 +128,10 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
         sf = font("Oswald.ttf", 64, "SemiBold")
         dr.text((W - PAD - 36 - dr.textlength(label, font=sf), top + 46), label, font=sf, fill="#F2B8A6")
 
-    y0 = head_h + hero_h
-    tm, tf = font("Oswald.ttf", 44, "Bold"), font("Oswald.ttf", 36, "Medium")
-    time_w = int(dr.textlength("00:00", font=tm)) + 28
+    tf = font("Oswald.ttf", 36, "Medium")
+    yy = head_h + hero_h
     for i, g in enumerate(games):
-        yy = y0 + i * row_h
+        yy += heights[i - 1] if i else 0
         if i:
             dr.line((PAD, yy - 10, W - PAD, yy - 10), fill=LINE, width=2)
         start = datetime.fromisoformat(g["start"].replace("Z", "+00:00")).astimezone(tz)
@@ -118,11 +146,10 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
             x += used + (12 if used else 0)
             dr.text((x, yy + 4), teams[abbrev], font=tf, fill=INK)
             x += int(dr.textlength(teams[abbrev], font=tf))
-        ours = [name for _, name in ours_by_team.get(g["home"], []) + ours_by_team.get(g["away"], [])]
-        line = "наши: " + ", ".join(ours) if ours else "без наших"
         # кто не сыграет — только в подписи: на афише — расписание и наши в составах, без дублей с текстом
-        dr.text((PAD + time_w, yy + 56), fit(dr, line, small, W - 2 * PAD - time_w), font=small,
-                fill=STEEL if ours else FAINT)
+        lines, has_ours = ours_lines[i]
+        for k, ln in enumerate(lines):
+            dr.text((PAD + time_w, yy + 56 + 38 * k), ln, font=small, fill=STEEL if has_ours else FAINT)
 
     fy = h - foot_h + 20
     dr.line((PAD, fy, W - PAD, fy), fill=INK, width=3)
@@ -236,14 +263,24 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
         games = reports
     else:
         names = display_names(reports, players)
-        games = sorted(reports, key=lambda r: -sum(s.points for s in r.skaters) - len(r.goalies))
-    row_h = 106 if len(games) <= 10 else 96
+        games = []
     head_h, hero_h, foot_h = 250, 230 if highlights else 190, 110
-    h = max(1350, head_h + hero_h + row_h * len(games) + foot_h + 40)
+    img = Image.new("RGB", (W, 10), PAPER)
+    dr = ImageDraw.Draw(img)
+    mono, small = font("PTSans-Bold.ttf", 26), font("PTSans-Regular.ttf", 30)
+    # «Ночь в НХЛ» — табло матчей; «Ночь наших» — строка на каждого нашего (табло уже в посте лиги)
+    if league:
+        row_h = 106 if len(games) <= 10 else 96
+        body_h = row_h * len(games)
+    else:
+        rows, idle = player_rows(reports, names)
+        idle_lines = wrap(dr, "Без очков: " + ", ".join(idle), small, W - 2 * PAD, 6) if idle else []
+        row_h = 100 if len(rows) <= 8 else 88
+        body_h = row_h * len(rows) + (24 + 40 * len(idle_lines) if idle_lines else 0)
+    h = max(1350, head_h + hero_h + body_h + foot_h + 40)
 
     img = Image.new("RGB", (W, h), PAPER)
     dr = ImageDraw.Draw(img)
-    mono, small = font("PTSans-Bold.ttf", 26), font("PTSans-Regular.ttf", 30)
 
     # шапка: как программка матча — двойная линейка, надзаголовок, крупное название
     dr.text((PAD, 58), "КУЛЬТУРА ХОККЕЯ  ·  НХЛ", font=mono, fill=FAINT)
@@ -282,8 +319,25 @@ def render_card(reports: list[GameReport], players: dict, teams: dict, msk_date:
         dr.text((PAD + 36, top + 50), f"{len(reports)} {word}" + ("" if league else " с нашими"),
                 font=font("Oswald.ttf", 56, "SemiBold"), fill="#FFFFFF")
 
-    # матчи: счёт крупно, ниже — наши с очками
     y0 = head_h + hero_h
+    if not league:
+        nf, bf = font("Oswald.ttf", 40, "SemiBold"), font("Oswald.ttf", 48, "Bold")
+        for i, (abbrev, name, big, sub, strong) in enumerate(rows):
+            yy = y0 + i * row_h
+            if i:
+                dr.line((PAD, yy - 10, W - PAD, yy - 10), fill=LINE, width=2)
+            used = paste_logo(img, abbrev, PAD, yy + 4, 60, crop=True)
+            x = PAD + (used + 18 if used else 0)
+            bw = dr.textlength(big, font=bf)
+            dr.text((W - PAD - bw, yy - 2), big, font=bf, fill=BRICK if strong else INK)
+            dr.text((x, yy - 4), fit(dr, name, nf, int(W - 2 * PAD - bw - (x - PAD) - 24)), font=nf, fill=INK)
+            dr.text((x, yy + 46), fit(dr, sub, small, int(W - PAD - x)), font=small, fill=STEEL)
+        yy = y0 + len(rows) * row_h + 14
+        for ln in idle_lines:
+            dr.text((PAD, yy), ln, font=small, fill=FAINT)
+            yy += 40
+
+    # матчи: счёт крупно, ниже — звёзды матча
     tf, sf, of = font("Oswald.ttf", 36, "Medium"), font("Oswald.ttf", 40, "Bold"), small
     for i, r in enumerate(games):
         yy = y0 + i * row_h
