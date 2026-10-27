@@ -659,11 +659,12 @@ def test_tonight_ours_flow():
     dr = ImageDraw.Draw(Image.new("RGB", (10, 10)))
     f, chip = font("PTSans-Regular.ttf", 30), font("PTSans-Bold.ttf", 23)
     rows = ours_flow(dr, [("UTA", ["Сергачёв", "Симашев"]), ("MIN", ["Капризов"])], f, chip, 2000)
-    assert [(k, t) for k, t, _ in rows[0]] == [("chip", "UTA"), ("name", "Сергачёв,"), ("name", "Симашев"),
+    assert [(k, t) for k, t, _ in rows[0]] == [("chip", "UTA"), ("name", "Сергачёв, Симашев"),
                                                ("chip", "MIN"), ("name", "Капризов")]
+    # не влезло — каждый клуб со своей строки, продолжение — под первой фамилией
     narrow = ours_flow(dr, [("UTA", ["Сергачёв", "Симашев"]), ("MIN", ["Капризов"])], f, chip, 260)
-    for row in narrow:  # плашка клуба не остаётся в конце строки без фамилии
-        assert row[-1][0] == "name"
+    assert [[t for _, t, _ in r] for r in narrow] == [["UTA", "Сергачёв,"], ["Симашев"], ["MIN", "Капризов"]]
+    assert narrow[1][0][2] == narrow[0][1][2]
 
 
 def test_registry():

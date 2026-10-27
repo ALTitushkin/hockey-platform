@@ -172,28 +172,34 @@ def render_tonight_card(games: list[dict], ours_by_team: dict[str, list[tuple[in
 
 def ours_flow(draw: ImageDraw.ImageDraw, by_team: list[tuple[str, list[str]]], f: ImageFont.FreeTypeFont,
               chip_f: ImageFont.FreeTypeFont, width: int) -> list[list[tuple[str, str, int]]]:
-    """Раскладка «[PHI] Мичков   [CBJ] Воронков, Ничушкин» по строкам → строки из (вид, текст, x).
-    Плашка клуба не отрывается от первой фамилии; между клубами отступ шире, чем между фамилиями."""
-    units = []
-    for abbrev, names in by_team:
-        for k, name in enumerate(names):
-            word = name + ("," if k < len(names) - 1 else "")
-            units.append((k == 0, abbrev if k == 0 else "", word))
-    rows, row, x = [], [], 0
+    """Раскладка «[PHI] Мичков   [CBJ] Воронков, Ничушкин» → строки из (вид, текст, x).
+    Влезает в строку — одна строка; нет — каждый клуб со своей строки, а продолжение длинного
+    списка — под первой фамилией, не под плашкой."""
     space, team_gap = int(draw.textlength(" ", font=f)), 30
-    for first, abbrev, word in units:
-        chip_w = int(draw.textlength(abbrev, font=chip_f)) + 16 + 10 if first else 0
-        w = chip_w + int(draw.textlength(word, font=f))
-        gap = (team_gap if first else space) if row else 0
-        if row and x + gap + w > width:
-            rows.append(row)
-            row, x, gap = [], 0, 0
-        x += gap
-        if first:
-            row.append(("chip", abbrev, x))
-        row.append(("name", word, x + chip_w))
-        x += w
-    return rows + [row] if row else rows
+    teams = []
+    for abbrev, names in by_team:
+        chip_w = int(draw.textlength(abbrev, font=chip_f)) + 16 + 10
+        words = [n + ("," if k < len(names) - 1 else "") for k, n in enumerate(names)]
+        teams.append((abbrev, chip_w, words, chip_w + int(draw.textlength(" ".join(words), font=f))))
+    if sum(w for *_, w in teams) + team_gap * (len(teams) - 1) <= width:
+        row, x = [], 0
+        for abbrev, chip_w, words, w in teams:
+            row += [("chip", abbrev, x), ("name", " ".join(words), x + chip_w)]
+            x += w + team_gap
+        return [row] if row else []
+    rows = []
+    for abbrev, chip_w, words, _ in teams:
+        row, x = [("chip", abbrev, 0)], chip_w
+        for word in words:
+            w = int(draw.textlength(word, font=f))
+            if x > chip_w and x + space + w > width:
+                rows.append(row)
+                row, x = [], chip_w
+            x += space if x > chip_w else 0
+            row.append(("name", word, x))
+            x += w
+        rows.append(row)
+    return rows
 
 
 def wrap(draw: ImageDraw.ImageDraw, text: str, f: ImageFont.FreeTypeFont, width: int, lines: int) -> list[str]:
