@@ -1,7 +1,7 @@
 """Прогон промпта по провайдерам на сохранённых реальных постах: сколько фраз проходит гард.
 
     python -m news.eval save 2026-10-20 2026-10-25              # посты этих утр (МСК) → news/fixtures/
-    python -m news.eval run [--providers claude_cli,gigachat] [--runs 2]
+    python -m news.eval run [--providers codex_cli] [--runs 2]
 
 Правило: правка промпта (news/prompts/) или смена модели принимается, только если прогон
 не хуже прежнего по доле прохода гарда, а фразы прочитаны глазами — отчёт в news/out/eval_*.md.
@@ -89,7 +89,7 @@ def main() -> int:
     s.add_argument("start")
     s.add_argument("end")
     r = sub.add_parser("run")
-    r.add_argument("--providers", default="claude_cli")
+    r.add_argument("--providers", default="codex_cli")
     r.add_argument("--runs", type=int, default=1)
     args = ap.parse_args()
     publish.load_env()

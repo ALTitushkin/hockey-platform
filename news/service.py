@@ -65,7 +65,8 @@ def due(now: datetime, state: dict, review_at: dtime, deadline: dtime) -> str | 
     today = now.date().isoformat()
     if state.get("built") == today or now.time() < review_at:
         return None
-    if state.get("next_try") and now.timestamp() < state["next_try"] and now.time() < deadline:
+    if (state.get("next_try") and now.timestamp() < state["next_try"]
+            and (now.time() < deadline or state.get("last_try"))):
         return None
     return today
 
@@ -113,7 +114,8 @@ def run_forever(jobs: list[tuple[str, str, str, Build]],
                 result = f"ошибка {type(e).__name__}: {e}"
             print(f"{now:%Y-%m-%d %H:%M} сборка {kind} {msk}: {result}", flush=True)
             done = result in ("ok", "nogames")
-            state[kind] = {"built": msk} if done else {**job, "next_try": now.timestamp() + RETRY}
+            state[kind] = {"built": msk} if done else {
+                **job, "next_try": now.timestamp() + RETRY, "last_try": now.time() >= deadline}
             save_state(state)
         for i, (every, fn) in enumerate(ticks):
             if now.timestamp() - last_tick[i] < every:

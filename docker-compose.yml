@@ -51,8 +51,10 @@ services:
     restart: unless-stopped
     env_file: news/.env
     environment:
-      # На сервере вводную пишет только Claude: GigaChat прошёл гард, но путал факты (news/prompts/README.md).
-      NEWS_LLM: claude_cli
+      # Подписка ChatGPT, короткий запрос без инструментов. Других провайдеров автоматически не включаем.
+      NEWS_LLM: codex_cli
+      NEWS_CODEX_MODEL: gpt-6-luna
+      CODEX_HOME: /home/app/.codex
       # Чистый гард → сразу в канал, владельцу отчёт (решение владельца 25.10.2026). "0" — снова кнопки.
       NEWS_AUTO_PUBLISH: "1"
       # Инфоповоды без «👀 проверь» — сразу в канал (решение владельца 26.10.2026); с пометкой — кнопки.
@@ -64,12 +66,13 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs:
       - /tmp:size=32m
-      # конфиг Claude Code CLI (~/.claude*) живёт только в памяти контейнера
+      # Временные файлы CLI; авторизация — в отдельном постоянном томе ниже.
       - /home/app:size=32m,uid=1000,gid=1000,mode=0700
     # Черновики, карточки и состояние сервиса переживают пересоздание. Владелец — UID 1000.
     volumes:
       - ./news-runtime:/app/news/out
-    # Python + Pillow ~60 МБ, остальное — Claude Code CLI в момент вызова (раз в сутки).
+      - ./news-codex-auth:/home/app/.codex
+    # Лимит не увеличиваем до замера Codex под реальными пересказами.
     # Сумма лимитов на app-VPS с ним — в project/process/ops_notes.md (замер перед выкатом).
     mem_limit: 384m
     memswap_limit: 384m
