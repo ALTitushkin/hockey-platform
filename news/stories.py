@@ -202,6 +202,8 @@ def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_
     for s in sorted(items, key=lambda s: s.date):
         if s.eid in state["seen"] or s.date < since:
             continue
+        if now.timestamp() < state.get("retry_after", {}).get(s.eid, 0):
+            continue
         for name, pid in ours_en.items():  # клуб не отметил игрока тегом — ищем нашего по имени
             if name in s.headline or name in s.summary:
                 s.pids.add(pid)
@@ -211,12 +213,14 @@ def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_
         if not s.nhl and now - s.date < HOLD_TEAM and not any(same_event(s, o) for o in items if o.nhl):
             continue  # релиз клуба ждёт текст NHL.com — решим на следующем проходе
         twins = [o for o in items if o is not s and same_event(s, o)]
-        if any(o.eid in state["seen"] for o in twins) or any(same_event(s, o) for o in out):
+        if any(o.eid in state["seen"] for o in twins):
             state["seen"][s.eid] = now.isoformat()  # то же событие уже вышло — дубль
             continue
+        if any(same_event(s, o) for o in out):
+            continue  # первый текст ещё не доставлен — не закрываем событие заранее
         if not s.nhl and any(o.nhl for o in twins):
             continue  # возьмём текст NHL.com, когда до него дойдёт очередь
-        if report_repeat(s, state, now):
+        if report_repeat(s, state, now, remember=False):
             state["seen"][s.eid] = now.isoformat()
             continue
         out.append(s)
@@ -232,7 +236,7 @@ def report_keys(s: Story) -> set[str]:
     return set(re.findall(r"\b[A-Z][a-z]{2,}\b", tail)) - nicks - {"NHL", "Status", "Report", "The"}
 
 
-def report_repeat(s: Story, state: dict, now: datetime) -> bool:
+def report_repeat(s: Story, state: dict, now: datetime, remember: bool = True) -> bool:
     """Сводка травм выходит каждый день и может неделю вести одного героя (Холл 26 и 27.10.2026) —
     тот же герой в заголовке за 3 дня = повтор. Новых героев запоминаем."""
     keys = report_keys(s)
@@ -242,7 +246,8 @@ def report_repeat(s: Story, state: dict, now: datetime) -> bool:
             del heads[k]
     if keys & heads.keys():
         return True
-    heads.update({k: now.isoformat() for k in keys})
+    if remember:
+        heads.update({k: now.isoformat() for k in keys})
     return False
 
 
@@ -263,15 +268,35 @@ def save_state(state: dict) -> None:
 
 def prompt_for(s: Story, names: dict, teams_ru: dict, ours: set[int]) -> str:
     people = "\n".join(f"- {names[str(p)]['ru']}" for p in sorted(s.mentioned | s.pids) if str(p) in names)
-    clubs = "\n".join(f"- {teams_ru[t]}" for t in sorted(s.teams) if t in teams_ru)
+    clubs = "\n".join(f"- {teams_ru[t]}" for t in sorted(s.teams | teams_in(s.text + s.headline)) if t in teams_ru)
     our = ", ".join(names[str(p)]["ru"] for p in sorted((s.mentioned | s.pids) & ours) if str(p) in names)
-    return (PROMPT.read_text(encoding="utf-8").replace("{headline}", s.headline).replace("{text}", s.text[:5000])
+    editorial = (PROMPT.parent / "editorial.md").read_text(encoding="utf-8")
+    return editorial + "\n\n" + (PROMPT.read_text(encoding="utf-8").replace("{headline}", s.headline)
+            .replace("{text}", source_excerpt(s, ours))
             .replace("{people}", people or "- (нет)").replace("{clubs}", clubs or "- (нет)")
-            .replace("{ours}", our or "нет"))
+            .replace("{ours}", our or "нет")) + (
+                f"\n\nКонтроль перед ответом: в тексте обязательно назови {our} и сообщи только факт"
+                " о каждом из них из источника. Добавь для этого отдельное предложение, даже если"
+                " основной заголовок про другого игрока. Клубы называй строго по списку выше."
+                if our else "")
+
+
+def source_excerpt(s: Story, ours: set[int]) -> str:
+    """Начало статьи и полные абзацы про наших/героев: не отрезаем факты, требуемые гардом."""
+    paragraphs = s.text.split("\n\n")
+    needed = [en for pid, en in s.en.items() if pid in ours or pid in s.pids]
+    out, size = [], 0
+    for paragraph in paragraphs:
+        if size + len(paragraph) <= 5000 or any(en in paragraph for en in needed):
+            out.append(paragraph)
+            size += len(paragraph)
+    return "\n\n".join(out)
 
 
 def clean(text: str | None) -> str | None:
     """Ответ модели → «заголовок\\n\\nтекст»: без служебных подписей, markdown и кавычек вокруг."""
+    if (text or "").strip() == "SKIP: нет нового события":
+        return None  # обычный редакторский отказ: уведомление владельцу и повтор, не seen
     lines = [ln.strip().strip("*#").strip() for ln in (text or "").strip().splitlines()]
     lines = [ln for ln in lines if ln and not re.match(r"^(заголовок|текст)\s*:?$", ln, re.IGNORECASE)]
     if len(lines) < 2:
@@ -305,7 +330,22 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
     words = re.findall(r"(?<![.!?\n]\s)(?<!^)\b[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?", text)
     unknown = sorted({w for w in words if not any(guard.stem(k) and w.startswith(guard.stem(k)) for k in known)})
     notes = [f"незнакомые слова с большой буквы: {', '.join(unknown)}"] if unknown else []
-    return issues, notes
+    return issues, notes + editorial_notes(text)
+
+
+def editorial_notes(text: str) -> list[str]:
+    """Консервативные сигналы ревью; смысл и правдивость отдельно проверяет редактор."""
+    head, _, body = text.partition("\n\n")
+    words = lambda s: set(re.findall(r"[а-яё]{4,}", s.lower()))  # noqa: E731
+    title_words = words(head)
+    first = words(re.split(r"[.!?]", body, maxsplit=1)[0])
+    notes = []
+    if len(title_words) >= 3 and len(title_words & first) / len(title_words) >= 0.8:
+        notes.append("первое предложение повторяет заголовок")
+    for phrase in ("не оставит равнодушным", "в мире хоккея", "настоящая сенсация", "время покажет"):
+        if phrase in text.lower():
+            notes.append(f"редакторский штамп: {phrase}")
+    return notes
 
 
 def ru_num(x: float, digits: int) -> str:
@@ -386,14 +426,19 @@ def ours_by_name(state: dict, today: str, nationals: Callable[[], list[dict]]) -
 
 def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: Callable[[set, dict], dict],
             write: Callable[[str], str | None], nationals: Callable[[], list[dict]],
-            deliver: Callable[[str, str], str], notify: Callable[[str], None],
+            deliver: Callable[[str, str], tuple[bool, str]], notify: Callable[[str], None],
             discover: Callable[[set[int]], tuple[list[str], dict]] | None = None) -> list[str]:
     """Один проход: → строки для лога. write(промпт, гард) → (текст, кто написал, журнал),
     deliver(дата, рубрика) → итог отправки владельцу/в канал, notify(текст) — владельцу о сбое,
     discover(NHL ID) → новые наши среди героев подписаний/обменов/вызовов (registry.from_story)."""
     state = load_state(now)
     msk = now.date().isoformat()
-    items = [s for it in fetch(FEED).get("items", []) if (s := parse_item(it))]
+    # Сохраняем исходники выбранных новостей: отказ модели может пережить
+    # несколько обновлений короткой ленты (40 элементов).
+    queued = state.setdefault("pending_items", {})
+    raw = list(queued.values()) + fetch(FEED).get("items", [])
+    parsed = {s.eid: (s, it) for it in raw if (s := parse_item(it))}
+    items = [s for s, _ in parsed.values()]
     log = []
     if discover:  # каждого незнакомого героя проверяем один раз: 1 запрос карточки на игрока
         checked = set(state.get("checked", []))
@@ -418,7 +463,24 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         return cache[str(pid)]
 
     for s in select(items, state, now, ours, ours_by_name(state, msk, nationals), notable):
-        state["seen"][s.eid] = now.isoformat()  # до работы: упадёт посередине — повторять не будем
+        if report_repeat(s, state, now, remember=False):
+            state["seen"][s.eid] = now.isoformat()
+            continue
+        kind = f"story-{s.eid[:8]}"
+        queued[s.eid] = parsed[s.eid][1]
+        save_state(state)
+        draft_msk = state.setdefault("draft_dates", {}).get(s.eid, msk)
+        # После сбоя доставки повторяем тот же черновик: уже отправленные каналы
+        # пропустит publish(), модель и источник повторно не вызываются.
+        if publish.draft_path(draft_msk, kind).exists():
+            ok, info = deliver(draft_msk, kind)
+            log.append(f"инфоповод {s.slug} ({s.kind}): {'ок' if ok else 'ошибка'} — {info}")
+            if ok:
+                state["seen"][s.eid] = now.isoformat()
+                queued.pop(s.eid, None)
+                report_repeat(s, state, now)
+                save_state(state)
+            continue
         try:
             s.text, s.en = body_text(fetch(s.url))
             s.mentioned = set(s.en)
@@ -434,10 +496,17 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             return issues
 
         body, source, attempts = write(lambda _p, s=s, names=names: prompt_for(s, names, teams_ru, ours), accept)
-        kind = f"story-{s.eid[:8]}"
         if not body:  # новость есть, а поста нет — владелец должен знать
+            failures = state.setdefault("failures", {})
+            failures[s.eid] = failures.get(s.eid, 0) + 1
+            delay = min(6 * 60 * 60, 30 * 60 * 2 ** min(failures[s.eid] - 1, 4))
+            state.setdefault("retry_after", {})[s.eid] = now.timestamp() + delay
             why = "; ".join(attempts)[:600] or "модель не ответила"
-            notify(f"⚠️ Инфоповод без поста: {s.headline}\n{s.link}\n{why}")
+            notices = state.setdefault("failure_notices", {})
+            previous = notices.get(s.eid)
+            if not previous or now - datetime.fromisoformat(previous) >= timedelta(hours=6):
+                notify(f"⚠️ Инфоповод без поста: {s.headline}\n{s.link}\n{why}")
+                notices[s.eid] = now.isoformat()
             log.append(f"инфоповод {s.slug}: пересказ не прошёл гард — {why[:300]}")
             continue
         variant = f"пересказ {source}" + (f" · 👀 проверь: {'; '.join(notes)}" if notes else "")
@@ -449,6 +518,14 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             log.append(f"инфоповод {s.slug}: карточка не собралась ({type(e).__name__}: {e})")
         publish.save_draft(msk, render(s, body, msk, [goalie_line(g) for g in goalies]), [], variant, pic,
                            kind=kind, data={"slug": s.slug, "auto": not notes})
-        log.append(f"инфоповод {s.slug} ({s.kind}): {deliver(msk, kind)}")
+        state["draft_dates"][s.eid] = msk
+        save_state(state)  # дата черновика переживает сбой доставки и московскую полночь
+        ok, info = deliver(msk, kind)
+        log.append(f"инфоповод {s.slug} ({s.kind}): {'ок' if ok else 'ошибка'} — {info}")
+        if ok:
+            state["seen"][s.eid] = now.isoformat()
+            queued.pop(s.eid, None)
+            report_repeat(s, state, now)
+            save_state(state)
     save_state(state)
     return log

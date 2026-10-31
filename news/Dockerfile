@@ -2,26 +2,22 @@
 # Образ собирает CI и кладёт в GHCR (ghcr.io/altitushkin/hockey-news:<sha>); сервер только тянет
 # готовый образ — стандарт «Инфра и масштабирование»: сборка на общем VPS даёт пики памяти рядом
 # с соседями. Контейнер read-only, без root и capabilities (docker-compose.yml, сервис news).
+FROM node:22-bookworm-slim AS codex
+RUN npm install --prefix /opt/codex --ignore-scripts --no-audit --no-fund @openai/codex@0.166.0 \
+    && find /opt/codex/node_modules/@openai -path '*/bin/codex' -type f -exec cp {} /usr/local/bin/codex \;
+
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DISABLE_AUTOUPDATER=1
+    CODEX_HOME=/home/app/.codex
 
 # Зависимости раньше кода: слой не инвалидируется каждым коммитом.
 COPY news/requirements.txt /app/news/requirements.txt
 RUN pip install --no-cache-dir -r /app/news/requirements.txt
 
-# Claude Code CLI — первый провайдер вводной фразы. Версия закреплена, автообновление выключено:
-# в read-only контейнере обновляться ему некуда. Бинарник — в /usr/local/bin, потому что домашний
-# каталог в рантайме — tmpfs. Вход — CLAUDE_CODE_OAUTH_TOKEN в news/.env (`claude setup-token`).
-# Нет токена — цепочка уступает шаблону, пост выходит без вводной.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
-    && curl -fsSL https://claude.ai/install.sh | bash -s 2.1.310 \
-    && cp -L /root/.local/bin/claude /usr/local/bin/claude \
-    && rm -rf /root/.local /root/.claude* \
-    && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+# Только native CLI: Node/npm и Claude отсутствуют в конечном образе.
+COPY --from=codex /usr/local/bin/codex /usr/local/bin/codex
 
 # UID 1000 — как у бота: том ./news-runtime на хосте принадлежит deploy (UID 1000).
 RUN groupadd --gid 1000 app \

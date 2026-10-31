@@ -5,9 +5,9 @@
 `guard.check_lead`; провайдер упал, исчерпал лимит, не настроен или фраза не прошла гард —
 берём следующего. Не справился никто — пост уходит без фразы. Канал не молчит из-за модели.
 
-Порядок — переменная NEWS_LLM, через запятую (по умолчанию «claude_cli,gigachat,yandexgpt»):
-- claude_cli — Claude Code в headless-режиме (`claude -p`), подписка. На сервере вход по
-  долгоживущему токену: `claude setup-token` → CLAUDE_CODE_OAUTH_TOKEN. Модель — NEWS_CLAUDE_MODEL.
+Порядок — переменная NEWS_LLM, через запятую (по умолчанию только «codex_cli»):
+- codex_cli — Codex exec через подписку ChatGPT; отдельный CODEX_HOME с auth.json.
+  Модель — NEWS_CODEX_MODEL, по умолчанию gpt-6-luna. Метрики — out/codex_usage.json.
 - gigachat  — Сбер, легально в РФ. GIGACHAT_AUTH_KEY (ключ авторизации из кабинета),
   GIGACHAT_SCOPE (по умолчанию GIGACHAT_API_PERS), GIGACHAT_CA_BUNDLE — корневой сертификат
   Минцифры: без него TLS не проверяется, а проверку мы не отключаем.
@@ -18,20 +18,20 @@
 import json
 import os
 import re
-import shutil
 import ssl
-import subprocess
 import time
 import urllib.request
 import uuid
 from collections.abc import Callable
 from pathlib import Path
 
+from news.codex_provider import generate as codex_cli
+
 PROMPTS = Path(__file__).parent / "prompts"
 # Профиль промпта под силу модели: сильной — полный с разбором примеров, слабым — компактный
 # с жёсткими пунктами и образцами. Любая правка промпта — только с прогоном `python -m news.eval`.
-PROFILE = {"claude_cli": "lead.md", "gigachat": "lead.compact.md", "yandexgpt": "lead.compact.md"}
-DEFAULT_CHAIN = "claude_cli,gigachat,yandexgpt"
+PROFILE = {"codex_cli": "lead.md", "gigachat": "lead.compact.md", "yandexgpt": "lead.compact.md"}
+DEFAULT_CHAIN = "codex_cli"
 TIMEOUT = 120
 _LABEL = re.compile(r"^(вот\s+)?(вводная\s+)?(фраза|вариант|ответ)\s*[:—-]\s*", re.IGNORECASE)
 
@@ -53,22 +53,6 @@ def _post_json(url: str, body: dict, headers: dict, context: ssl.SSLContext | No
                                  headers={"Content-Type": "application/json", **headers})
     with urllib.request.urlopen(req, timeout=TIMEOUT, context=context) as resp:
         return json.load(resp)
-
-
-def claude_cli(prompt: str) -> str | None:
-    exe = shutil.which("claude")
-    if not exe:
-        return None
-    cmd = [exe, "-p", "--output-format", "text", "--tools", "", "--no-session-persistence",
-           "--strict-mcp-config", "--setting-sources", ""]
-    if os.environ.get("NEWS_CLAUDE_MODEL"):
-        cmd += ["--model", os.environ["NEWS_CLAUDE_MODEL"]]
-    try:
-        res = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=TIMEOUT)
-    except (subprocess.TimeoutExpired, OSError):
-        return None
-    # Исчерпанный лимит подписки = ненулевой код выхода: просто уступаем следующему провайдеру.
-    return res.stdout if res.returncode == 0 else None
 
 
 _giga_token: dict = {}
@@ -110,7 +94,7 @@ def yandexgpt(prompt: str) -> str | None:
 
 
 PROVIDERS: dict[str, Callable[[str], str | None]] = {
-    "claude_cli": claude_cli, "gigachat": gigachat, "yandexgpt": yandexgpt,
+    "codex_cli": codex_cli, "gigachat": gigachat, "yandexgpt": yandexgpt,
 }
 
 

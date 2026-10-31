@@ -42,3 +42,4 @@ runtime/
 
 # Новостник: черновики теневого режима
 news/out/
+news-codex-auth/

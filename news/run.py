@@ -53,6 +53,8 @@ def audit_registry(msk: str, _last_try: bool) -> str:
 def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True) -> str:
     """Собрать выпуск даты (МСК) → "ok" | "nogames" | "pending" | "guard" (гард нашёл проблемы).
     chain=None — без модели, "" — цепочка из NEWS_LLM. last_try=False и матчи ещё идут → "pending"."""
+    if review and publish.draft_path(msk).exists():
+        return deliver_draft(msk, "night")
     reg, teams = load()
     players = {k: v for k, v in reg["players"].items() if v.get("ru")}
     # Утро по Москве = вечер предыдущей даты в Северной Америке.
@@ -97,12 +99,14 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     elif review:  # гард не чист или автопубликация выключена — черновик владельцу с кнопками
         ok, info = publish.review(msk)
         print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
-    return "guard" if issues else "ok"
+    return ("guard" if issues else "ok") if not review or ok else "retry"
 
 
 def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     """«Ночь в НХЛ»: все матчи, события всей лиги. Без вводной от модели — промпт под лигу ещё не прогнан
     через eval. В посте только игроки с русским именем (наш реестр или Wikidata)."""
+    if review and publish.draft_path(msk, "league").exists():
+        return deliver_draft(msk, "league")
     reg, teams = load()
     nhl_date = (date.fromisoformat(msk) - timedelta(days=1)).isoformat()
     if not last_try and nhl.pending_games(nhl_date):
@@ -132,7 +136,20 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     elif review:
         ok, info = publish.review(msk, kind="league")
         print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
-    return "guard" if issues else "ok"
+    return ("guard" if issues else "ok") if not review or ok else "retry"
+
+
+def deliver_draft(msk: str, kind: str) -> str:
+    """Повторная доставка сохранённого поста без пересборки и сброса решения владельца."""
+    d = json.loads(publish.draft_path(msk, kind).read_text(encoding="utf-8"))
+    if d.get("rejected"):
+        return "ok"
+    if not d["issues"] and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
+        ok, info = publish.auto_publish(msk, kind=kind)
+    else:
+        ok, info = publish.review(msk, kind=kind)
+    print(f"— доставка {kind}: {info}")
+    return ("guard" if d["issues"] else "ok") if ok else "retry"
 
 
 MSK = ZoneInfo("Europe/Moscow")
@@ -187,6 +204,8 @@ def render_tonight_post(games: list[dict], ours: dict, skip: dict, players: dict
 def build_tonight(msk: str, review: bool) -> str:
     """«Сегодня ночью»: матчи НХЛ, которые ещё не начались, по московскому времени, и наши в составах.
     Вечер по Москве = та же дата в Северной Америке. Травмы потом перепроверяет refresh_tonight."""
+    if review and publish.draft_path(msk, "tonight").exists():
+        return deliver_draft(msk, "tonight")
     reg, teams = load()
     games = nhl.upcoming_games(msk)
     players = {k: v for k, v in reg["players"].items() if v.get("ru")}
@@ -208,7 +227,7 @@ def build_tonight(msk: str, review: bool) -> str:
     elif review:
         ok, info = publish.review(msk, kind="tonight")
         print(f"— владельцу в личку: {'ок' if ok else 'ошибка'} — {info}")
-    return "guard" if issues else "ok"
+    return ("guard" if issues else "ok") if not review or ok else "retry"
 
 
 def refresh_tonight(msk: str, now: datetime, fetch=None) -> str | None:
@@ -290,13 +309,13 @@ def run_stories(now: datetime) -> list[str]:
     def write(prompt, accept):
         return ask(prompt, accept, stories.clean)
 
-    def deliver(msk: str, kind: str) -> str:
+    def deliver(msk: str, kind: str) -> tuple[bool, str]:
         d = json.loads(publish.draft_path(msk, kind).read_text(encoding="utf-8"))
         if os.environ.get("NEWS_STORIES_AUTO") == "1" and d["data"].get("auto"):
             ok, info = publish.auto_publish(msk, kind=kind)
         else:
             ok, info = publish.review(msk, kind=kind)
-        return f"{'ок' if ok else 'ошибка'} — {info}"
+        return ok, info
 
     def notify(text: str) -> None:
         publish.tg_call("sendMessage", {"chat_id": owner, "text": text, "link_preview_options": {"is_disabled": True}})

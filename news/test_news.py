@@ -558,6 +558,7 @@ def test_stories():
     st3 = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
     assert [s.eid for s in stories.select([ir], st3, now, set(), {}, lambda p: False)] == [] and "ir" in st3["seen"]
     # тот же герой сводки травм на следующий день — повтор; трекер — не новость
+    stories.report_repeat(back, st2, now)  # запоминаем героя после успешной доставки
     again = stories.parse_item(item("st2", "NHL Status Report: Hall could return for Hurricanes", ["nhl-created"], 60))
     assert stories.report_keys(again) == {"Hall"}
     assert stories.select([again], st2, now + timedelta(days=1), set(), {}) == [] and "st2" in st2["seen"]
@@ -621,11 +622,11 @@ def test_stories():
 
     def run(answer):
         def write(prompt, accept):
-            assert "Джеймс Раймер" in prompt("claude_cli") and "Игорь Шестёркин" in prompt("claude_cli")
+            assert "Джеймс Раймер" in prompt("codex_cli") and "Игорь Шестёркин" in prompt("codex_cli")
             text = stories.clean(answer)
             return (text, "fake", []) if not accept(text) else (None, "шаблон", ["fake: отклонена"])
         return stories.process(now, fetch, reg, TEAMS, lambda p, r: names, write, lambda: [],
-                               lambda msk, kind: sent.append(kind) or "ок", told.append)
+                               lambda msk, kind: (True, sent.append(kind) or "ок"), told.append)
 
     log = run(good)
     assert sent == ["story-nhl"] and "(signing): ок" in log[0]
@@ -633,6 +634,7 @@ def test_stories():
     assert d["issues"] == [] and d["data"]["auto"] and "⚡ #Контракты" in d["text"]
     assert run(good) == []  # второй проход: новость уже видели
     stories.save_state({"since": (now - timedelta(hours=6)).isoformat(), "seen": {}})
+    publish.draft_path("2026-10-25", "story-nhl").unlink()  # отдельная попытка генерации без старого черновика
     run(good.replace("850", "900"))
     assert told and "Инфоповод без поста" in told[0] and len(sent) == 1
     assert publish.title("story-nhl") == "«Инфоповод»" and publish.title("night") == "«Ночь наших»"
