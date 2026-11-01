@@ -1,0 +1,65 @@
+{
+  "release": "v0.18.0",
+  "commit": "cad5d4b",
+  "started_at": 1793556241.5440934,
+  "ends_at": 1794161041.5440934,
+  "started_msk": "2026-11-01T21:04:01.544093+03:00",
+  "ends_msk": "2026-11-08T21:04:01.544093+03:00",
+  "next_msk": "2026-11-01T21:19:01.638116+03:00",
+  "pilot_status": "active",
+  "sources": {
+    "nhl": {
+      "polls": 1,
+      "new": 39,
+      "unclustered": 38,
+      "documents_seen": 40,
+      "initial_backfill": 40,
+      "identified_events": 2,
+      "partial_event_versions": 2,
+      "duplicate": 1,
+      "status": "ok",
+      "last_ok": 1793556242.2316616
+    },
+    "dfo": {
+      "polls": 1,
+      "update": 1,
+      "identified_events": 1,
+      "event_links": 1,
+      "cross_source_clusters": [
+        9
+      ],
+      "cross_source_events": 1,
+      "partial_event_versions": 1,
+      "documents_seen": 25,
+      "initial_backfill": 25,
+      "new": 24,
+      "unclustered": 24,
+      "status": "ok",
+      "last_ok": 1793556244.434636
+    },
+    "ahl": {
+      "polls": 1,
+      "update": 1,
+      "unclustered": 10,
+      "documents_seen": 10,
+      "initial_backfill": 10,
+      "new": 9,
+      "status": "ok",
+      "last_ok": 1793556254.5917573
+    }
+  },
+  "aliases": 9,
+  "container": "a8e42e45df98",
+  "secret_env_present": false,
+  "codex_auth_present": false,
+  "deadline_preserved": true,
+  "container_recreated": true,
+  "memory.current": "28258304",
+  "memory.peak": "38780928",
+  "memory.max": "134217728",
+  "memory.swap.current": "0",
+  "memory.swap.max": "0",
+  "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+  "cpu.max": "15000 100000",
+  "pids.max": "64"
+}

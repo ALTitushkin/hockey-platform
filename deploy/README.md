@@ -146,3 +146,14 @@ docker start hockey-news; sudo systemctl start hockey-watchdog.service  # → �
 Сторож живёт на том же сервере и о падении самого VPS не сообщит — это фаза 2: внешний «пульс» (healthchecks.io), см. `project/planning/backlog.md`.
 
 `.watchdog.env` и флаги `.watchdog-down-*` — в `.gitignore`, `git pull` их не трогает.
+# Теневой RSS-пилот (v0.18.0)
+
+Отдельный профиль `source-shadow`, контейнер `hockey-shadow`: без Telegram/LLM-секретов,
+том `news-shadow-runtime/`,128MiB/0.15CPU/no-swap. Маркер `enabled` в этом каталоге включает
+обновление сервиса при CI deploy. Первый запуск фиксирует7дней; релизы срок не продлевают.
+Подробности, отчёт и остановка — [source-shadow](../project/process/source-shadow.md).
+
+Workflow должен делать `git pull --ff-only origin main` **до запуска deploy.sh**:
+самообновление скрипта внутри уже разобранной shell-функции не включает новое тело функции
+в текущем процессе. После выкладки проверять сам контейнер/health/первый цикл, а не только статус Actions.
+
