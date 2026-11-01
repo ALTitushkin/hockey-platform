@@ -156,4 +156,3 @@ docker start hockey-news; sudo systemctl start hockey-watchdog.service  # → �
 Workflow должен делать `git pull --ff-only origin main` **до запуска deploy.sh**:
 самообновление скрипта внутри уже разобранной shell-функции не включает новое тело функции
 в текущем процессе. После выкладки проверять сам контейнер/health/первый цикл, а не только статус Actions.
-
