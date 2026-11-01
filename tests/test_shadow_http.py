@@ -24,6 +24,20 @@ class Opener:
 
 
 class HTTPTests(unittest.TestCase):
+    def test_html_challenge_stops_polling_without_bypass(self):
+        for challenge_at in ('robots', 'feed'):
+            replies = [(b'<!DOCTYPE html><html>Challenge</html>', 200, {})]
+            if challenge_at == 'feed':
+                replies.insert(0, (b'User-agent: *\nAllow: /', 200, {}))
+            opener = Opener(replies)
+            cache = {}
+            client = Client({}, lambda: 100, lambda _: None, opener)
+            self.assertEqual(client.poll('https://theahl.com/feed', cache).status, 0)
+            calls = len(opener.requests)
+            self.assertEqual(client.poll('https://theahl.com/feed', cache).status, 0)
+            self.assertEqual(len(opener.requests), calls)
+            self.assertEqual(cache['disabled'], f'{challenge_at}_html_challenge')
+
     def test_only_fixed_https_hosts_and_same_host_redirects(self):
         for url in ['http://theahl.com/feed', 'https://127.0.0.1/feed', 'https://theahl.com:444/feed',
                     'https://user:password@theahl.com/feed', 'https://theahl.com.evil.test/feed']:

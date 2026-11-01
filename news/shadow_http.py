@@ -14,6 +14,11 @@ NHL_FEED = 'https://forge-dapi.d3.nhle.com/v2/content/en-us/stories?$limit=40'
 HOSTS = {urlsplit(u).hostname for u in [*SOURCES.values(), NHL_FEED]}
 
 
+def html_response(body):
+    prefix = body.lstrip(b'\xef\xbb\xbf \r\n\t').lower()
+    return prefix.startswith((b'<html', b'<!doctype html'))
+
+
 def validate(url, host=None):
     p = urlsplit(url)
     if (p.scheme != 'https' or p.hostname not in HOSTS or p.username or p.password
@@ -95,6 +100,9 @@ class Client:
                     if r.status == 403:
                         cache['disabled'] = 'robots_http_403'
                     raise RuntimeError(f'robots_http_{r.status}')
+                if html_response(r.body):
+                    cache['disabled'] = 'robots_html_challenge'
+                    return Response(0, b'', {})
                 lines = r.body.decode('utf-8').splitlines()
                 cache['robots_lines'] = lines
                 cache['robots_until'] = self.clock() + 86400
@@ -112,6 +120,9 @@ class Client:
         r = self.get(url, 2 * 1024 * 1024, delay, headers, parser if robots else None)
         if r.status == 403:
             cache['disabled'] = 'feed_http_403'
+        if r.status == 200 and html_response(r.body):
+            cache['disabled'] = 'feed_html_challenge'
+            return Response(0, b'', {})
         self.retry_after(r, cache)
         return r
 
