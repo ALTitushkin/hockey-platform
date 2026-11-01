@@ -405,6 +405,16 @@ def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], 
     report = "status report" in s.headline.lower()
     tagged = sorted(t for t in s.teams | teams_in(s.text + s.headline)
                     if t in teams_ru and guard.mentions(body, teams_ru[t]))
+    if report and hero in s.en:
+        for section in re.split(r"(?m)^##\s+", s.text)[1:]:
+            heading, _, content = section.partition("\n")
+            if s.en[hero].casefold() in content.casefold():
+                # В абзаце есть и соперники: клуб героя задан заголовком раздела.
+                tagged = sorted(teams_in(heading))
+                break
+        else:
+            if len(tagged) > 1:
+                tagged = []  # без привязки не выбираем случайный клуб из списка
     if not tagged and not report:
         tagged = sorted(s.teams or teams_in(s.headline))
     teams = tagged[:2] if s.kind == "trade" else tagged[:1]

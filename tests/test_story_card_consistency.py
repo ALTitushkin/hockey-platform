@@ -40,6 +40,14 @@ class StoryCardTests(unittest.TestCase):
         self.assertIn("#СводкаНХЛ", rendered)
         self.assertNotIn("#Возвращения", rendered)
 
+    def test_post37_opponent_is_not_the_injured_players_club(self):
+        self.teams["LAK"] = "Лос-Анджелес"
+        self.story.text = ("## **Philadelphia Flyers**\nTravis Konecny could return.\n\n"
+                           "## **Ottawa Senators**\nAndre Burakovsky injured against Los Angeles Kings.")
+        args = self.render_card("Андре Бураковски пропустит 3–4 недели\n\n"
+                                "Нападающий Оттавы травмирован в матче с Лос-Анджелесом.")
+        self.assertEqual(args[1], ["OTT"])
+
 
 if __name__ == "__main__":
     unittest.main()
