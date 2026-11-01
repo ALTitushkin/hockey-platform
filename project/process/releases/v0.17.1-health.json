@@ -1,0 +1,17 @@
+{
+  "release": "v0.17.1",
+  "api_calls": 40,
+  "seconds": 11.17,
+  "series": [
+    "🔥 <b>Сергачёв</b> набирает очки 6 матчей подряд",
+    "🔥 <b>Капризов</b> набирает очки 4 матча подряд",
+    "🥅 <b>Кочетков</b> — 9 побед подряд",
+    "🔥 <b>Дорофеев</b> набирает очки 4 матча подряд"
+  ],
+  "card_hero_pid": 8477444,
+  "card_issues": [],
+  "memory.current": "54161408",
+  "memory.peak": "89886720",
+  "memory.swap.current": "0",
+  "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+}
