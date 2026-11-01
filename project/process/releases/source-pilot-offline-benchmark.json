@@ -1,0 +1,101 @@
+{
+  "seconds": 14.693,
+  "python_alloc_peak_bytes": 1652628,
+  "mode": "cached real RSS/NHL, two polls",
+  "first": {
+    "nhl": {
+      "http": {},
+      "polls": 1,
+      "new": 39,
+      "unclustered": 39,
+      "documents_seen": 40,
+      "initial_backfill": 40,
+      "identified_events": 1,
+      "partial_event_versions": 1,
+      "duplicate": 1,
+      "status": "ok",
+      "last_ok": 1793563200.0
+    },
+    "dfo": {
+      "http": {},
+      "polls": 1,
+      "update": 1,
+      "identified_events": 1,
+      "event_links": 1,
+      "cross_source_clusters": [
+        5
+      ],
+      "cross_source_events": 1,
+      "partial_event_versions": 1,
+      "documents_seen": 25,
+      "initial_backfill": 25,
+      "new": 24,
+      "unclustered": 24,
+      "status": "ok",
+      "last_ok": 1793563200.0
+    },
+    "ahl": {
+      "http": {},
+      "polls": 1,
+      "update": 1,
+      "unclustered": 10,
+      "documents_seen": 10,
+      "initial_backfill": 10,
+      "new": 9,
+      "status": "ok",
+      "last_ok": 1793563200.0
+    }
+  },
+  "second": {
+    "nhl": {
+      "http": {},
+      "polls": 2,
+      "new": 39,
+      "unclustered": 78,
+      "documents_seen": 40,
+      "initial_backfill": 40,
+      "identified_events": 2,
+      "partial_event_versions": 2,
+      "duplicate": 41,
+      "status": "ok",
+      "last_ok": 1793564100.0,
+      "event_links": 1,
+      "cross_source_clusters": [
+        5
+      ],
+      "cross_source_events": 1
+    },
+    "dfo": {
+      "http": {},
+      "polls": 2,
+      "update": 1,
+      "identified_events": 2,
+      "event_links": 2,
+      "cross_source_clusters": [
+        5
+      ],
+      "cross_source_events": 1,
+      "partial_event_versions": 2,
+      "documents_seen": 25,
+      "initial_backfill": 25,
+      "new": 24,
+      "unclustered": 48,
+      "status": "ok",
+      "last_ok": 1793564100.0,
+      "duplicate": 25
+    },
+    "ahl": {
+      "http": {},
+      "polls": 2,
+      "update": 1,
+      "unclustered": 20,
+      "documents_seen": 10,
+      "initial_backfill": 10,
+      "new": 9,
+      "status": "ok",
+      "last_ok": 1793564100.0,
+      "duplicate": 10
+    }
+  },
+  "alias_count": 7
+}

@@ -38,6 +38,38 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Отдельный семидневный RSS-пилот: нет Telegram/LLM-секретов и основных черновиков.
+  shadow:
+    profiles: ["source-shadow"]
+    image: ghcr.io/altitushkin/hockey-news:latest
+    pull_policy: never
+    container_name: hockey-shadow
+    command: ["python", "-m", "news.shadow_runner", "serve"]
+    # Штатное завершение через7дней не перезапускает эксперимент.
+    restart: "on-failure:3"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:size=16m,uid=1000,gid=1000"]
+    volumes:
+      - ./news-shadow-runtime:/app/news/out
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.15
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "python", "-m", "news.shadow_runner", "health"]
+      interval: 60s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "2"
+
   # Новостник «Культура хоккея» (news/). Профиль news: обычный `docker compose up` его не трогает,
   # поднимает deploy.sh, только если на сервере есть news/.env (выключатель — см. deploy/README.md).
   # Образ НЕ собирается на сервере: CI кладёт его в GHCR, deploy.sh тянет по SHA и ставит тег latest;
