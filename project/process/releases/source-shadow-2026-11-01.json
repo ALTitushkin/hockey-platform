@@ -1,0 +1,48 @@
+{
+  "dfo": {
+    "status": "ok",
+    "bytes": 182282,
+    "items": 25,
+    "first": {
+      "new": 25
+    },
+    "replay_duplicates": 25,
+    "examples": [
+      {
+        "title": "Bruins’ Nikita Zadorov fined for roughing Blackhawks’ Alex Vlasic",
+        "url": "https://www.dailyfaceoff.com/news/boston-bruins-nikita-zadorov-fined-roughing-chicago-blackhawks-alex-vlasic"
+      },
+      {
+        "title": "Capitals acquire Remi Poirier from Devils for draft pick",
+        "url": "https://www.dailyfaceoff.com/news/washington-capitals-acquire-remi-poirier-new-jersey-devils-draft-pick-nhl-trade-news"
+      },
+      {
+        "title": "‘What the hell did I get myself into here?’: Doug MacLean on ‘Game Day,’ being an NHL GM and hockey’s evolution",
+        "url": "https://www.dailyfaceoff.com/news/doug-maclean-game-day-interview-nhl-general-manager-gm-analytics-red-wings-blue-jackets-panthers"
+      }
+    ]
+  },
+  "ahl": {
+    "status": "ok",
+    "bytes": 43585,
+    "items": 10,
+    "first": {
+      "new": 10
+    },
+    "replay_duplicates": 10,
+    "examples": [
+      {
+        "title": "DiPietro’s hard road to NHL inspired by late mom",
+        "url": "https://www.nhl.com/news/boston-bruins-goalie-michael-dipietro-went-through-hell-on-road-to-nhl"
+      },
+      {
+        "title": "Wild shaking things up as they try to snap skid",
+        "url": "https://theahl.com/news/wild-shaking-things-up-as-they-try-to-snap-skid"
+      },
+      {
+        "title": "Tynan reaches 700 AHL points",
+        "url": "https://theahl.com/news/tynan-reaches-700-ahl-points"
+      }
+    ]
+  }
+}

@@ -87,6 +87,9 @@ TEAM_EN = {
 NUMBER_WORDS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve "
                                            "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty"
                                            .split())}
+NUMBER_WORDS.update({w: i for i, w in enumerate(
+    "first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth "
+    "fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth".split(), 1)})
 # слова с большой буквы, которые законно стоят в пересказе (кроме имён и клубов из данных)
 VOCAB = {"НХЛ", "АХЛ", "КХЛ", "ECHL", "Кубок", "Стэнли", "Россия", "России", "Канада", "Канады", "США",
          "Олимпиада", "Олимпиады", "Драфт", "Хартфорд", "Хершей"} | set(MONTHS)
