@@ -1,9 +1,11 @@
 """Интриги «Сегодня ночью»: что может случиться у наших в этот вечер — только из чисел api-web.nhle.com.
 
-Источник — `player/<id>/landing` (карьера в регулярке и пять последних матчей), один запрос на игрока,
-один раз при сборке поста. Каждая интрига — строка с числами из данных, гард их сверяет.
+Источники — `player/<id>/landing` (карьера и сезон) и полный `game-log/now` (серии).
+Два запроса на игрока при сборке поста. Каждая интрига — строка с числами из данных, гард их сверяет.
 Ранг: юбилей карьеры важнее серии, серия важнее темпа сезона.
 """
+
+from datetime import date
 
 from news.digest import plural
 from news.nhl import WEB, fetch_json
@@ -13,6 +15,27 @@ def landing(pid: int, fetch=fetch_json) -> dict:
     return fetch(f"{WEB}/player/{pid}/landing")
 
 
+def game_log(pid: int, position: str, fetch=fetch_json) -> list[dict]:
+    """Полный журнал регулярки; повреждённый ответ не превращаем в короткую серию."""
+    log = fetch(f"{WEB}/player/{pid}/game-log/now")
+    if not isinstance(log, dict) or log.get("gameTypeId") != 2:
+        return []
+    rows = log.get("gameLog")
+    if not isinstance(rows, list):
+        return []
+    for row in rows:
+        if (not isinstance(row, dict) or not isinstance(row.get("gameDate"), str)
+                or type(row.get("gameId")) is not int):
+            return []
+        try:
+            date.fromisoformat(row["gameDate"])
+        except ValueError:
+            return []
+        if position != "G" and any(type(row.get(k)) is not int or row[k] < 0 for k in ("goals", "points")):
+            return []
+    return rows
+
+
 def next_mark(value: int, step: int) -> int:
     return (value // step + 1) * step
 
@@ -20,7 +43,8 @@ def next_mark(value: int, step: int) -> int:
 def player_items(pid: int, surname: str, data: dict) -> list[dict]:
     """→ [{"pid", "rank", "text", "numbers"}]; rank меньше — важнее."""
     career = (data.get("careerTotals") or {}).get("regularSeason") or {}
-    last = [g for g in data.get("last5Games", []) if g.get("gameTypeId") == 2]  # свежие — первыми
+    last = sorted(data.get("gameLog") or [],
+                  key=lambda g: (g.get("gameDate", ""), g.get("gameId", 0)), reverse=True)
     name = f"<b>{surname}</b>"
     items = []
 
@@ -87,10 +111,20 @@ def player_items(pid: int, surname: str, data: dict) -> list[dict]:
 def collect(ours_by_team: dict[str, list[tuple[int, str]]], fetch=fetch_json) -> list[dict]:
     """Интриги всех наших в составах; игрок без ответа API просто без интриги."""
     items = []
+    logs_available = True
     for recs in ours_by_team.values():
         for pid, surname in recs:
             try:
-                items += player_items(pid, surname, landing(pid, fetch))
+                data = landing(pid, fetch)
+                data["gameLog"] = []
+                if logs_available:
+                    try:
+                        data["gameLog"] = game_log(pid, data.get("position", ""), fetch)
+                    except RuntimeError:
+                        # После отказа endpoint не повторяем таймаут для каждого игрока.
+                        # Юбилеи и статистика сезона остаются доступны.
+                        logs_available = False
+                items += player_items(pid, surname, data)
             except RuntimeError:
                 continue
     return items

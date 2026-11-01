@@ -346,12 +346,14 @@ def test_intrigue():
                          {"gameTypeId": 2, "goals": 1, "points": 1}, {"gameTypeId": 2, "goals": 1, "points": 1},
                          {"gameTypeId": 2, "goals": 0, "points": 0}],
           "featuredStats": {"regularSeason": {"subSeason": {"gamesPlayed": 12, "goals": 12}}}}
+    sk["gameLog"] = sk["last5Games"]
     texts = [i["text"] for i in intrigue.player_items(1, "Капризов", sk)]
     assert texts == ["🎯 <b>Капризов</b> — 2 гола до 250 в НХЛ",
                      "🔥 <b>Капризов</b> набирает очки 4 матча подряд",
                      "📊 <b>Капризов</b> — 12 голов в 12 матчах сезона"]
     g = {"position": "G", "careerTotals": {"regularSeason": {"wins": 199, "shutouts": 30}},
-         "last5Games": [{"gameTypeId": 2, "decision": "W"}] * 3 + [{"gameTypeId": 2, "decision": "L"}]}
+         "last5Games": [{"gameTypeId": 2, "decision": "W"}] * 3 + [{"gameTypeId": 2, "decision": "L"}],
+         "gameLog": [{"decision": "W"}] * 3 + [{"decision": "L"}]}
     texts = [i["text"] for i in intrigue.player_items(4, "Шестёркин", g)]
     assert texts == ["🎯 <b>Шестёркин</b> — одна победа до 200 в НХЛ", "🥅 <b>Шестёркин</b> — 3 победы подряд"]
     items = intrigue.player_items(1, "Капризов", sk) + intrigue.player_items(4, "Шестёркин", g)
