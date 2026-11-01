@@ -66,6 +66,7 @@ jobs:
         run: |
           pip install -q ruff
           ruff check bot/ tools/ news/ tests/
+          bash -n deploy/deploy.sh
       - name: Validate data (целостность реестров + паритет зеркал + status)
         run: python tools/validate_data.py
       - name: Validate calendar (формат событий + отчёт покрытия)
@@ -97,7 +98,7 @@ jobs:
       - name: Smoke test (импорт, шрифты, логотипы, промпты, Codex CLI, read-only)
         run: |
           IMG=ghcr.io/altitushkin/hockey-news:${{ github.sha }}
-          docker run --rm --read-only --tmpfs /home/app:uid=1000,gid=1000 "$IMG"             python -c "import news.run, news.card; from PIL import Image; print('python ok')"
+          docker run --rm --read-only --tmpfs /home/app:uid=1000,gid=1000 "$IMG"             python -c "import news.run, news.card, news.shadow_runner, news.source_events; from PIL import Image; print('python ok')"
           docker run --rm --read-only --tmpfs /home/app:uid=1000,gid=1000 "$IMG"             sh -c 'codex --version && ! command -v claude && ls news/prompts/lead.md news/assets/logos/TBL.png news/assets/fonts/Oswald.ttf'
       - name: Push to GHCR (только main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

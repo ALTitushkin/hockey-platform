@@ -10,6 +10,7 @@ import re
 import xml.etree.ElementTree as ET
 from collections import Counter
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 from news.source_dedup import Ledger, canonical_url
@@ -25,6 +26,7 @@ class FeedItem:
     url: str
     title: str
     text: str
+    published_at: str = ""
 
 
 def plain(text: str) -> str:
@@ -53,8 +55,12 @@ def parse_feed(source: str, data: bytes) -> list[FeedItem]:
         body = row.findtext("{http://purl.org/rss/1.0/modules/content/}encoded")
         body = plain(body or row.findtext("description") or "")
         # Изменение содержания с прежним GUID остаётся новой версией.
-        result.append(FeedItem(source, (row.findtext("guid") or url).strip(), url, title,
-                               title + "\n" + body))
+        try:
+            published = parsedate_to_datetime(row.findtext("pubDate") or "").isoformat()
+        except (ValueError, TypeError):
+            published = ""
+        result.append(FeedItem(source, (row.findtext("guid") or "").strip() or url, url, title,
+                               title + "\n" + body, published))
     return result
 
 

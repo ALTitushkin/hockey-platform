@@ -96,6 +96,7 @@ main() {
     fi
 
     deploy_news
+    deploy_shadow
 
     echo "==> чистка старых образов"
     docker image prune -f >/dev/null
@@ -148,6 +149,33 @@ deploy_news() {
     else
         echo "FAILED: новостник не стартовал. Логи — на сервере: docker compose --profile news logs --tail 50 news"
         echo "Откат: Actions → CI/CD bot → Run workflow → news_image=previous"
+        return 1
+    fi
+}
+
+deploy_shadow() {
+    # Опциональный пилот включается один раз владельцем; файлы состояния остаются на хосте.
+    [ -f news-shadow-runtime/enabled ] || return 0
+    local img=ghcr.io/altitushkin/hockey-news:latest
+    # Старый образ при штатном откате может не содержать пилот: останавливаем только его.
+    if ! docker run --rm --network none --memory 128m --memory-swap 128m --read-only \
+        "$img" python -c 'import news.shadow_runner' >/dev/null 2>&1; then
+        docker compose --profile source-shadow stop shadow
+        echo "==> теневой пилот: модуль отсутствует в образе, остановлен"
+        return 0
+    fi
+    docker compose --profile source-shadow up -d --no-build --force-recreate shadow
+    sleep 3
+    local state
+    state="$(docker inspect -f '{{.State.Status}}:{{.State.ExitCode}}' hockey-shadow)"
+    # По окончании семидневного срока штатный exit0 сохраняется и после следующего релиза.
+    if [ "$state" = "exited:0" ]; then
+        python3 -c 'import json,time; s=json.load(open("news-shadow-runtime/shadow_state.json")); assert s["status"] == "completed" and time.time() >= s["ends_at"]'
+    fi
+    if [ "$state" = "running:0" ] || [ "$state" = "exited:0" ]; then
+        echo "OK: теневой пилот $state"
+    else
+        echo "FAILED: теневой пилот $state"
         return 1
     fi
 }
