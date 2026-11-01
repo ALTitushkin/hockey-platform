@@ -1,0 +1,26 @@
+{
+  "release": "v0.17.2",
+  "commit": "b99324e",
+  "seconds": 1.24,
+  "series": [
+    "🥅 <b>Кочетков</b> — 9 побед подряд",
+    "🔥 <b>Сергачёв</b> набирает очки 6 матчей подряд"
+  ],
+  "shadow_smoke": [
+    "new",
+    "duplicate",
+    "update"
+  ],
+  "draft_messages": [
+    [
+      36
+    ],
+    [
+      37
+    ]
+  ],
+  "memory.current": "47472640",
+  "memory.peak": "47960064",
+  "memory.swap.current": "0",
+  "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+}
