@@ -380,9 +380,14 @@ def goalie_line(g: dict) -> str:
     return f"🥅 <b>{html.escape(g['surname'])}</b> · {g['season']}: {g['games']}, КН {g['gaa']}, %ОБ {g['sv']}"
 
 
-def hero_of(s: Story, names: dict, ours: set[int]) -> int | None:
+def hero_of(s: Story, names: dict, ours: set[int], headline: str | None = None) -> int | None:
     """Герой карточки: игрок из тегов новости с русским именем, наш — в первую очередь.
     Тегов нет (сводка травм) — упомянутый в тексте, чья фамилия стоит в заголовке."""
+    if headline is not None:
+        # Карточка иллюстрирует пересказ: сводка может содержать несколько разных новостей.
+        known = [p for p in sorted(s.pids | s.mentioned) if str(p) in names
+                 and guard.mentions(headline, names[str(p)]["surname"])]
+        return min(known, key=lambda p: headline.find(names[str(p)]["surname"]), default=None)
     known = [p for p in sorted(s.pids) if str(p) in names]
     if not known:
         low = s.headline.lower()
@@ -392,18 +397,26 @@ def hero_of(s: Story, names: dict, ours: set[int]) -> int | None:
 
 def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], teams_ru: dict,
          msk: str, path: Path) -> Path:
-    hero = hero_of(s, names, ours)
+    head = body.partition("\n\n")[0]
+    hero = hero_of(s, names, ours, headline=head)
     g = next((g for g in goalies if g["pid"] == hero), None)
     stats = f"{g['season']} · {g['games']} · КН {g['gaa']} · %ОБ {g['sv']}" if g else None
     # у обмена — оба клуба; у остального — клуб из тегов (первый по алфавиту: тегов обычно один)
-    tagged = sorted(s.teams or teams_in(s.headline))  # нет тегов клуба — клуб из заголовка («…for Kraken»)
+    report = "status report" in s.headline.lower()
+    tagged = sorted(t for t in s.teams | teams_in(s.text + s.headline)
+                    if t in teams_ru and guard.mentions(body, teams_ru[t]))
+    if not tagged and not report:
+        tagged = sorted(s.teams or teams_in(s.headline))
     teams = tagged[:2] if s.kind == "trade" else tagged[:1]
-    return render_story_card(LABELS[s.kind], teams, names[str(hero)]["ru"] if hero else None, hero in ours,
+    return render_story_card("СВОДКА НХЛ" if report else LABELS[s.kind], teams,
+                             names[str(hero)]["ru"] if hero else None, hero in ours,
                              body.partition("\n\n")[0], stats, teams_ru, msk, path)
 
 
 def render(s: Story, body: str, msk: str, stats: list[str] = ()) -> str:
     emoji, tag, _ = KINDS[s.kind]
+    if "status report" in s.headline.lower():
+        emoji, tag = "📰", "#СводкаНХЛ"
     head, _, rest = body.partition("\n\n")
     _, m, d = (int(x) for x in msk.split("-"))
     block = "\n".join(stats) + "\n\n" if stats else ""
