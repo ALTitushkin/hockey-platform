@@ -27,7 +27,8 @@ OUT = ROOT / "out"
 TG_API = "https://api.telegram.org"
 MAX_API = "https://platform-api2.max.ru"
 CAPTION_LIMIT = 1024
-TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»", "tonight": "«Сегодня ночью»", "story": "«Инфоповод»"}
+TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»", "tonight": "«Сегодня ночью»",
+          "weekly": "«Неделя наших»", "story": "«Инфоповод»"}
 
 
 def title(kind: str) -> str:
