@@ -36,7 +36,7 @@ QA-регрессии на Райта/Вуда, Пуарье, отрицания
 `news/achievements.py`: опубликованный daily-архив, NHL ID новых событий/шаблоны старого night,
 дедуп, период дат NHL, максимум5 строк, без LLM/сети. Пересборка сохраняет channels/rejected/
 deleted_messages/deletion_reason; гард не считает ID в href статистикой. QA/security выполнены,
-150 unittest+26news+5delivery и Ruff зелёные. Реальный предпросмотр:1867 знаков, Капризов
+153 unittest+26news+5delivery и Ruff зелёные. Реальный предпросмотр:1867 знаков, Капризов
 «500-е очко в НХЛ» и Кочетков «сухой матч» со встроенными ссылками на пост41.
 Ничего не опубликовано, изменения относятся к той же ещё не выпущенной weekly-ветке.
 
@@ -44,10 +44,10 @@ deleted_messages/deletion_reason; гард не считает ID в href ста
 (код ещё не в проде). [Процедура](../process/weekly-ours.md): понедельник12:30МСК,
 предыдущая полная неделя по датам NHL, регулярка,3 HTTP-запроса,0 LLM, только review.
 Локальный реальный выпуск43 полевых/7 вратарей,1784 знака; Кучеров/Кочетков/Гридин
-сверены с game-log.150 unittest+26news+5delivery и Ruff зелёные; QA/security выполнены.
+сверены с game-log.153 unittest+26news+5delivery и Ruff зелёные; QA/security выполнены.
 Найденный сброс rejected при CLI-пересборке исправлен. Предпросмотр:
 `news/out/weekly-2026-11-02-preview.html`, ничего не отправлено в Telegram.
-Ветка `release/weekly-ours-20261102`, кодd6e5cb3. [CI зелёный](https://github.com/ALTitushkin/hockey-platform/actions/runs/41439746515):181 проверка новостника, бот/валидаторы, image build/smoke; deploy правильно skipped. Полный живой collect+render1.279с, peak Python allocations1.041MiB.
+Ветка `release/weekly-ours-20261102`, код641216e. [CI зелёный](https://github.com/ALTitushkin/hockey-platform/actions/runs/41440513133):184 проверки новостника, бот/валидаторы, image build/smoke; deploy правильно skipped. Полный живой collect+render1.279с, peak Python allocations1.041MiB.
 Следующий шаг: отдельный выпуск рубрики из этой ветки; RSS-пилот
 не подключать к публикациям до оценки после08.11 21:04МСК.
 
