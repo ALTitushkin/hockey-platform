@@ -1,6 +1,6 @@
 # Проверка направления обменов
 
-Статус: кандидат v0.18.2; результат выкладки — в `project/handoff/current.md`.
+Статус: в проде с v0.18.2 (02.11.2026, 5d7d6bb); результат выкладки — в `project/handoff/current.md`.
 
 `news/trades.py` без сети и модели разбирает явные английские конструкции
 `acquire … from … for …`, `trade … to … for …`, `traded to … by … for …`.

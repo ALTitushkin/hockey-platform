@@ -1,0 +1,58 @@
+{
+  "checked_at_utc": "2026-11-02T11:23:51.345470+00:00",
+  "code": "5d7d6bbd37d6e8f5f25c77faad40b609707f23a2",
+  "release": "v0.18.2",
+  "workflow": "https://github.com/ALTitushkin/hockey-platform/actions/runs/41436239615",
+  "containers": [
+    {
+      "name": "hockey-news",
+      "image": "sha256:fbd8b325d64f04f862aa1ba0f1cefca27c970863966e3db0354c72f6d77e35d9",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "31875072",
+        "memory.peak": "32477184",
+        "memory.max": "402653184",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-shadow",
+      "image": "sha256:fbd8b325d64f04f862aa1ba0f1cefca27c970863966e3db0354c72f6d77e35d9",
+      "running": true,
+      "health": "healthy",
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "28045312",
+        "memory.peak": "38748160",
+        "memory.max": "134217728",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-bot",
+      "image": "sha256:694c2ab220ce5ec19b26200d2eade666573495dcfa417426a0a97a134c4f1e45",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "44408832",
+        "memory.peak": "45088768",
+        "memory.max": "268435456",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    }
+  ],
+  "rollback_image": "sha256:3d4b9f2c9523da4883a7b70bcb512e4e01a801c7797423db6005c0a98e7eeb3f",
+  "rollback_matches_v0181": true,
+  "runtime_smoke": "trade facts ok",
+  "startup_seen": true,
+  "errors_after_start": []
+}
