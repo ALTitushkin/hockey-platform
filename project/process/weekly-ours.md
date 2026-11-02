@@ -1,6 +1,6 @@
 # «Неделя наших в НХЛ»
 
-Статус: ветка `release/weekly-ours-20261102`, код168d900; [CI зелёный](https://github.com/ALTitushkin/hockey-platform/actions/runs/41437892128), включая image build/smoke. В прод ещё не выложено.
+Статус: ветка `release/weekly-ours-20261102`, кодd6e5cb3; [CI зелёный](https://github.com/ALTitushkin/hockey-platform/actions/runs/41439746515), включая image build/smoke. В прод ещё не выложено.
 
 ## Содержание и границы
 
@@ -51,7 +51,7 @@ python -m news.run publish --date 2026-11-02 --kind weekly --to tg
 
 02.11 локально получен реальный черновик:43 полевых,7 вратарей,1784 видимых знака.
 Агрегаты Кучерова, Кочеткова и лидера выпуска Гридина сверены с их NHL game-log за тот же период.
-Полный прогон:130 unittest +26 news +5delivery, Ruff чист. QA и security review выполнены;
+Полный прогон:150 unittest +26 news +5delivery, Ruff чист. QA и security review выполнены;
 QA нашёл стирание rejected при CLI-пересборке — исправлено и закрыто регрессией.
 Тесты `tests/test_weekly.py` и `tests/test_weekly_qa.py` офлайн, без токенов.
 
