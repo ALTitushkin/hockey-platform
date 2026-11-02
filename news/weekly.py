@@ -87,6 +87,16 @@ def render(data: dict, players: dict) -> tuple[str, dict]:
     else:
         headline = f"📊 <b>Неделя наших в НХЛ: {span}</b>"
     parts = [headline, f"{span}. Итоги регулярного чемпионата по датам матчей НХЛ."]
+    achievements = data.get("achievements", [])
+    if achievements:
+        lines = []
+        for event in achievements:
+            phrase = html.escape(event["text"])
+            url = html.escape(event["url"], quote=True)
+            lines.append(f"<b>{name(event['pid'])}</b> — <a href=\"{url}\">{phrase}</a>")
+            facts["pids"].add(event["pid"])
+            facts["numbers"] |= {str(int(n)) for n in re.findall(r"\d+", event["text"])}
+        parts.append("🏆 <b>Достижения недели</b>\n" + "\n".join(lines))
     if skaters:
         def line(p: dict, label: str) -> str:
             games = p["gamesPlayed"]

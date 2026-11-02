@@ -18,7 +18,21 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, injuries, intrigue, levels, names, nhl, publish, registry, service, stories, weekly
+from news import (
+    achievements,
+    events,
+    guard,
+    injuries,
+    intrigue,
+    levels,
+    names,
+    nhl,
+    publish,
+    registry,
+    service,
+    stories,
+    weekly,
+)
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
 from news.llm import ask, lead
@@ -89,7 +103,8 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     issues = guard.check(final, facts, players, teams)
 
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png", highlights)
-    path = publish.save_draft(msk, final, issues, variant, str(card))
+    path = publish.save_draft(msk, final, issues, variant, str(card),
+                              data=achievements.snapshot(highlights, final, nhl_date))
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")
     print(f"— черновик: {path}")
@@ -126,7 +141,8 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     text, facts = render_league(reports, players, teams, msk, highlights)
     issues = guard.check(text, facts, players, teams)
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_league.png", highlights, league=True)
-    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league")
+    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league",
+                              data=achievements.snapshot(highlights, text, nhl_date))
     print(text, "\n")
     print(f"— матчей: {len(reports)} · с русским именем {len(players)} из {len(pids)} · "
           f"гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
@@ -168,6 +184,7 @@ def build_weekly(msk: str, review: bool, last_try: bool = True) -> str:
     reg, teams = load()
     players = reg["players"]
     data = weekly.collect(msk, players)
+    data["achievements"] = achievements.load(publish.OUT, start, end, players, os.environ.get("NEWS_CHANNEL", ""))
     text, facts = weekly.render(data, players)
     if not text:
         return "nogames"

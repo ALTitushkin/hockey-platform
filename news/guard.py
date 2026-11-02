@@ -9,6 +9,7 @@
 Пустой список замечаний = можно отправлять на ✅.
 """
 
+import html
 import re
 
 RUMOR = ("по данным источников", "по слухам", "сообщает", "инсайд", "якобы")
@@ -49,6 +50,8 @@ def mentions(text: str, word: str) -> bool:
     return re.search(rf"(?<!\w){re.escape(stem(word))}{ENDINGS}(?!\w)", text) is not None
 
 def check(text: str, facts: dict, players: dict, teams: dict, publish: bool = False) -> list[str]:
+    # Validate visible claims: message IDs in href are references, not player statistics.
+    text = html.unescape(re.sub(r"<[^>]+>", "", text))
     issues = []
     low = text.lower()
 

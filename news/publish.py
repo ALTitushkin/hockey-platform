@@ -125,6 +125,9 @@ def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str |
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     d = {"date": msk, "text": text, "issues": issues, "variant": variant, "card": card,
          "published": old.get("published", []), "messages": old.get("messages", {})}
+    for key in ("channels", "rejected", "deleted_messages", "deletion_reason"):
+        if key in old:
+            d[key] = old[key]
     if data is not None:
         d["data"] = data
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -212,6 +215,7 @@ def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "n
         if ok:
             d["published"].append(target)
             if target == "tg":  # для правки поста потом (перепроверка состава)
+                d.setdefault("channels", {})["tg"] = os.environ.get("NEWS_CHANNEL", "")
                 d.setdefault("messages", {})["tg"] = [int(x) for x in re.findall(r"\d+", info.split("message_id")[-1])]
         all_ok &= ok
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
