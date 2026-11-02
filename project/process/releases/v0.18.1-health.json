@@ -1,0 +1,23 @@
+{
+  "release": "v0.18.1",
+  "commit": "9f87a16",
+  "tracker_skipped": true,
+  "quotes_preserved": true,
+  "ambiguous_trade_rejected": true,
+  "quote_order_rejected": true,
+  "message_ids": [
+    [
+      38
+    ],
+    [
+      39
+    ],
+    [
+      43
+    ]
+  ],
+  "memory.current": "42459136",
+  "memory.peak": "42459136",
+  "memory.swap.current": "0",
+  "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+}
