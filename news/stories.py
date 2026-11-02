@@ -127,6 +127,9 @@ def kind_of(headline: str, summary: str = "") -> str | None:
 
 
 def parse_item(it: dict) -> Story | None:
+    # Сезонный список сделок обновляется год: это не отдельный инфоповод.
+    if re.fullmatch(r"\d{4}-\d{2}-nhl-trades", it.get("slug", "")):
+        return None
     slugs = {t.get("slug", "") for t in it.get("tags", [])}
     # колонки клубных «инсайдеров» (lak-insider…) — мнения и разборы, а не событие
     if slugs & SKIP_TAGS or any(s.endswith(("-insider", "day-to-day")) for s in slugs):
@@ -304,7 +307,7 @@ def clean(text: str | None) -> str | None:
     lines = [ln for ln in lines if ln and not re.match(r"^(заголовок|текст)\s*:?$", ln, re.IGNORECASE)]
     if len(lines) < 2:
         return None
-    head = re.sub(r"^заголовок\s*:\s*", "", lines[0], flags=re.IGNORECASE).strip("«»\"' ")
+    head = re.sub(r"^заголовок\s*:\s*", "", lines[0], flags=re.IGNORECASE).strip()
     return head + "\n\n" + " ".join(re.sub(r"^текст\s*:\s*", "", ln, flags=re.IGNORECASE) for ln in lines[1:])
 
 
@@ -318,6 +321,14 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
              "pids": {p for p in (s.mentioned | s.pids) & ours if str(p) in registry},
              "teams": {teams_ru[t] for t in in_story if t in teams_ru}}
     issues = guard.check(text, facts, registry, teams_ru)
+    quote_depth, bad_quotes = 0, False
+    for quote in re.findall("[«»]", text):
+        quote_depth += 1 if quote == "«" else -1
+        bad_quotes |= quote_depth < 0
+    if quote_depth or bad_quotes:
+        issues.append("несбалансированные кавычки")
+    if s.kind == "trade" and re.search(r"обменял[аи]?\b[^\n.!?]*\b(?:у|на)\s", text, re.IGNORECASE):
+        issues.append("неясное направление обмена: используйте получил/отдал")
     if re.search(r"[A-Za-z]{2,}", re.sub(r"\bECHL\b", "", text)):
         issues.append("латиница в тексте")
     for pid in s.pids:  # герой новости назван, и его имя — из данных
