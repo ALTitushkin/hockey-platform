@@ -32,6 +32,7 @@
 - Канон истории (9 глав — все опубликованы, формат черновика): [`../docs/history/INDEX.md`](../docs/history/INDEX.md) *(лежит рядом с пайплайном сборки глав)*
 
 ### ⚙️ [process/](process/) — как работаем
+- [trade-direction.md](process/trade-direction.md) — проверка направления обменов, границы автопубликации и регрессии
 - [ops_notes.md](process/ops_notes.md) — **операционка: грабли, VPS, деплой, ритуал разбора логов, процесс главы**
 - [team_process.md](process/team_process.md) — роли и разделение по чатам
 - [architecture.md](process/architecture.md) — архитектурные решения и почему
