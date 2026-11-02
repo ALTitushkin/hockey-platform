@@ -1,6 +1,6 @@
 # «Неделя наших в НХЛ»
 
-Статус: ветка `release/weekly-ours-20261102`, код641216e; [CI зелёный](https://github.com/ALTitushkin/hockey-platform/actions/runs/41440513133), включая image build/smoke. В прод ещё не выложено.
+Статус: принятый кандидат v0.19.0; итог выкладки — в `project/handoff/current.md`.
 
 ## Содержание и границы
 
