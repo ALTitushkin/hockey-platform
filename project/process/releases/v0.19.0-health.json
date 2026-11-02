@@ -1,0 +1,99 @@
+{
+  "release": "v0.19.0",
+  "code": "919b7351ce4365433cb4cca1471b5f49e6f790a5",
+  "workflow": "https://github.com/ALTitushkin/hockey-platform/actions/runs/41441074200",
+  "checked_at_utc": "2026-11-02T12:06:00.797589+00:00",
+  "containers": [
+    {
+      "name": "hockey-news",
+      "image": "sha256:2cd8f68d2966a4b31b50aad03a3c29e825e1e9f10d073341f96c20fadf832909",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "30760960",
+        "memory.peak": "45559808",
+        "memory.max": "402653184",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-shadow",
+      "image": "sha256:2cd8f68d2966a4b31b50aad03a3c29e825e1e9f10d073341f96c20fadf832909",
+      "running": true,
+      "health": "healthy",
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "28647424",
+        "memory.peak": "39337984",
+        "memory.max": "134217728",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-bot",
+      "image": "sha256:30ac48297fd6bcaea460c0b2cdeb6b8b24094e5963fe5583ea8b60f2ea08e778",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "45039616",
+        "memory.peak": "45719552",
+        "memory.max": "268435456",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    }
+  ],
+  "weekly": {
+    "auto": false,
+    "issues": [],
+    "published": [],
+    "skaters": 45,
+    "goalies": 8,
+    "achievements": 2,
+    "visible_chars": 2336,
+    "signed_values": true,
+    "inline_links": 2,
+    "period": [
+      "2026-10-26",
+      "2026-11-01"
+    ],
+    "service_state": {
+      "built": "2026-11-02"
+    }
+  },
+  "pilot": {
+    "started_at": 1793556241.5440934,
+    "ends_at": 1794161041.5440934,
+    "status": "active"
+  },
+  "pilot_deadline_unchanged": true,
+  "rollback_image": "sha256:fbd8b325d64f04f862aa1ba0f1cefca27c970863966e3db0354c72f6d77e35d9",
+  "rollback_matches_v0182": true,
+  "startup_seen": true,
+  "weekly_statuses": [
+    [
+      "2026-11-02",
+      "ошибка"
+    ],
+    [
+      "2026-11-02",
+      "ok"
+    ]
+  ],
+  "initial_registry_issue": {
+    "pid": 8482949,
+    "fixed": true,
+    "also_verified": [
+      8478500,
+      8483436
+    ]
+  },
+  "fatal_error_count": 0
+}
