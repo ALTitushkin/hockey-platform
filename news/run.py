@@ -18,7 +18,21 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from news import events, guard, injuries, intrigue, levels, names, nhl, publish, registry, service, stories
+from news import (
+    achievements,
+    events,
+    guard,
+    injuries,
+    intrigue,
+    levels,
+    names,
+    nhl,
+    publish,
+    registry,
+    service,
+    stories,
+    weekly,
+)
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
 from news.llm import ask, lead
@@ -89,7 +103,8 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     issues = guard.check(final, facts, players, teams)
 
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png", highlights)
-    path = publish.save_draft(msk, final, issues, variant, str(card))
+    path = publish.save_draft(msk, final, issues, variant, str(card),
+                              data=achievements.snapshot(highlights, final, nhl_date))
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")
     print(f"— черновик: {path}")
@@ -126,7 +141,8 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     text, facts = render_league(reports, players, teams, msk, highlights)
     issues = guard.check(text, facts, players, teams)
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_league.png", highlights, league=True)
-    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league")
+    path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league",
+                              data=achievements.snapshot(highlights, text, nhl_date))
     print(text, "\n")
     print(f"— матчей: {len(reports)} · с русским именем {len(players)} из {len(pids)} · "
           f"гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
@@ -144,12 +160,42 @@ def deliver_draft(msk: str, kind: str) -> str:
     d = json.loads(publish.draft_path(msk, kind).read_text(encoding="utf-8"))
     if d.get("rejected"):
         return "ok"
-    if not d["issues"] and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
+    if not d["issues"] and d.get("data", {}).get("auto", True) and os.environ.get("NEWS_AUTO_PUBLISH") == "1":
         ok, info = publish.auto_publish(msk, kind=kind)
     else:
         ok, info = publish.review(msk, kind=kind)
     print(f"— доставка {kind}: {info}")
     return ("guard" if d["issues"] else "ok") if ok else "retry"
+
+
+def build_weekly(msk: str, review: bool, last_try: bool = True) -> str:
+    """Monday recap of the previous Mon–Sun. First releases always go to review."""
+    start, end = weekly.period(msk)
+    path = publish.draft_path(msk, "weekly")
+    if path.exists():
+        if review:
+            return deliver_draft(msk, "weekly")
+        draft = json.loads(path.read_text(encoding="utf-8"))
+        print(draft["text"])
+        return "guard" if draft["issues"] else "ok"
+    # Never label a partial Sunday as a complete week, even after the daily deadline.
+    if nhl.pending_games(end):
+        return "pending"
+    reg, teams = load()
+    players = reg["players"]
+    data = weekly.collect(msk, players)
+    data["achievements"] = achievements.load(publish.OUT, start, end, players, os.environ.get("NEWS_CHANNEL", ""))
+    text, facts = weekly.render(data, players)
+    if not text:
+        return "nogames"
+    if publish.visible_len(text) > 4096:
+        raise RuntimeError("Недельный отчёт не помещается в сообщение: нужна редакторская сборка")
+    issues = guard.check(text, facts, players, teams, publish=True)
+    publish.save_draft(msk, text, issues, "Недельные итоги NHL · редакторская проверка", kind="weekly",
+                       data={**data, "auto": False})
+    print(text, "\n")
+    print(f"— неделя: {start} — {end}; полевые: {len(data['skaters'])}; вратари: {len(data['goalies'])}")
+    return deliver_draft(msk, "weekly") if review else ("guard" if issues else "ok")
 
 
 MSK = ZoneInfo("Europe/Moscow")
@@ -289,6 +335,13 @@ def cmd_league(args) -> int:
     return 1 if build_league(msk, args.review) == "guard" else 0
 
 
+def cmd_weekly(args) -> int:
+    today = datetime.now(MSK).date()
+    msk = args.date or (today - timedelta(days=today.weekday())).isoformat()
+    result = build_weekly(msk, args.review)
+    return 0 if result in ("ok", "nogames") else 1
+
+
 def cmd_sync_names(_args) -> int:
     print(f"Русских имён из Wikidata: {names.sync()} → {names.FILE}")
     return 0
@@ -365,6 +418,12 @@ def cmd_serve(_args) -> int:
         result = build_tonight(msk, True)
         return "ok" if result == "guard" else result
 
+    def week(msk: str, last_try: bool) -> str:
+        if date.fromisoformat(msk).weekday() != 0:
+            return "nogames"
+        result = build_weekly(msk, True, last_try)
+        return "ok" if result == "guard" else result
+
     def recheck(now: datetime) -> list[str]:
         # матчи западного побережья начинаются до 06:00 МСК — после полуночи пост ещё вчерашний
         dates = [(now - timedelta(days=k)).date().isoformat() for k in (0, 1)]
@@ -386,6 +445,7 @@ def cmd_serve(_args) -> int:
     service.run_forever([("registry", "NEWS_REGISTRY_AT", "08:00", audit_registry),
                          ("league", "NEWS_LEAGUE_AT", "09:00", league),
                          ("night", "NEWS_REVIEW_AT", "09:30", night),
+                         ("weekly", "NEWS_WEEKLY_AT", "12:30", week),
                          ("tonight", "NEWS_TONIGHT_AT", "18:00", tonight)],
                         ticks=[(int(os.environ.get("NEWS_RECHECK_MIN", "30")) * 60, recheck),
                                (int(os.environ.get("NEWS_STORIES_MIN", "15")) * 60, run_stories)],
@@ -427,13 +487,16 @@ def main() -> int:
     p = sub.add_parser("publish")
     p.add_argument("--date", help="дата черновика по МСК, по умолчанию сегодня")
     p.add_argument("--to", default="tg,max", help="куда: tg, max или оба через запятую")
-    p.add_argument("--kind", default="night", choices=["night", "league", "tonight"], help="рубрика")
+    p.add_argument("--kind", default="night", choices=["night", "league", "tonight", "weekly"], help="рубрика")
     lg = sub.add_parser("league")
     lg.add_argument("--date", help="дата поста по МСК, по умолчанию сегодня")
     lg.add_argument("--review", action="store_true", help="опубликовать (автопубликация) или в личку владельцу")
     tn = sub.add_parser("tonight")
     tn.add_argument("--date", help="дата по МСК, по умолчанию сегодня")
     tn.add_argument("--review", action="store_true", help="опубликовать (автопубликация) или в личку владельцу")
+    wk = sub.add_parser("weekly", help="«Неделя наших»: предыдущая полная неделя, без модели")
+    wk.add_argument("--date", help="понедельник выпуска по МСК; по умолчанию понедельник текущей недели")
+    wk.add_argument("--review", action="store_true", help="отправить черновик владельцу; автопубликация выключена")
     st = sub.add_parser("stories", help="⚡ инфоповоды из ленты NHL.com → черновики владельцу")
     st.add_argument("--since", type=int, help="взять новости за последние N часов (сбрасывает «уже видел»)")
     sub.add_parser("sync-registry")
@@ -442,7 +505,8 @@ def main() -> int:
     sub.add_parser("serve", help="сервис: утренний сбор + кнопки «Опубликовать/Отклонить» в личке")
     args = ap.parse_args()
     publish.load_env()
-    cmds = {"night": cmd_night, "league": cmd_league, "tonight": cmd_tonight, "publish": cmd_publish,
+    cmds = {"night": cmd_night, "league": cmd_league, "tonight": cmd_tonight, "weekly": cmd_weekly,
+            "publish": cmd_publish,
             "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve, "stories": cmd_stories,
             "audit-registry": lambda _a: 0 if audit_registry(datetime.now(MSK).date().isoformat(), True) else 1}
     return cmds[args.cmd](args)
