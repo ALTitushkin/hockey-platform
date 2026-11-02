@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from news import guard, publish
+from news import guard, publish, trades
 from news.card import render_story_card
 from news.digest import MONTHS, plural
 from news.nhl import WEB
@@ -284,7 +284,11 @@ def prompt_for(s: Story, names: dict, teams_ru: dict, ours: set[int]) -> str:
                 f"\n\nКонтроль перед ответом: в тексте обязательно назови {our} и сообщи только факт"
                 " о каждом из них из источника. Добавь для этого отдельное предложение, даже если"
                 " основной заголовок про другого игрока. Клубы называй строго по списку выше."
-                if our else "")
+                if our else "") + (trades.prompt(trade_facts(s), names, teams_ru) if s.kind == "trade" else "")
+
+
+def trade_facts(s: Story) -> trades.Trade:
+    return trades.extract(s.headline, s.text, s.en, TEAM_EN)
 
 
 def source_excerpt(s: Story, ours: set[int]) -> str:
@@ -344,6 +348,10 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
     words = re.findall(r"(?<![.!?\n]\s)(?<!^)\b[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?", text)
     unknown = sorted({w for w in words if not any(guard.stem(k) and w.startswith(guard.stem(k)) for k in known)})
     notes = [f"незнакомые слова с большой буквы: {', '.join(unknown)}"] if unknown else []
+    if s.kind == "trade":
+        trade_issues, trade_notes = trades.check(text, trade_facts(s), names, teams_ru)
+        issues.extend(trade_issues)
+        notes.extend(trade_notes)
     return issues, notes + editorial_notes(text)
 
 
@@ -431,7 +439,11 @@ def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], 
                 tagged = []  # без привязки не выбираем случайный клуб из списка
     if not tagged and not report:
         tagged = sorted(s.teams or teams_in(s.headline))
-    teams = tagged[:2] if s.kind == "trade" else tagged[:1]
+    teams = tagged[:1]
+    if s.kind == "trade":
+        moves = trade_facts(s).moves
+        # Never pick clubs alphabetically from unrelated transactions/background.
+        teams = [moves[0].source, moves[0].destination] if moves else []
     return render_story_card("СВОДКА НХЛ" if report else LABELS[s.kind], teams,
                              names[str(hero)]["ru"] if hero else None, hero in ours,
                              body.partition("\n\n")[0], stats, teams_ru, msk, path)
@@ -553,8 +565,11 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         except Exception as e:  # картинка — украшение: без неё пост всё равно выходит
             pic = None
             log.append(f"инфоповод {s.slug}: карточка не собралась ({type(e).__name__}: {e})")
+        data = {"slug": s.slug, "auto": not notes}
+        if s.kind == "trade":
+            data["trade_facts"] = trade_facts(s).data()
         publish.save_draft(msk, render(s, body, msk, [goalie_line(g) for g in goalies]), [], variant, pic,
-                           kind=kind, data={"slug": s.slug, "auto": not notes})
+                           kind=kind, data=data)
         state["draft_dates"][s.eid] = msk
         save_state(state)  # дата черновика переживает сбой доставки и московскую полночь
         ok, info = deliver(msk, kind)
