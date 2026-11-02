@@ -143,6 +143,36 @@ class WeeklyQATests(unittest.TestCase):
         saved = json.loads(path.read_text(encoding="utf-8"))
         self.assertTrue(saved.get("rejected"), "Rebuilding a draft must preserve the owner's rejection")
 
+    def test_plus_minus_survives_build_guard_and_collapsed_rest_but_not_goalies(self):
+        surnames = ["Петров", "Иванов", "Сидоров", "Орлов", "Белов", "Серов", "Волков"]
+        players = {
+            str(i): {"ru": f"Иван {surname}", "surname": surname, "status": "confirmed"}
+            for i, surname in enumerate(surnames, 1)
+        }
+        ratings = [2, 0, -3, 4, 1, -17]
+        data = self.data()
+        data["skaters"] = [
+            {"pid": i, "gamesPlayed": 3, "goals": 0, "assists": 7 - i, "points": 7 - i, "plusMinus": ratings[i - 1]}
+            for i in range(1, 7)
+        ]
+        data["goalies"] = [{"pid": 7, "gamesPlayed": 2, "wins": 1, "shutouts": 0, "saves": 10, "shotsAgainst": 11}]
+        with (
+            patch.object(run, "load", return_value=({"players": players}, {})),
+            patch.object(run.nhl, "pending_games", return_value=False),
+            patch.object(weekly, "collect", return_value=data),
+        ):
+            self.assertEqual(run.build_weekly(self.monday, False), "ok")
+        draft = json.loads(publish.draft_path(self.monday, "weekly").read_text(encoding="utf-8"))
+        self.assertEqual(draft["issues"], [])
+        self.assertIn("+/− +2", draft["text"])
+        self.assertIn("+/− 0", draft["text"])
+        collapsed = draft["text"].split("<blockquote expandable>", 1)[1].split("</blockquote>", 1)[0]
+        self.assertIn("Серов", collapsed)
+        self.assertIn("+/− -17", collapsed)
+        goalie_line = next(line for line in draft["text"].splitlines() if "Волков" in line)
+        self.assertNotIn("+/−", goalie_line)
+        self.assertEqual(draft["data"]["skaters"][-1]["plusMinus"], -17)
+
 
 if __name__ == "__main__":
     unittest.main()

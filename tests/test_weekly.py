@@ -10,7 +10,7 @@ class WeeklyTests(unittest.TestCase):
                "2": {"ru": "Другой Вратарь", "surname": "Вратарь", "status": "confirmed"}}
 
     def setUp(self):
-        self.skater = {"playerId": 1, "gamesPlayed": 3, "goals": 2, "assists": 4, "points": 6}
+        self.skater = {"playerId": 1, "gamesPlayed": 3, "goals": 2, "assists": 4, "points": 6, "plusMinus": 2}
         self.goalie = {"playerId": 2, "gamesPlayed": 2, "wins": 1, "shutouts": 1, "saves": 59, "shotsAgainst": 65}
         self.urls = []
 
@@ -59,6 +59,27 @@ class WeeklyTests(unittest.TestCase):
         self.assertIn("26 октября — 1 ноября 2026", text)
         self.assertEqual(guard.check(text, facts, self.players, {}, publish=True), [])
         self.assertEqual(facts["pids"], {1, 2})
+
+    def test_plus_minus_positive_negative_and_zero_keep_their_sign(self):
+        for value, expected in ((5, "+5"), (-7, "-7"), (0, "0")):
+            with self.subTest(value=value):
+                data = self.collect([{**self.skater, "plusMinus": value}], [])
+                text, facts = weekly.render(data, self.players)
+                self.assertEqual(data["skaters"][0]["plusMinus"], value)
+                self.assertIn(f"+/− {expected}", text)
+                self.assertEqual(guard.check(text, facts, self.players, {}, publish=True), [])
+
+    def test_missing_or_invalid_plus_minus_is_not_zero(self):
+        for value in (None, True, "-2", 1.5):
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                self.collect([{**self.skater, "plusMinus": value}], [])
+        row = {k: v for k, v in self.skater.items() if k != "plusMinus"}
+        with self.assertRaises(RuntimeError):
+            self.collect([row], [])
+        data = {"start": "2026-10-26", "end": "2026-11-01", "goalies": [],
+                "skaters": [{"pid": 1, **{k: v for k, v in row.items() if k != "playerId"}}]}
+        text, _ = weekly.render(data, self.players)
+        self.assertIn("+/− н/д", text)
 
     def test_shutout_in_shootout_loss_does_not_require_a_win(self):
         goalie = {**self.goalie, "gamesPlayed": 1, "wins": 0, "shutouts": 1, "saves": 20, "shotsAgainst": 20}

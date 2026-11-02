@@ -38,9 +38,9 @@ def collect(monday: str, players: dict, fetch: Callable[[str], dict] = nhl.fetch
             seen.add(pid)
             if str(pid) not in players:
                 continue
-            fields = ("gamesPlayed", "goals", "assists", "points") if kind == "skater" else (
+            fields = ("gamesPlayed", "goals", "assists", "points", "plusMinus") if kind == "skater" else (
                 "gamesPlayed", "wins", "shutouts", "saves", "shotsAgainst")
-            if any(type(row.get(f)) is not int or row[f] < 0 for f in fields):
+            if any(type(row.get(f)) is not int or (f != "plusMinus" and row[f] < 0) for f in fields):
                 raise RuntimeError(f"Недельная статистика {kind}: неверные числа для {pid}")
             if row["gamesPlayed"] > 7:
                 raise RuntimeError("Недельная статистика: ответ не похож на недельный")
@@ -100,10 +100,14 @@ def render(data: dict, players: dict) -> tuple[str, dict]:
     if skaters:
         def line(p: dict, label: str) -> str:
             games = p["gamesPlayed"]
+            value = p.get("plusMinus")
+            # Old saved weekly data did not contain this field; never invent zero.
+            rating = (f"{value:+d}" if value else "0") if type(value) is int else "н/д"
             return (f"<b>{label}</b> — {p['points']} ({p['goals']}+{p['assists']}), "
-                    f"{games} {plural(games, ('матч', 'матча', 'матчей'))}")
+                    f"{games} {plural(games, ('матч', 'матча', 'матчей'))}; +/− {rating}")
 
-        parts.append("🏒 <b>Очки за неделю</b>\n" + "\n".join(line(p, name(p["pid"])) for p in skaters[:5]))
+        parts.append("🏒 <b>Очки и полезность (+/−) за неделю</b>\n"
+                     + "\n".join(line(p, name(p["pid"])) for p in skaters[:5]))
         if len(skaters) > 5:
             surnames = Counter(players[str(p["pid"])]["surname"] for p in skaters)
             more = []
@@ -134,5 +138,5 @@ def render(data: dict, players: dict) -> tuple[str, dict]:
     # Template numbers are dates and fields already validated above, including derived %.
     facts["numbers"] |= {str(int(n)) for n in re.findall(r"\d+", f"{data['start']} {data['end']}")}
     for row in skaters + goalies:
-        facts["numbers"] |= {str(v) for k, v in row.items() if k != "pid"}
+        facts["numbers"] |= {str(abs(v)) for k, v in row.items() if k != "pid" and type(v) is int}
     return text, facts
