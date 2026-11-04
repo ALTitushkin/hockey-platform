@@ -21,6 +21,8 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 
+from news import event_registry
+
 ROOT = Path(__file__).parent
 ENV = ROOT / ".env"
 OUT = ROOT / "out"
@@ -29,6 +31,7 @@ MAX_API = "https://platform-api2.max.ru"
 CAPTION_LIMIT = 1024
 TITLES = {"night": "«Ночь наших»", "league": "«Ночь в НХЛ»", "tonight": "«Сегодня ночью»",
           "weekly": "«Неделя наших»", "story": "«Инфоповод»"}
+CHANNEL_IDS: dict[str, int] = {}
 
 
 def title(kind: str) -> str:
@@ -125,7 +128,7 @@ def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str |
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     d = {"date": msk, "text": text, "issues": issues, "variant": variant, "card": card,
          "published": old.get("published", []), "messages": old.get("messages", {})}
-    for key in ("channels", "rejected", "deleted_messages", "deletion_reason"):
+    for key in ("channels", "rejected", "deleted_messages", "deletion_reason", "event_receipts"):
         if key in old:
             d[key] = old[key]
     if data is not None:
@@ -150,6 +153,23 @@ def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
 def control_text(d: dict, kind: str = "night") -> str:
     guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + html.escape("; ".join(d["issues"]))
     return f"📝 <b>Черновик {title(kind)} {d['date']}</b> выше\n{html.escape(d['variant'])} · {guard_line}"
+
+
+def channel_key(target: str, post: Post = http_post) -> str:
+    """Stable Telegram chat ID, even when config switches username to numeric ID."""
+    if target != "tg":
+        return f"{target}:{os.environ.get('MAX_CHAT_ID', '')}"
+    configured = os.environ.get("NEWS_CHANNEL", "")
+    if re.fullmatch(r"-100[1-9]\d+", configured):
+        return f"tg:{configured}"
+    if configured not in CHANNEL_IDS:
+        response = tg_call("getChat", {"chat_id": configured}, post)
+        result = response.get("result", {})
+        if (not response.get("ok") or not isinstance(result, dict) or type(result.get("id")) is not int
+                or not re.fullmatch(r"-100[1-9]\d+", str(result["id"])) or result.get("type") != "channel"):
+            raise RuntimeError("Не подтверждён постоянный ID канала: отправка события остановлена")
+        CHANNEL_IDS[configured] = result["id"]
+    return f"tg:{CHANNEL_IDS[configured]}"
 
 
 def review(msk: str, post: Post = http_post, kind: str = "night") -> tuple[bool, str]:
@@ -209,8 +229,45 @@ def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "n
         if target == "max" and not (os.environ.get("MAX_BOT_TOKEN") and os.environ.get("MAX_CHAT_ID")):
             report.append("max: не подключён, пропускаю")  # не ошибка: канал ещё не заведён
             continue
-        ok, info = tg_send(os.environ.get("NEWS_CHANNEL", ""), d["text"], post, d.get("card")) if target == "tg" \
-            else max_send(d["text"], post)
+        event = d.get("data", {}).get("event_revision")
+        ledger = None
+        channel = None
+        try:
+            if event_registry.complete(event):
+                try:
+                    channel = channel_key(target, post)
+                except RuntimeError as error:
+                    report.append(f"{target}: {error}")
+                    all_ok = False
+                    continue
+                ledger = event_registry.Registry(OUT / "event_registry.sqlite3")
+                ledger.sync_archive(OUT)
+                status, mids = ledger.reserve(event, channel, path.name)
+                if status == "done_own":
+                    d["published"].append(target)
+                    d.setdefault("messages", {})[target] = mids
+                    d.setdefault("channels", {})[target] = os.environ.get(
+                        "NEWS_CHANNEL" if target == "tg" else "MAX_CHAT_ID", "")
+                    d.setdefault("event_receipts", {})[target] = {"event": event, "channel": channel, "messages": mids}
+                    report.append(f"{target}: доставка подтверждена реестром, повтор не отправлен")
+                    continue
+                if status != "new":
+                    reason = ("эта версия события уже опубликована" if status == "duplicate" else
+                              "исход предыдущей отправки требует сверки; повтор заблокирован")
+                    report.append(f"{target}: {reason}")
+                    all_ok = False
+                    continue
+            destination = channel.split(":", 1)[1] if ledger else os.environ.get("NEWS_CHANNEL", "")
+            ok, info = tg_send(destination, d["text"], post, d.get("card")) if target == "tg" \
+                else max_send(d["text"], post)
+            mids = [int(x) for x in re.findall(r"\d+", info.split("message_id")[-1])] if ok and target == "tg" else []
+            if ledger:
+                ledger.finish(event, channel, ok, mids)
+                if ok:
+                    d.setdefault("event_receipts", {})[target] = {"event": event, "channel": channel, "messages": mids}
+        finally:
+            if ledger:
+                ledger.close()
         report.append(f"{target}: {'ок' if ok else 'ошибка'} — {info}")
         if ok:
             d["published"].append(target)

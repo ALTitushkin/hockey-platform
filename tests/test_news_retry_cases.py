@@ -35,7 +35,7 @@ class RetryCases(unittest.TestCase):
             self.assertIn("event", state["seen"])
             self.assertNotIn("event", state["pending_items"])
 
-    def test_two_status_reports_with_same_hero_in_batch_deliver_once(self):
+    def test_two_status_reports_with_same_hero_keep_both_for_fact_review(self):
         now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
         first = stories.Story("first", "first", "NHL Status Report: Hall could return for Hurricanes", "",
                               now, "return", set(), set(), True)
@@ -53,8 +53,9 @@ class RetryCases(unittest.TestCase):
             stories.process(now + timedelta(minutes=2),
                             lambda url: {"items": [{"id": "first"}, {"id": "second"}]},
                             {}, {}, lambda p, r: {}, write, lambda: [], deliver, lambda text: None)
-            deliver.assert_called_once_with("2026-10-31", "story-first")
-            self.assertEqual(write.call_count, 1)
+            self.assertEqual(deliver.call_args_list, [unittest.mock.call("2026-10-31", "story-first"),
+                                                      unittest.mock.call("2026-10-31", "story-second")])
+            self.assertEqual(write.call_count, 2)
             self.assertIn("second", stories.load_state(now)["seen"])
 
     def test_partial_delivery_across_midnight_uses_original_draft(self):

@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from news import guard, publish, trades
+from news import event_registry, guard, publish, story_provenance, trades
 from news.card import render_story_card
 from news.digest import MONTHS, plural
 from news.nhl import WEB
@@ -59,7 +59,8 @@ LABELS = {"trade": "ОБМЕН", "signing": "КОНТРАКТ", "injury": "ТР�
 RULES = [
     ("return", r"\bactivat\w*|\boff (ir|injured)|\breturns? from\b|\b(could|will|to|nears?) return\b"),
     ("trade", r"\bacquir\w*|\btraded?\b.*\bto\b|\btrades\b|\bdeal\b.*\bfor\b"),
-    ("signing", r"\bsigns?\b|\bsigned\b|\bre-sign\w*|agrees? to terms|\bextension\b|\bcontract\b"),
+    ("signing", r"\bsigns?\b|\bsigned\b|\bre-sign\w*|agrees? to terms|\bextension\b|\bcontract\b"
+                r"|\breleas\w*\b.*\b(?:pto|tryout)\b"),
     ("injury", r"season-ending|\bsurgery\b|week-to-week|month-to-month|\bout (indefinitely|for the season|\d+)"
                r"|\bltir\b|long-term injured"),
     ("injury_minor", r"\binjur\w*|\bto ir\b|\bon ir\b|\bplaced on\b"),
@@ -165,14 +166,8 @@ def teams_in(text: str) -> set[str]:
 
 
 def same_event(a: Story, b: Story) -> bool:
-    """Релиз клуба и текст NHL.com об одном и том же: тот же вид и общий игрок, или общий клуб и слово заголовка."""
-    if a.kind != b.kind:
-        return False
-    if a.pids & b.pids:
-        return True
-    words = lambda s: {w for w in re.findall(r"\b[A-Z][a-z]{3,}\b", s.headline)} - {  # noqa: E731
-        n for _, nick in TEAM_EN.values() for n in nick.split()} - {"With", "From", "Terms", "Agree", "Signs"}
-    return bool(a.teams & b.teams and words(a) & words(b))
+    """Before full evidence is loaded, only identical document IDs prove equality."""
+    return a.eid == b.eid
 
 
 # Травма со списком травмированных и возвращение в строй — по всей лиге, но только заметных игроков:
@@ -243,17 +238,7 @@ def report_keys(s: Story) -> set[str]:
 
 
 def report_repeat(s: Story, state: dict, now: datetime, remember: bool = True) -> bool:
-    """Сводка травм выходит каждый день и может неделю вести одного героя (Холл 26 и 27.10.2026) —
-    тот же герой в заголовке за 3 дня = повтор. Новых героев запоминаем."""
-    keys = report_keys(s)
-    heads = state.setdefault("report_heads", {})
-    for k, t in list(heads.items()):
-        if now - datetime.fromisoformat(t) > REPORT_REPEAT:
-            del heads[k]
-    if keys & heads.keys():
-        return True
-    if remember:
-        heads.update({k: now.isoformat() for k in keys})
+    """Legacy state is retained, but a player's surname never suppresses an update."""
     return False
 
 
@@ -289,6 +274,19 @@ def prompt_for(s: Story, names: dict, teams_ru: dict, ours: set[int]) -> str:
 
 def trade_facts(s: Story) -> trades.Trade:
     return trades.extract(s.headline, s.text, s.en, TEAM_EN)
+
+
+def health_facts(s: Story) -> dict[str, str]:
+    """Only the event headline can bind an injury qualifier to this story's hero.
+
+    Do not borrow diagnoses from other paragraphs/players in status reports.
+    """
+    if "status report" in s.headline.lower() or s.kind not in {"injury", "injury_minor"}:
+        return {}
+    for english, region in (("upper", "верхняя"), ("lower", "нижняя")):
+        if re.search(rf"\b{english}[- ]body\b", s.headline, re.I):
+            return {"region": region}
+    return {}
 
 
 def source_excerpt(s: Story, ours: set[int]) -> str:
@@ -331,6 +329,9 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
         bad_quotes |= quote_depth < 0
     if quote_depth or bad_quotes:
         issues.append("несбалансированные кавычки")
+    health = health_facts(s)
+    if health and not (health["region"][:4] in text.lower() and "част" in text.lower() and "тел" in text.lower()):
+        issues.append("потеряно подтверждённое уточнение травмы из заголовка источника")
     if s.kind == "trade" and re.search(r"обменял[аи]?\b[^\n.!?]*\b(?:у|на)\s", text, re.IGNORECASE):
         issues.append("неясное направление обмена: используйте получил/отдал")
     if re.search(r"[A-Za-z]{2,}", re.sub(r"\bECHL\b", "", text)):
@@ -348,6 +349,15 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
     words = re.findall(r"(?<![.!?\n]\s)(?<!^)\b[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?", text)
     unknown = sorted({w for w in words if not any(guard.stem(k) and w.startswith(guard.stem(k)) for k in known)})
     notes = [f"незнакомые слова с большой буквы: {', '.join(unknown)}"] if unknown else []
+    if "status report" in s.headline.lower():
+        hero = hero_of(s, names, ours, headline=text.partition("\n\n")[0])
+        clubs = focus_teams(s, hero)
+        if not clubs:
+            notes.append("не установлена однозначная связь героя и клуба в источнике")
+        else:
+            head_clubs = {t for t, ru in teams_ru.items() if guard.mentions(text.partition("\n\n")[0], ru)}
+            if head_clubs and head_clubs != set(clubs):
+                issues.append("клуб героя заголовка противоречит разделу источника")
     if s.kind == "trade":
         trade_issues, trade_notes = trades.check(text, trade_facts(s), names, teams_ru)
         issues.extend(trade_issues)
@@ -417,6 +427,23 @@ def hero_of(s: Story, names: dict, ours: set[int], headline: str | None = None) 
     return next((p for p in known if p in ours), known[0] if known else None)
 
 
+def focus_teams(s: Story, hero: int | None) -> list[str]:
+    candidates = set()
+    for section in re.split(r"(?m)^#{1,6}\s+", s.text)[1:]:
+        heading, _, content = section.partition("\n")
+        if hero in s.en and s.en[hero].casefold() in content.casefold():
+            # В абзаце есть и соперники: клуб героя задан заголовком раздела.
+            candidates |= teams_in(heading)
+    if not candidates and hero in s.en:
+        # Explicit owner relation is usable without section markup; opponents
+        # elsewhere in the sentence never become club ownership.
+        pattern = (rf"{re.escape(s.en[hero])}\s+of\s+(?:the\s+)?(.{{1,80}}?)"
+                   r"(?:\s+(?:is|was|has|will|who)\b|[.,\n]|$)")
+        for match in re.finditer(pattern, s.text):
+            candidates |= teams_in(match.group(1))
+    return sorted(candidates) if len(candidates) == 1 else []
+
+
 def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], teams_ru: dict,
          msk: str, path: Path) -> Path:
     head = body.partition("\n\n")[0]
@@ -427,16 +454,8 @@ def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], 
     report = "status report" in s.headline.lower()
     tagged = sorted(t for t in s.teams | teams_in(s.text + s.headline)
                     if t in teams_ru and guard.mentions(body, teams_ru[t]))
-    if report and hero in s.en:
-        for section in re.split(r"(?m)^##\s+", s.text)[1:]:
-            heading, _, content = section.partition("\n")
-            if s.en[hero].casefold() in content.casefold():
-                # В абзаце есть и соперники: клуб героя задан заголовком раздела.
-                tagged = sorted(teams_in(heading))
-                break
-        else:
-            if len(tagged) > 1:
-                tagged = []  # без привязки не выбираем случайный клуб из списка
+    if report:
+        tagged = focus_teams(s, hero)
     if not tagged and not report:
         tagged = sorted(s.teams or teams_in(s.headline))
     teams = tagged[:1]
@@ -538,9 +557,30 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             continue
         names = wiki(s.mentioned | s.pids, registry)
         notes: list[str] = []
+        reference = story_provenance.published_reference(s, publish.OUT, msk)
+        events_db = event_registry.Registry(publish.OUT / "event_registry.sqlite3")
+        try:
+            events_db.sync_archive(publish.OUT)
+            revision = events_db.bind_reference(event_registry.extract(s), s.text)
+            decision = events_db.classify(revision)
+            events_db.register(f"{draft_msk}_{kind}.json", s.slug, revision,
+                               {"headline": s.headline, "text": s.text[:20000], "en": s.en})
+        finally:
+            events_db.close()
+        if decision["status"] == "duplicate":
+            state["seen"][s.eid] = now.isoformat()
+            queued.pop(s.eid, None)
+            log.append(f"инфоповод {s.slug}: уже опубликована та же версия события")
+            save_state(state)
+            continue
 
         def accept(text: str, s=s, names=names, notes=notes) -> list[str]:
             issues, found = check(text, s, names, registry, teams_ru, ours)
+            if reference and not (revision.get("references") and decision["status"] in ("new", "update")):
+                found.append(f"ссылка на уже опубликованное событие {reference['slug']}: "
+                             "нужно подтвердить новые факты, а не повторять событие")
+            if decision["status"] == "review":
+                found.extend(f"факты события: {reason}" for reason in decision["reasons"])
             notes[:] = found
             return issues
 
@@ -565,7 +605,11 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         except Exception as e:  # картинка — украшение: без неё пост всё равно выходит
             pic = None
             log.append(f"инфоповод {s.slug}: карточка не собралась ({type(e).__name__}: {e})")
-        data = {"slug": s.slug, "auto": not notes}
+        data = {"slug": s.slug, "auto": not notes, "event_revision": revision, "event_decision": decision,
+                "source_event": {"kind": s.kind, "pids": sorted(s.pids), "teams": sorted(s.teams),
+                                 "headline": s.headline, "date": s.date.isoformat(),
+                                 "text": s.text[:20000], "text_truncated": len(s.text) > 20000,
+                                 "en": s.en, "health": health_facts(s)}}
         if s.kind == "trade":
             data["trade_facts"] = trade_facts(s).data()
         publish.save_draft(msk, render(s, body, msk, [goalie_line(g) for g in goalies]), [], variant, pic,

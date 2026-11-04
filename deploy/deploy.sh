@@ -33,8 +33,14 @@ failure_reason() {
 main() {
     cd /opt/hockey-platform
 
-    echo "==> git pull"
-    git pull --ff-only origin main
+    if [ -n "${DEPLOY_SHA:-}" ]; then
+        [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "FAILED: invalid deploy SHA"; return 1; }
+        [ "$(git rev-parse HEAD)" = "$DEPLOY_SHA" ] || { echo "FAILED: checkout differs from image SHA"; return 1; }
+        echo "==> immutable checkout verified"
+    else
+        echo "==> manual git pull"
+        git pull --ff-only origin main
+    fi
 
     echo "==> сборка и запуск"
     # Запоминаем контейнер ДО запуска: по смене id понятно, пересоздавался он или нет.
