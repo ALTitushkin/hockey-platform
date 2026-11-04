@@ -111,13 +111,15 @@ def headline(events: list[Event], limit: int = 3) -> list[tuple[int, list[Event]
     return [(pid, sorted(evs, key=lambda e: -e.weight)) for pid, evs in ranked[:limit]]
 
 
-def context(reports: list[GameReport], fetch: Callable[[str], dict] = fetch_json) -> dict:
+def context(reports: list[GameReport], fetch: Callable[[str], dict] = fetch_json,
+            games: dict | None = None) -> dict:
     """Всё, что нужно detect(): ход матча, карьера наших с очками, лидеры франшизы."""
-    ctx: dict = {"games": {}, "players": {}}
+    ctx: dict = {"games": dict(games or {}), "players": {}}
     franchise = {t["triCode"]: t["franchiseId"] for t in fetch(f"{STATS}/team").get("data", [])}
     for r in reports:
-        ctx["games"][r.game_id] = {"scoring": fetch(f"{WEB}/gamecenter/{r.game_id}/landing")
-                                   .get("summary", {}).get("scoring", [])}
+        if games is None:
+            ctx["games"][r.game_id] = {"scoring": fetch(f"{WEB}/gamecenter/{r.game_id}/landing")
+                                       .get("summary", {}).get("scoring", [])}
         for s in r.skaters:
             if not s.points:
                 continue  # без очков ни рекорда, ни юбилея по голам/очкам

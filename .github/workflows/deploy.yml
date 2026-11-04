@@ -14,6 +14,10 @@
 
 name: CI/CD bot
 
+concurrency:
+  group: hockey-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   # Ручной выкат/откат новостника без сборки: news_image = previous | <sha>.
   workflow_dispatch:
@@ -55,6 +59,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Validate release version before deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: python3 tools/release_version.py
       - uses: actions/setup-python@v7
         with:
           # Держим ту же версию, что в контейнере (Dockerfile: python:3.12-slim),
@@ -121,6 +130,7 @@ jobs:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
         env:
+          DEPLOY_SHA: ${{ github.sha }}
           NEWS_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.news_image || github.sha }}
           GHCR_USER: ${{ github.actor }}
           # Токен джоба живёт, пока идёт джоб: на сервере не остаётся постоянного секрета.
@@ -129,7 +139,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: NEWS_TAG,GHCR_USER,GHCR_TOKEN
+          envs: DEPLOY_SHA,NEWS_TAG,GHCR_USER,GHCR_TOKEN
           # Через `bash`, а не напрямую — не зависим от exec-бита файла:
           # git на Windows его не трекает, иначе SSH падает с 126 Permission denied.
           # Healthcheck («Бот запущен» в логах контейнера) внутри deploy.sh —
@@ -137,8 +147,33 @@ jobs:
           script: |
             # Сначала обновляем файл: shell должен разобрать новую версию deploy.sh.
             # Иначе первый выкат изменения самого скрипта выполняет прежнее тело main().
-            git -C /opt/hockey-platform pull --ff-only origin main || exit $?
+            git -C /opt/hockey-platform diff --quiet || exit $?
+            git -C /opt/hockey-platform diff --cached --quiet || exit $?
+            git -C /opt/hockey-platform fetch origin "$DEPLOY_SHA" || exit $?
+            git -C /opt/hockey-platform switch --detach "$DEPLOY_SHA" || exit $?
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
             NEWS_TAG="$NEWS_TAG" bash /opt/hockey-platform/deploy/deploy.sh; rc=$?
             docker logout ghcr.io >/dev/null
             exit $rc
+
+  release-tag:
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Annotated release tag after successful deployment
+        run: |
+          VERSION=$(python3 tools/release_version.py)
+          if git rev-parse --verify --quiet "refs/tags/$VERSION" >/dev/null; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "$VERSION" "$GITHUB_SHA" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION"

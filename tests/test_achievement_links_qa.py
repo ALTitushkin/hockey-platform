@@ -123,12 +123,14 @@ class AchievementLinksQA(unittest.TestCase):
         hidden = SimpleNamespace(pid=1, text="первый гол в НХЛ")
         final = f"🏆 Иван Петров — {self.phrase}"
         facts = {"numbers": {"100"}, "pids": {1}, "teams": set()}
-        reports = [SimpleNamespace(skaters=[SimpleNamespace(pid=1)], goalies=[])]
+        reports = [SimpleNamespace(game_id=123, home="NYI", away="MIN", home_score=1, away_score=0,
+                                   last_period="REG", skaters=[SimpleNamespace(pid=1)], goalies=[])]
         for kind in ("night", "league"):
             with (
                 self.subTest(kind=kind),
                 patch.object(run, "load", return_value=({"players": self.players}, {})),
                 patch.object(run.nhl, "collect_night", return_value=reports),
+                patch.object(run.nhl, "fetch_json", return_value={"summary": {"scoring": []}}),
                 patch.object(run.events, "context", return_value={}),
                 patch.object(run.events, "detect", return_value=[event, hidden]),
                 patch.object(run.events, "headline", return_value=[(1, [event, hidden])]),

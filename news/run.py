@@ -25,6 +25,7 @@ from news import (
     injuries,
     intrigue,
     levels,
+    match_facts,
     names,
     nhl,
     publish,
@@ -35,7 +36,7 @@ from news import (
 )
 from news.card import render_card, render_tonight_card
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
-from news.llm import ask, lead
+from news.llm import ask
 
 ROOT = Path(__file__).parent
 PLAYERS = ROOT / "data" / "players.json"
@@ -89,11 +90,11 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
 
     variant, phrase = "шаблон", None
     if chain is not None:
-        phrase, source, log = lead(text, lambda p: guard.check_lead(p, facts, players, teams), chain=chain or None)
-        for line in log:
-            print(f"  ↳ {line}")
+        # Causal/team attribution is rendered from game relations. Membership-only
+        # lexical guards cannot validate unrestricted generated match narratives.
+        phrase = match_facts.night_lead(reports, players, teams)
         if phrase:
-            variant = f"шаблон + вводная {source}"
+            variant = "шаблон + вводная по фактам матча"
     # Модели дали полный текст по матчам (render_night) — ей нужен контекст. В канал идёт подпись
     # к карточке: счёт матчей на картинке, в тексте сюжет и очки наших.
     final, facts = render_caption(reports, players, teams, msk, highlights, phrase)
@@ -132,13 +133,30 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
         return "nogames"
     pids = {ln.pid for r in reports for ln in r.skaters + r.goalies}
     players = names.league_players(pids, reg["players"])
+    games = {}
+    for game in reports:
+        try:
+            games[game.game_id] = {"scoring": nhl.fetch_json(f"{nhl.WEB}/gamecenter/{game.game_id}/landing")
+                                   .get("summary", {}).get("scoring", [])}
+        except RuntimeError:
+            continue
     try:
-        found = [e for e in events.detect(reports, events.context(reports)) if str(e.pid) in players]
+        context = events.context(reports, games=games)
+        found = [e for e in events.detect(reports, context) if str(e.pid) in players]
         highlights = events.headline(found, limit=5)
     except RuntimeError as e:
         print(f"  ↳ события не собраны: {e}")
         highlights = []
+        context = {"games": games}
     text, facts = render_league(reports, players, teams, msk, highlights)
+    comebacks = [event for r in reports
+                 if (event := match_facts.comeback(r, context.get("games", {}).get(r.game_id, {}).get("scoring", [])))]
+    if comebacks:
+        section = "🔥 <b>Камбэки</b>\n" + "\n".join(match_facts.comeback_text(e, teams) for e in comebacks)
+        head, sep, footer = text.rpartition("\n\n")
+        text = head + "\n\n" + section + sep + footer
+        for event in comebacks:
+            facts["numbers"] |= set(event["from"]) | set(event["final"])
     issues = guard.check(text, facts, players, teams)
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_league.png", highlights, league=True)
     path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league",

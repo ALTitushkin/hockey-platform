@@ -543,13 +543,13 @@ def test_stories():
                                   ["nhl-created", "playerid-8473503"], 20))
     minor = stories.parse_item(item("ah", "Rangers Assign Some Guy to Hartford", ["playerid-1"], 90))
     ours = stories.parse_item(item("rc", "Rangers recall Matvei Michkov", ["press-release"], 90))
-    assert stories.same_event(team, nhl)  # клуб без тега игрока, но общий клуб и «Reimer» в заголовке
+    assert not stories.same_event(team, nhl)  # разные документы ещё не доказывают одинаковые факты
     state = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
     got = stories.select([team, nhl, minor, ours], state, now, {4}, {"Matvei Michkov": 4})
     assert [s.eid for s in got] == ["rc", "nhl"]  # текст NHL.com вместо релиза; мелочь не нашего — мимо
     assert "ah" in state["seen"] and "pr" not in state["seen"]
     state["seen"].update({"rc": now.isoformat(), "nhl": now.isoformat()})
-    assert stories.select([team, nhl], state, now, set(), {}) == [] and "pr" in state["seen"]  # дубль
+    assert stories.select([team, nhl], state, now, set(), {}) == [] and "pr" not in state["seen"]  # релиз ещё в HOLD
 
     # травма/возвращение не нашего — только заметного игрока; сводка NHL.com — всегда
     ir = stories.parse_item(item("ir", "LA Kings Place Forward Mats Zuccarello On Injured Reserve",
@@ -559,11 +559,11 @@ def test_stories():
     assert [s.eid for s in stories.select([ir, back], st2, now, set(), {}, lambda p: p == 777)] == ["ir", "st"]
     st3 = {"since": (now - timedelta(hours=6)).isoformat(), "seen": {}}
     assert [s.eid for s in stories.select([ir], st3, now, set(), {}, lambda p: False)] == [] and "ir" in st3["seen"]
-    # тот же герой сводки травм на следующий день — повтор; трекер — не новость
+    # тот же герой не доказывает повтор: следующий статус должен пройти к разбору фактов
     stories.report_repeat(back, st2, now)  # запоминаем героя после успешной доставки
     again = stories.parse_item(item("st2", "NHL Status Report: Hall could return for Hurricanes", ["nhl-created"], 60))
     assert stories.report_keys(again) == {"Hall"}
-    assert stories.select([again], st2, now + timedelta(days=1), set(), {}) == [] and "st2" in st2["seen"]
+    assert stories.select([again], st2, now + timedelta(days=1), set(), {}) == [again] and "st2" not in st2["seen"]
     assert stories.parse_item(item("2026-nhl-draft-1st-round-pick-signings-tracker",
                                    "2026 NHL Draft 1st-round pick signings tracker", ["nhl-created"], 5)) is None
     star = {"featuredStats": {"regularSeason": {"career": {"points": 700}, "subSeason": {"points": 10}}}}
@@ -633,7 +633,9 @@ def test_stories():
     log = run(good)
     assert sent == ["story-nhl"] and "(signing): ок" in log[0]
     d = json.loads(publish.draft_path("2026-10-25", "story-nhl").read_text(encoding="utf-8"))
-    assert d["issues"] == [] and d["data"]["auto"] and "⚡ #Контракты" in d["text"]
+    # No explicit action date: retain the news for review, not automatic publication.
+    assert d["issues"] == [] and not d["data"]["auto"] and "⚡ #Контракты" in d["text"]
+    assert d["data"]["event_decision"]["status"] == "review"
     assert run(good) == []  # второй проход: новость уже видели
     stories.save_state({"since": (now - timedelta(hours=6)).isoformat(), "seen": {}})
     publish.draft_path("2026-10-25", "story-nhl").unlink()  # отдельная попытка генерации без старого черновика
