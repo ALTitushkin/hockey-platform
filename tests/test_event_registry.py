@@ -40,6 +40,21 @@ class EventRegistryTests(unittest.TestCase):
         self.assertEqual(b["facts"]["years"], 1)
         self.assertEqual(b["facts"]["amounts"], ["1500000"])
 
+    def test_age_and_career_length_do_not_become_contract_term(self):
+        for lead in ("The 33-year-old Player signed a PTO on Monday.",
+                     "The eight-year veteran Player signed a PTO on Monday."):
+            with self.subTest(lead=lead):
+                event = er.extract(self.story("Club signs Player to PTO", lead))
+                self.assertTrue(er.complete(event))
+                self.assertEqual(event["facts"], {})
+                self.assertEqual(er.revision_key(event), er.revision_key(self.pto()))
+
+    def test_new_full_contract_in_headline_is_not_old_pto_from_lead(self):
+        event = er.extract(self.story("Club signs Player to one-year contract after PTO",
+                                      "Player, previously on a PTO, signed a one-year contract on Wednesday."))
+        self.assertTrue(er.complete(event))
+        self.assertEqual(event["phase"], "standard")
+
     def test_contract_money_representation_is_normalized(self):
         a = er.extract(self.story("Player signs one-year contract",
                                   "Player signed a one-year, $1.50 million contract on Wednesday."))

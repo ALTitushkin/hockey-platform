@@ -76,13 +76,24 @@ def extract(story):
     if family == "signing":
         if re.search(r"\breleased?\b|\bterminat", head):
             phase = "terminated"
-        elif re.search(r"\bpto\b|professional tryout", scope):
-            phase = "pto"
-        elif "entry-level" in scope:
+        elif "entry-level" in head:
             phase = "entry_level"
+        elif (re.search(r"\b(?:\d+|one|two|three|four|five|six|seven|eight)[- ]year.*\b(?:contract|deal)\b", head)
+              or re.search(r"\b(?:full|standard|nhl) contract\b|\bsigns? (?:a )?contract\b", head)):
+            phase = "standard"
+        elif re.search(r"\bpto\b|professional tryout", head):
+            phase = "pto"
+        elif re.search(r"\bcontract\b|extension", head):
+            phase = "standard"
+        elif "entry-level" in lead.lower():
+            phase = "entry_level"
+        elif re.search(r"\bpto\b|professional tryout", lead.lower()):
+            phase = "pto"
         elif re.search(r"sign|contract|extension|agrees?", scope):
             phase = "standard"
-        term = re.search(r"\b(\d+|one|two|three|four|five|six|seven|eight)[- ]year", scope)
+        term = re.search(r"\b(\d+|one|two|three|four|five|six|seven|eight)[- ]year(?![- ]old\b)"
+                         r"(?:\s*,?\s*\$\s*\d[\d,.]*(?:\s*(?:million|thousand))?)?"
+                         r"\s+(?:contract|deal|extension)\b", scope)
         if term:
             value = term[1]
             facts["years"] = int(value) if value.isdigit() else NUMBERS[value]
@@ -142,6 +153,8 @@ def extract(story):
         reasons.append("неподдержанное или неустановленное действие")
     if phase in ("standard", "entry_level") and "years" not in facts:
         reasons.append("неполные условия контракта")
+    if phase == "pto" and facts:
+        reasons.append("условия полноценного контракта не привязаны к событию PTO")
     if basis == "publication":
         reasons.append("дата события не отделена от даты статьи")
     if re.search(r"\bcould\b|\bmight\b|\bmay\b|questionable|expected", head) or ("looking to" in head and not dated):
