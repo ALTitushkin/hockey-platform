@@ -1,0 +1,79 @@
+{
+  "release": "v0.20.1",
+  "code": "27b542c06c61cb089bd0d58438253f158aac394d",
+  "workflow": "https://github.com/ALTitushkin/hockey-platform/actions/runs/41817008384",
+  "checked_at_utc": "2026-11-04T10:54:52.152763+00:00",
+  "containers": [
+    {
+      "name": "hockey-news",
+      "image": "sha256:6ff5965f4a22dca980f545715c641d5515f03728b21455bacc4f51a5f3ddb014",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "32370688",
+        "memory.peak": "39956480",
+        "memory.max": "402653184",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-shadow",
+      "image": "sha256:6ff5965f4a22dca980f545715c641d5515f03728b21455bacc4f51a5f3ddb014",
+      "running": true,
+      "health": "healthy",
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "28295168",
+        "memory.peak": "38756352",
+        "memory.max": "134217728",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-bot",
+      "image": "sha256:16830870e979bd440b42a65cc0f4b38caf637db01c8f1422aacdaca11a6dcc4d",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "42172416",
+        "memory.peak": "42848256",
+        "memory.max": "268435456",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    }
+  ],
+  "registry": {
+    "documents": 19,
+    "revisions": 2,
+    "publications_by_status": {
+      "published": 1,
+      "superseded_parse": 1
+    }
+  },
+  "pilot": {
+    "started_at": 1793556241.5440934,
+    "ends_at": 1794161041.5440934,
+    "status": "active"
+  },
+  "pilot_deadline_unchanged": true,
+  "server_commit": "27b542c06c61cb089bd0d58438253f158aac394d",
+  "pinned_checkout_matches": true,
+  "previous_image": "sha256:ed365ebbaf388e72c5d55ac46715fde3aa17932341debcd27b6659a1f690383e",
+  "startup_seen": true,
+  "fatal_errors": 0,
+  "migration_note": "Verified historical PTO receipt 50, primary claim only; superseded age-parse entry retained. Original messages/text untouched; no test messages sent.",
+  "rollback_reconciled": {
+    "version": "v0.19.0",
+    "previous_image": "sha256:2cd8f68d2966a4b31b50aad03a3c29e825e1e9f10d073341f96c20fadf832909",
+    "import_smoke_passed": true,
+    "live_container_unchanged": true
+  }
+}

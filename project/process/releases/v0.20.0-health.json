@@ -1,0 +1,66 @@
+{
+  "release": "v0.20.0",
+  "code": "f5ced1cacf401e9de292caba11fc08fef052cf3b",
+  "workflow": "https://github.com/ALTitushkin/hockey-platform/actions/runs/41815448864",
+  "checked_at_utc": "2026-11-04T10:42:33.801900+00:00",
+  "containers": [
+    {
+      "name": "hockey-news",
+      "image": "sha256:ed365ebbaf388e72c5d55ac46715fde3aa17932341debcd27b6659a1f690383e",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "32034816",
+        "memory.peak": "44523520",
+        "memory.max": "402653184",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-shadow",
+      "image": "sha256:ed365ebbaf388e72c5d55ac46715fde3aa17932341debcd27b6659a1f690383e",
+      "running": true,
+      "health": "healthy",
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "28303360",
+        "memory.peak": "40607744",
+        "memory.max": "134217728",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    {
+      "name": "hockey-bot",
+      "image": "sha256:1243cc185d78975680ae2ddb6234b297b1429ddcde85cc44ffef0c144e81399f",
+      "running": true,
+      "health": null,
+      "oom": false,
+      "restarts": 0,
+      "memory": {
+        "memory.current": "45690880",
+        "memory.peak": "46366720",
+        "memory.max": "268435456",
+        "memory.swap.current": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    }
+  ],
+  "pilot": {
+    "started_at": 1793556241.5440934,
+    "ends_at": 1794161041.5440934,
+    "status": "active"
+  },
+  "pilot_deadline_unchanged": true,
+  "server_commit": "f5ced1cacf401e9de292caba11fc08fef052cf3b",
+  "checkout_matches_image_commit": true,
+  "rollback_image": "sha256:2cd8f68d2966a4b31b50aad03a3c29e825e1e9f10d073341f96c20fadf832909",
+  "rollback_matches_v0190": true,
+  "startup_seen": true,
+  "fatal_errors": 0,
+  "notes": "Registry tested with isolated receipts; actual legacy archive imported without inventing complete event facts. No test messages sent."
+}
