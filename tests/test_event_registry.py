@@ -31,6 +31,13 @@ class EventRegistryTests(unittest.TestCase):
         self.assertEqual(a["effective_date"], "2026-11-02")
         self.assertEqual(er.revision_key(a), er.revision_key(b))
 
+    def test_today_contract_does_not_inherit_previous_pto_date(self):
+        event = er.extract(self.story("Islanders sign Hutton to one-year contract",
+            "The Islanders announced today that Hutton has signed a one-year contract. "
+            "Hutton had previously signed a professional tryout with the team on Monday."))
+        self.assertEqual(event["date_basis"], "action_today")
+        self.assertEqual(event["effective_date"], self.story("", "").date.date().isoformat())
+
     def test_pto_and_full_contract_are_not_duplicates(self):
         a = self.pto()
         b = er.extract(self.story("Islanders sign Hutton to one-year contract",

@@ -132,10 +132,15 @@ def extract(story):
                                  "unit": duration[3].rstrip("s")}
     day, basis = story.date.date(), "publication"
     # Date belongs to the action clause, not an incidental practice mentioned earlier.
+    # A previous PTO in a later sentence must not date today's full contract.
+    date_scope = scope
+    if family == "signing":
+        first = re.split(r"(?<=[.!?])\s+", lead.lower(), maxsplit=1)[0]
+        date_scope = head + "\n" + first
     dated = re.search(r"(?:signed|signs|acquired|traded|injured|left|returned|announced)(?:[^.\n]|\.(?=\d)){0,240}?"
-                      r"\b(?:on )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", scope)
+                      r"\b(?:on )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", date_scope)
     explicit = re.search(r"(?:signed|signs|acquired|traded|injured|left|returned|announced)"
-                         r"(?:[^.\n]|\.(?=\d)){0,240}?\b(20\d\d-\d\d-\d\d)\b", lead.lower())
+                         r"(?:[^.\n]|\.(?=\d)){0,240}?\b(20\d\d-\d\d-\d\d)\b", date_scope)
     if dated:
         day -= timedelta(days=(day.weekday() - WEEKDAYS[dated[1]]) % 7)
         basis = "action_weekday"
@@ -146,6 +151,9 @@ def extract(story):
             basis = "explicit"
         except ValueError:
             pass
+    if basis == "publication" and family == "signing" and re.search(
+            r"announced today|signed today|signs today", date_scope):
+        basis = "action_today"
     reasons = []
     if len(story.pids) != 1 or len(story.teams) != 1:
         reasons.append("неоднозначные участники/клуб события")

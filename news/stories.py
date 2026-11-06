@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from news import event_registry, guard, publish, story_provenance, trades
+from news import event_registry, guard, publish, story_provenance, temporal, trades
 from news.card import render_story_card
 from news.digest import MONTHS, plural
 from news.nhl import WEB
@@ -267,7 +267,8 @@ def prompt_for(s: Story, names: dict, teams_ru: dict, ours: set[int]) -> str:
             .replace("{people}", people or "- (нет)").replace("{clubs}", clubs or "- (нет)")
             .replace("{ours}", our or "нет")) + (
                 f"\n\nКонтроль перед ответом: в тексте обязательно назови {our} и сообщи только факт"
-                " о каждом из них из источника. Добавь для этого отдельное предложение, даже если"
+                " о каждом из них из источника с сохранением временного контекста. Старую травму"
+                " обозначай как продолжающееся отсутствие или укажи дату травмы. Добавь предложение, даже если"
                 " основной заголовок про другого игрока. Клубы называй строго по списку выше."
                 if our else "") + (trades.prompt(trade_facts(s), names, teams_ru) if s.kind == "trade" else "")
 
@@ -323,6 +324,7 @@ def check(text: str, s: Story, names: dict, registry: dict, teams_ru: dict,
              "pids": {p for p in (s.mentioned | s.pids) & ours if str(p) in registry},
              "teams": {teams_ru[t] for t in in_story if t in teams_ru}}
     issues = guard.check(text, facts, registry, teams_ru)
+    issues.extend(temporal.check(text, s, names))
     quote_depth, bad_quotes = 0, False
     for quote in re.findall("[«»]", text):
         quote_depth += 1 if quote == "«" else -1
