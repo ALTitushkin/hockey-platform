@@ -13,6 +13,7 @@ import urllib.parse
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from news.competition import Scope, from_data
 from news.digest import plural
 from news.nhl import STATS, WEB, GameReport, fetch_json
 
@@ -64,7 +65,8 @@ def detect(reports: list[GameReport], ctx: dict) -> list[Event]:
         scorer, in_ot = deciding_goal(game.get("scoring", []), winner, min(r.home_score, r.away_score))
         for s in r.skaters:
             p = ctx.get("players", {}).get(s.pid)
-            if p and p.get("this_game") and p.get("regular"):
+            if p and p.get("this_game") and p.get("scope_confirmed", p.get("regular")):
+                career_start = len(events)
                 c = p["career"]
                 g0, p0, a0 = c["goals"] - s.goals, c["points"] - s.points, c["assists"] - s.assists
                 for stat, tonight, before in (("points", s.points, p0), ("goals", s.goals, g0),
@@ -87,6 +89,9 @@ def detect(reports: list[GameReport], ctx: dict) -> list[Event]:
                     events.append(Event(s.pid, 85 if m >= 1000 else 65, f"{m}-е очко в НХЛ", {m}))
                 for m in _milestones(c["games"] - 1, c["games"], GAME_MARKS):
                     events.append(Event(s.pid, 50, f"{m}-й матч в НХЛ", {m}))
+                if p.get("scope", {}).get("phase") == "playoffs":
+                    for event in events[career_start:]:
+                        event.text = event.text.replace("в НХЛ", "в плей-офф НХЛ")
             if s.goals >= 3:
                 events.append(Event(s.pid, 55, "хет-трик" if s.goals == 3 else f"{s.goals} гола за матч", {s.goals}))
             elif s.points >= 4:
@@ -112,7 +117,7 @@ def headline(events: list[Event], limit: int = 3) -> list[tuple[int, list[Event]
 
 
 def context(reports: list[GameReport], fetch: Callable[[str], dict] = fetch_json,
-            games: dict | None = None) -> dict:
+            games: dict | None = None, scope: Scope | None = None) -> dict:
     """Всё, что нужно detect(): ход матча, карьера наших с очками, лидеры франшизы."""
     ctx: dict = {"games": dict(games or {}), "players": {}}
     franchise = {t["triCode"]: t["franchiseId"] for t in fetch(f"{STATS}/team").get("data", [])}
@@ -123,20 +128,30 @@ def context(reports: list[GameReport], fetch: Callable[[str], dict] = fetch_json
         for s in r.skaters:
             if not s.points:
                 continue  # без очков ни рекорда, ни юбилея по голам/очкам
+            actual = from_data(r.scope) if r.scope else scope
+            if actual is None or actual.profile.career_key is None:
+                continue
+            if scope and actual != scope:
+                continue
             land = fetch(f"{WEB}/player/{s.pid}/landing")
             last = (land.get("last5Games") or [{}])[0]
-            c = land.get("careerTotals", {}).get("regularSeason", {})
-            p = {"this_game": last.get("gameId") == r.game_id, "regular": last.get("gameTypeId") == 2,
-                 "career": {"goals": c.get("goals", 0), "assists": c.get("assists", 0),
-                            "points": c.get("points", 0), "games": c.get("gamesPlayed", 0)},
+            c = land.get("careerTotals", {}).get(actual.profile.career_key, {})
+            if any(type(c.get(k)) is not int or c[k] < 0 for k in ("goals", "assists", "points", "gamesPlayed")):
+                continue
+            p = {"this_game": last.get("gameId") == r.game_id,
+                 "regular": actual.phase == "regular" and last.get("gameTypeId") == actual.profile.game_type,
+                 "scope_confirmed": last.get("gameTypeId") == actual.profile.game_type,
+                 "scope": actual.data(),
+                 "career": {"goals": c["goals"], "assists": c["assists"],
+                            "points": c["points"], "games": c["gamesPlayed"]},
                  "franchise": {}}
             fid = franchise.get(s.team)
-            if fid and p["this_game"]:
+            if fid and p["this_game"] and p["regular"]:
                 for stat in ("points", "goals", "assists"):
                     if p["career"][stat] < RECORD_MIN[stat]:
                         continue
                     sort = urllib.parse.quote(f'[{{"property":"{stat}","direction":"DESC"}}]')
-                    exp = urllib.parse.quote(f"franchiseId={fid} and gameTypeId=2")
+                    exp = urllib.parse.quote(f"franchiseId={fid} and gameTypeId={actual.profile.game_type}")
                     rows = fetch(f"{STATS}/skater/summary?isAggregate=true&isGame=false&limit=2"
                                  f"&sort={sort}&cayenneExp={exp}").get("data", [])
                     p["franchise"][stat] = [(row["playerId"], row[stat]) for row in rows]

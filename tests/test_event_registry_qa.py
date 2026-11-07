@@ -133,6 +133,8 @@ class EventRegistryQA(unittest.TestCase):
     def test_process_deduplicates_published_revision_after_first_source_leaves_feed(self):
         with patch.object(publish, "tg_send", return_value=(True, "message_id 50")) as send:
             self.process_story(self.story, self.accepted_write)
+            # Free model prose is now review-only. Explicit editor approval seeds the published ledger.
+            self.assertTrue(publish.publish("2026-11-03", ["tg"], kind="story-a")[0])
             later = copy.deepcopy(self.story)
             later.eid, later.slug = "b", "followup"
             write = Mock(side_effect=AssertionError("same facts must not call model again"))
@@ -144,6 +146,7 @@ class EventRegistryQA(unittest.TestCase):
     def test_process_preserves_partial_followup_as_review_even_with_published_actor(self):
         with patch.object(publish, "tg_send", return_value=(True, "message_id 50")) as send:
             self.process_story(self.story, self.accepted_write)
+            self.assertTrue(publish.publish("2026-11-03", ["tg"], kind="story-a")[0])
             later = copy.deepcopy(self.story)
             later.eid, later.slug = "b", "followup"
             later.text = "Hutton signed a PTO. Conditions are being discussed."

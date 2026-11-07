@@ -40,7 +40,7 @@ class WeeklyTests(unittest.TestCase):
             self.assertEqual(query["isGame"], ["true"])
             self.assertEqual(query["limit"], ["-1"])
             self.assertEqual(query["cayenneExp"], [
-                'gameTypeId=2 and gameDate>="2026-10-26" and gameDate<="2026-11-01"'])
+            'seasonId=20262027 and gameTypeId=2 and gameDate>="2026-10-26" and gameDate<="2026-11-01"'])
         self.assertEqual(data["sources"], self.urls)
 
     def test_only_registry_players_and_actual_appearances_are_included(self):

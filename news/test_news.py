@@ -211,12 +211,13 @@ def test_events():
 
 
 def test_service_buttons_and_schedule():
+    import json
     import os
     import tempfile
     from datetime import datetime, time
     from pathlib import Path
 
-    from news import publish, service
+    from news import editorial_queue, publish, service
 
     calls = []
 
@@ -231,7 +232,9 @@ def test_service_buttons_and_schedule():
         publish.save_draft("2026-10-25", "Пост", [], "шаблон")
         assert publish.review("2026-10-25", fake_post)[0]
         keys = [b["callback_data"] for b in calls[-1][1]["reply_markup"]["inline_keyboard"][0]]
-        assert keys == ["pub:night:2026-10-25", "rej:night:2026-10-25"]
+        draft = json.loads(publish.draft_path("2026-10-25").read_text(encoding="utf-8"))
+        revision = editorial_queue.fingerprint(draft)[:16]
+        assert keys == [f"pub:night:2026-10-25:{revision}", f"rej:night:2026-10-25:{revision}"]
 
         def press(who, data):
             calls.clear()
@@ -240,11 +243,13 @@ def test_service_buttons_and_schedule():
             return service.handle_update(upd, "42", fake_post)
 
         assert "игнор" in press(99, "pub:2026-10-25") and not any(m == "sendMessage" for m, _ in calls)
-        assert press(42, "pub:2026-10-25").startswith("pub")
+        assert "устаревшая" in press(42, "pub:2026-10-25")
+        assert press(42, keys[0]).startswith("pub")
         assert ("sendMessage", "@ch") in [(m, b.get("chat_id")) for m, b in calls]  # ушло в канал
         assert calls[-1][0] == "editMessageText" and calls[-1][1]["reply_markup"] == {"inline_keyboard": []}
         publish.save_draft("2026-10-26", "Пост", [], "шаблон")
-        press(42, "rej:2026-10-26")
+        publish.review("2026-10-26", fake_post)
+        press(42, calls[-1][1]["reply_markup"]["inline_keyboard"][0][-1]["callback_data"])
         assert publish.publish("2026-10-26", ["tg"], fake_post)[0] is False  # отклонённый не уходит
         publish.save_draft("2026-10-27", "Пост", ["выдумка"], "шаблон")
         publish.review("2026-10-27", fake_post)
@@ -252,7 +257,9 @@ def test_service_buttons_and_schedule():
         # рубрики не путаются: кнопка «Ночи в НХЛ» публикует её черновик, «Ночь наших» той же даты не трогает
         publish.save_draft("2026-10-28", "Лига", [], "шаблон", kind="league")
         publish.save_draft("2026-10-28", "Наши", [], "шаблон")
-        assert press(42, "pub:league:2026-10-28").startswith("pub league")
+        publish.review("2026-10-28", fake_post, kind="league")
+        key = calls[-1][1]["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
+        assert press(42, key).startswith("pub league")
         assert [b.get("text") for m, b in calls if m == "sendMessage"] == ["Лига"]
         assert publish.publish("2026-10-28", ["tg"], fake_post)[0]  # «Ночь наших» ещё не выходила
     finally:

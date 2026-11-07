@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 
 from news import (
     achievements,
+    content_plan,
     events,
     guard,
     injuries,
@@ -35,13 +36,19 @@ from news import (
     weekly,
 )
 from news.card import render_card, render_tonight_card
+from news.competition import Scope, edition_for, reports_scope
 from news.digest import NOT_PLAYED, render_caption, render_league, render_night, render_tonight, tonight_hook
 from news.llm import ask
 
 ROOT = Path(__file__).parent
 PLAYERS = ROOT / "data" / "players.json"
 TEAMS = ROOT / "data" / "teams.json"
-SEASON = "20262027"
+SEASON = os.environ.get("NEWS_SEASON") or edition_for(datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat())
+
+
+def configured_scope() -> Scope:
+    """Explicit configured phase; unsupported tournaments fail instead of borrowing NHL rules."""
+    return Scope(SEASON, os.environ.get("NEWS_PHASE", "regular"), os.environ.get("NEWS_COMPETITION", "nhl"))
 
 
 def load():
@@ -83,6 +90,8 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     except RuntimeError as e:  # нет событий — не повод молчать: «Главное» выберется по очкам
         print(f"  ↳ события не собраны: {e}")
         highlights = []
+    highlights, rubric_headline = content_plan.choose(
+        highlights, players, content_plan.previous_headline(publish.draft_path(msk, "league")))
     text, facts = render_night(reports, players, teams, msk, highlights)
     if not text:
         print(f"{msk}: наши не играли (НХЛ {nhl_date}) — поста нет")
@@ -97,15 +106,16 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
             variant = "шаблон + вводная по фактам матча"
     # Модели дали полный текст по матчам (render_night) — ей нужен контекст. В канал идёт подпись
     # к карточке: счёт матчей на картинке, в тексте сюжет и очки наших.
-    final, facts = render_caption(reports, players, teams, msk, highlights, phrase)
+    final, facts = render_caption(reports, players, teams, msk, highlights, phrase, rubric_headline=rubric_headline)
     if publish.visible_len(final) > publish.CAPTION_LIMIT:  # не влезает в подпись — без клубов в скобках
-        final, facts = render_caption(reports, players, teams, msk, highlights, phrase, with_teams=False)
+        final, facts = render_caption(reports, players, teams, msk, highlights, phrase,
+                                      with_teams=False, rubric_headline=rubric_headline)
         variant += " · компактно"
     issues = guard.check(final, facts, players, teams)
 
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_night.png", highlights)
     path = publish.save_draft(msk, final, issues, variant, str(card),
-                              data=achievements.snapshot(highlights, final, nhl_date))
+                              data=achievements.snapshot(highlights, final, nhl_date, reports_scope(reports)))
     print(final, "\n")
     print(f"— вариант: {variant} · матчей: {len(reports)} · гард: {'чисто' if not issues else '; '.join(issues)}")
     print(f"— черновик: {path}")
@@ -160,7 +170,7 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     issues = guard.check(text, facts, players, teams)
     card = render_card(reports, players, teams, msk, publish.OUT / f"{msk}_league.png", highlights, league=True)
     path = publish.save_draft(msk, text, issues, "шаблон", str(card), kind="league",
-                              data=achievements.snapshot(highlights, text, nhl_date))
+                              data=achievements.snapshot(highlights, text, nhl_date, reports_scope(reports)))
     print(text, "\n")
     print(f"— матчей: {len(reports)} · с русским именем {len(players)} из {len(pids)} · "
           f"гард: {'чисто' if not issues else '; '.join(issues)}\n— черновик: {path}")
@@ -201,8 +211,9 @@ def build_weekly(msk: str, review: bool, last_try: bool = True) -> str:
         return "pending"
     reg, teams = load()
     players = reg["players"]
-    data = weekly.collect(msk, players)
-    data["achievements"] = achievements.load(publish.OUT, start, end, players, os.environ.get("NEWS_CHANNEL", ""))
+    data = weekly.collect(msk, players, scope=configured_scope())
+    data["achievements"] = achievements.load(publish.OUT, start, end, players,
+                                              os.environ.get("NEWS_CHANNEL", ""), scope=configured_scope())
     text, facts = weekly.render(data, players)
     if not text:
         return "nogames"
@@ -225,7 +236,7 @@ WHY = {"Injured Reserve": "травма", "Long Term Injured Reserve": "трав
 def tonight_roster(teams_playing: set[str], players: dict, msk: str) -> dict[str, list[dict]]:
     """Наши в клубах вечера и сыграл ли каждый в прошлом матче клуба. Дорогая часть (2 запроса на клуб),
     поэтому один раз при сборке: до сегодняшних матчей прошлый матч не меняется."""
-    lineups = {t: nhl.last_lineup(t, SEASON, msk) for t in teams_playing}
+    lineups = {t: nhl.last_lineup(t, SEASON, msk, scope=configured_scope()) for t in teams_playing}
     roster: dict[str, list[dict]] = {}
     for p in nhl.fetch_nationals(SEASON):
         rec = players.get(str(p["pid"]))
@@ -395,7 +406,8 @@ def run_stories(now: datetime) -> list[str]:
         return registry.from_story(pids, nhl.fetch_json, wiki_names(), now.date().isoformat())
 
     return stories.process(now, nhl.fetch_json, ours, teams, names.league_players, write,
-                           lambda: nhl.fetch_nationals(SEASON), deliver, notify, discover)
+                           lambda: nhl.fetch_nationals(SEASON), deliver, notify, discover,
+                           refresh_fetch=lambda url, timeout: nhl.fetch_json(url, retries=1, timeout=timeout))
 
 
 def cmd_stories(args) -> int:
@@ -453,6 +465,22 @@ def cmd_serve(_args) -> int:
         """Личка владельца — команды реестра (/name), чат обсуждений — уровни."""
         msg = upd.get("message") or {}
         if owner and str(msg.get("chat", {}).get("id")) == owner:
+            command = (msg.get("text") or "").strip().split()
+            if command and command[0] == "/review":
+                try:
+                    if len(command) != 3:
+                        raise ValueError("Нужны дата и рубрика")
+                    ok, info = publish.review(command[1], kind=command[2], force=True)
+                except (OSError, ValueError):
+                    ok, info = False, "Формат: /review YYYY-MM-DD story-ID (или night/league/tonight/weekly)"
+                publish.tg_call("sendMessage", {"chat_id": owner, "text": info[:4000]})
+                return f"владелец: повторное ревью {'ок' if ok else 'ошибка'}"
+            if (msg.get("text") or "").strip() == "/queue":
+                tasks = publish.editorial_pending()
+                lines = [f"Редакционная очередь: {len(tasks)}"]
+                lines.extend(f"{t['name']}: {t['status']} — {t['reasons']}" for t in tasks[:15])
+                publish.tg_call("sendMessage", {"chat_id": owner, "text": "\n".join(lines)[:4000]})
+                return "владелец: редакционная очередь"
             reply = registry.owner_command(msg.get("text") or "")
             if reply:
                 publish.tg_call("sendMessage", {"chat_id": owner, "text": reply})
@@ -494,6 +522,12 @@ def cmd_sync(_args) -> int:
     return 0
 
 
+def cmd_queue(_args) -> int:
+    """Local queue inspection; no Telegram requests or model calls."""
+    print(json.dumps(publish.editorial_pending(), ensure_ascii=False, indent=2))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="news.run")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -518,13 +552,14 @@ def main() -> int:
     st = sub.add_parser("stories", help="⚡ инфоповоды из ленты NHL.com → черновики владельцу")
     st.add_argument("--since", type=int, help="взять новости за последние N часов (сбрасывает «уже видел»)")
     sub.add_parser("sync-registry")
+    sub.add_parser("queue", help="редакционные задачи независимо от pending_items; без отправки")
     sub.add_parser("audit-registry", help="сверить реестр наших с составами НХЛ (как утром в сервисе)")
     sub.add_parser("sync-names")
     sub.add_parser("serve", help="сервис: утренний сбор + кнопки «Опубликовать/Отклонить» в личке")
     args = ap.parse_args()
     publish.load_env()
     cmds = {"night": cmd_night, "league": cmd_league, "tonight": cmd_tonight, "weekly": cmd_weekly,
-            "publish": cmd_publish,
+            "publish": cmd_publish, "queue": cmd_queue,
             "sync-registry": cmd_sync, "sync-names": cmd_sync_names, "serve": cmd_serve, "stories": cmd_stories,
             "audit-registry": lambda _a: 0 if audit_registry(datetime.now(MSK).date().isoformat(), True) else 1}
     return cmds[args.cmd](args)

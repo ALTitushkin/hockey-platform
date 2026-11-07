@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 
-from news import event_registry
+from news import editorial_queue, event_registry, fact_packet
 
 ROOT = Path(__file__).parent
 ENV = ROOT / ".env"
@@ -115,7 +115,9 @@ def max_send(text: str, post: Post = http_post) -> tuple[bool, str]:
 
 
 def draft_path(msk: str, kind: str = "night") -> Path:
-    """kind — рубрика: night («Ночь наших»), league («Ночь в НХЛ»)."""
+    """Validated draft identity; callback data cannot select arbitrary local files."""
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", msk) or not re.fullmatch(r"[a-z][a-z0-9-]{0,40}", kind):
+        raise ValueError("Неверная дата или рубрика черновика")
     return OUT / f"{msk}_{kind}.json"
 
 
@@ -128,13 +130,39 @@ def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str |
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     d = {"date": msk, "text": text, "issues": issues, "variant": variant, "card": card,
          "published": old.get("published", []), "messages": old.get("messages", {})}
-    for key in ("channels", "rejected", "deleted_messages", "deletion_reason", "event_receipts"):
+    for key in ("channels", "rejected", "deleted_messages", "deletion_reason", "event_receipts", "delivery_targets"):
         if key in old:
             d[key] = old[key]
     if data is not None:
         d["data"] = data
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    sync_editorial(path, d)
     return path
+
+
+def sync_editorial(path: Path, draft: dict) -> str:
+    """Record state without confusing review delivery with public delivery."""
+    queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+    try:
+        return queue.sync(path.name, draft)
+    finally:
+        queue.close()
+
+
+def editorial_pending() -> list[dict]:
+    """Reconcile historical drafts read-only with respect to JSON; never sends messages."""
+    queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+    try:
+        for path in sorted(OUT.glob("????-??-??_*.json")):
+            try:
+                draft = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(draft, dict) and isinstance(draft.get("text"), str):
+                    queue.sync(path.name, draft)
+            except (ValueError, OSError):
+                continue
+        return queue.pending()
+    finally:
+        queue.close()
 
 
 def edit_photo(chat: str, message_id: int, text: str, photo: str, post: Post = http_post) -> tuple[bool, str]:
@@ -152,7 +180,10 @@ def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
 
 def control_text(d: dict, kind: str = "night") -> str:
     guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + html.escape("; ".join(d["issues"]))
-    return f"📝 <b>Черновик {title(kind)} {d['date']}</b> выше\n{html.escape(d['variant'])} · {guard_line}"
+    state, reasons = editorial_queue.decision(d, automatic=True)
+    why = "\n" + html.escape("; ".join(reasons)) if reasons else ""
+    return (f"📝 <b>Черновик {title(kind)} {d['date']}</b> выше\n"
+            f"{html.escape(d['variant'])} · {guard_line}\nСтатус: {state}{why}")
 
 
 def channel_key(target: str, post: Post = http_post) -> str:
@@ -172,26 +203,39 @@ def channel_key(target: str, post: Post = http_post) -> str:
     return f"tg:{CHANNEL_IDS[configured]}"
 
 
-def review(msk: str, post: Post = http_post, kind: str = "night") -> tuple[bool, str]:
+def review(msk: str, post: Post = http_post, kind: str = "night", *, force: bool = False) -> tuple[bool, str]:
     """Черновик владельцу: сам пост как он выйдет, следом — сообщение с кнопками.
     Гард не чист — кнопки «Опубликовать» нет: такой пост не уходит ни кнопкой, ни командой."""
     d = json.loads(draft_path(msk, kind).read_text(encoding="utf-8"))
+    revision = sync_editorial(draft_path(msk, kind), d)
+    queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+    try:
+        if not force and queue.notified(draft_path(msk, kind).name, revision):
+            return True, "эта версия уже доставлена на редакторскую проверку"
+    finally:
+        queue.close()
     owner = os.environ.get("OWNER_CHAT_ID", "")
     ok, info = tg_send(owner, d["text"], post, d.get("card"))
     if not ok:
         return ok, info
-    buttons = [{"text": "✖️ Отклонить", "callback_data": f"rej:{kind}:{msk}"}]
+    buttons = [{"text": "✖️ Отклонить", "callback_data": f"rej:{kind}:{msk}:{revision[:16]}"}]
     if not d["issues"]:
-        buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{kind}:{msk}"})
+        buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{kind}:{msk}:{revision[:16]}"})
     r = tg_call("sendMessage", {"chat_id": owner, "text": control_text(d, kind), "parse_mode": "HTML",
                                 "reply_markup": {"inline_keyboard": [buttons]}}, post)
+    if r.get("ok"):
+        queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+        try:
+            queue.notified(draft_path(msk, kind).name, revision, write=True)
+        finally:
+            queue.close()
     return bool(r.get("ok")), info if r.get("ok") else r.get("description", "")
 
 
 def auto_publish(msk: str, post: Post = http_post, kind: str = "night") -> tuple[bool, str]:
     """Автопубликация (NEWS_AUTO_PUBLISH=1): чистый черновик сразу в каналы, владельцу — отчёт.
     Те же проверки, что у кнопки: гард, отказ, дубль — внутри publish()."""
-    ok, report = publish(msk, ["tg", "max"], post, kind)
+    ok, report = publish(msk, ["tg", "max"], post, kind, automatic=True)
     name = f"{title(kind)} {msk}"
     if not any(": ок —" in line for line in report):  # ничего нового не ушло: уже было в канале или ошибка
         if ok:
@@ -204,24 +248,63 @@ def auto_publish(msk: str, post: Post = http_post, kind: str = "night") -> tuple
     return ok, "; ".join(report)
 
 
-def reject(msk: str, kind: str = "night") -> None:
+def reject(msk: str, kind: str = "night", expected: str | None = None) -> None:
     path = draft_path(msk, kind)
     d = json.loads(path.read_text(encoding="utf-8"))
+    if expected is not None and editorial_queue.fingerprint(d)[:16] != expected:
+        raise ValueError("Версия черновика изменилась: откройте новое ревью")
     d["rejected"] = True
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    sync_editorial(path, d)
 
 
-def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "night") -> tuple[bool, list[str]]:
+def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "night", *,
+            automatic: bool = False, expected: str | None = None) -> tuple[bool, list[str]]:
     """→ (всё ушло, строки отчёта). Ничего не шлёт, если черновика нет, гард не чист или дата уже вышла."""
     path = draft_path(msk, kind)
     if not path.exists():
         return False, [f"нет черновика {path.name} — сначала night --review"]
     d = json.loads(path.read_text(encoding="utf-8"))
+    revision = sync_editorial(path, d)
+    queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+    try:
+        if queue.status(path.name) in ("superseded", "delivery_unknown"):
+            return False, ["версия заменена либо исход доставки требует сверки"]
+    finally:
+        queue.close()
+    if expected is not None and revision[:16] != expected:
+        return False, ["Версия черновика изменилась: откройте новое ревью"]
+    status, reasons = editorial_queue.decision(d, automatic=automatic)
+    if status != "ready":
+        return False, [f"{status}: " + "; ".join(reasons)]
+    data = d.get("data") or {}
+    if data.get("fact_packet"):
+        packet = data["fact_packet"]
+        if fact_packet.key(packet) != data.get("packet_hash"):
+            return False, ["пакет фактов изменён"]
+        # Validate the entire rendered caption, including card headline and source provenance.
+        try:
+            packet_body = fact_packet.render(packet)
+        except (KeyError, TypeError, ValueError, IndexError):
+            return False, ["повреждён пакет фактов"]
+        if fact_packet.verify(packet, data.get("source_snapshot", {}), packet_body):
+            return False, ["доказательства пакета фактов изменены"]
+        if d["text"] != fact_packet.caption(packet, data["source_snapshot"], msk):
+            return False, ["текст не соответствует проверенному пакету фактов"]
+    if not automatic:
+        queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+        try:
+            queue.mark(path.name, revision, "approved")
+        finally:
+            queue.close()
     if d.get("rejected"):
         return False, ["черновик отклонён владельцем — не публикую"]
     if d["issues"]:
         return False, ["гард не чист — не публикую: " + "; ".join(d["issues"])]
     report, all_ok = [], True
+    active = [target for target in targets if target == "tg" or
+              (target == "max" and os.environ.get("MAX_BOT_TOKEN") and os.environ.get("MAX_CHAT_ID"))]
+    d["delivery_targets"] = sorted(set(d.get("delivery_targets", [])) | set(active))
     for target in targets:
         if target in d["published"]:
             report.append(f"{target}: уже опубликовано, пропускаю")
@@ -276,4 +359,5 @@ def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "n
                 d.setdefault("messages", {})["tg"] = [int(x) for x in re.findall(r"\d+", info.split("message_id")[-1])]
         all_ok &= ok
     path.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    sync_editorial(path, d)
     return all_ok, report

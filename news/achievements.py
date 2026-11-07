@@ -6,9 +6,12 @@ import re
 from datetime import date, timedelta
 from pathlib import Path
 
+from news.competition import Scope
+
 
 def weight(text: str) -> int:
     """Only known factual achievement templates; never infer a milestone from points."""
+    text = text.replace("в плей-офф НХЛ", "в НХЛ")
     patterns = (
         (100, r"лучший (?:бомбардир|снайпер|ассистент) в истории клуба: \d+ "
               r"(?:очко|очка|очков|гол|гола|голов|передача|передачи|передач)"),
@@ -22,12 +25,15 @@ def weight(text: str) -> int:
     return next((score for score, pattern in patterns if re.fullmatch(pattern, text)), 0)
 
 
-def snapshot(highlights: list, text: str, nhl_date: str) -> dict:
+def snapshot(highlights: list, text: str, nhl_date: str, scope: dict | None = None) -> dict:
     """Persist only events that are actually visible in the final published caption."""
     plain = html.unescape(re.sub(r"<[^>]+>", "", text))
     records = [{"pid": pid, "text": e.text} for pid, events in highlights for e in events
                if weight(e.text) and e.text in plain]
-    return {"nhl_date": nhl_date, "achievements": records}
+    result = {"nhl_date": nhl_date, "achievements": records}
+    if scope is not None:
+        result["scope"] = scope
+    return result
 
 
 def permalink(channel: str, message_id: int) -> str | None:
@@ -66,7 +72,8 @@ def legacy_records(text: str, players: dict) -> list[dict]:
     return records
 
 
-def load(out: Path, start: str, end: str, players: dict, channel: str, limit: int = 5) -> list[dict]:
+def load(out: Path, start: str, end: str, players: dict, channel: str, limit: int = 5,
+         scope: Scope | None = None) -> list[dict]:
     """At most 14 daily files. Morning post date = NHL game date + one day.
 
     Link the final text message if a daily post was split into image + text. Prefer
@@ -113,6 +120,8 @@ def load(out: Path, start: str, end: str, players: dict, channel: str, limit: in
             data = draft.get("data") or {}
             if not isinstance(data, dict):
                 continue
+            if scope is not None and data.get("scope") != scope.data():
+                continue  # Legacy/unknown scope is not silently regular-season evidence.
             if data.get("nhl_date", game_date) != game_date:
                 continue
             text = draft.get("text", "")

@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from news import achievements, guard, publish, run, weekly
+from news.competition import Scope
 
 
 class AchievementLinksQA(unittest.TestCase):
@@ -35,7 +36,8 @@ class AchievementLinksQA(unittest.TestCase):
             "issues": [],
             "messages": {"tg": [41, 42]},
             "channels": {"tg": self.channel},
-            "data": {"nhl_date": "2026-10-31", "achievements": [{"pid": 1, "text": self.phrase}]},
+            "data": {"nhl_date": "2026-10-31", "achievements": [{"pid": 1, "text": self.phrase}],
+                     "scope": Scope("20262027").data()},
         }
         draft.update(updates)
         path = self.out / f"2026-11-01_{kind}.json"
@@ -124,7 +126,8 @@ class AchievementLinksQA(unittest.TestCase):
         final = f"🏆 Иван Петров — {self.phrase}"
         facts = {"numbers": {"100"}, "pids": {1}, "teams": set()}
         reports = [SimpleNamespace(game_id=123, home="NYI", away="MIN", home_score=1, away_score=0,
-                                   last_period="REG", skaters=[SimpleNamespace(pid=1)], goalies=[])]
+                                   last_period="REG", skaters=[SimpleNamespace(pid=1)], goalies=[],
+                                   scope=Scope("20262027").data())]
         for kind in ("night", "league"):
             with (
                 self.subTest(kind=kind),
@@ -148,7 +151,8 @@ class AchievementLinksQA(unittest.TestCase):
                 self.assertEqual(result, "ok")
                 draft = json.loads(publish.draft_path("2026-11-01", kind).read_text(encoding="utf-8"))
                 self.assertEqual(
-                    draft["data"], {"nhl_date": "2026-10-31", "achievements": [{"pid": 1, "text": self.phrase}]}
+                    draft["data"], {"nhl_date": "2026-10-31", "achievements": [{"pid": 1, "text": self.phrase}],
+                                    "scope": Scope("20262027").data()}
                 )
 
     def test_rebuild_does_not_revive_deleted_link(self):

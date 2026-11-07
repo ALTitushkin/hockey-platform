@@ -49,7 +49,7 @@ def complete(event):
     except (ValueError, TypeError, KeyError):
         return False
     allowed = {"signing": {"pto", "standard", "entry_level", "terminated"},
-               "health": {"surgery", "practice", "activated", "return", "left_game", "unavailable"}}
+               "health": {"surgery", "practice", "expected_return", "activated", "return", "left_game", "unavailable"}}
     return (isinstance(event.get("phase"), str) and event["phase"] in allowed[event["family"]]
             and not event.get("reasons")
             and event.get("date_basis") in ("explicit", "action_weekday"))

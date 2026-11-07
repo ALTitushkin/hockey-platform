@@ -32,6 +32,8 @@
 - Канон истории (9 глав — все опубликованы, формат черновика): [`../docs/history/INDEX.md`](../docs/history/INDEX.md) *(лежит рядом с пайплайном сборки глав)*
 
 ### ⚙️ [process/](process/) — как работаем
+- [scenario-pipelines.md](process/scenario-pipelines.md) — обязательный контракт пайплайна, реестр сценариев и проверки по риску; принят07.11
+- [editorial-system.md](planning/editorial-system.md) — принятая архитектура редакционной цепочки; ожидает реализации
 - [trade-direction.md](process/trade-direction.md) — проверка направления обменов, границы автопубликации и регрессии
 - [event-registry.md](process/event-registry.md) — версии событий, обновления, дедуп и неопределённая отправка
 - [weekly-ours.md](process/weekly-ours.md) — «Неделя наших»: период, источники, черновики и проверка

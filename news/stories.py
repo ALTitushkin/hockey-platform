@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from news import event_registry, guard, publish, story_provenance, temporal, trades
+from news import event_registry, fact_packet, guard, publish, source_watch, story_provenance, temporal, trades
 from news.card import render_story_card
 from news.digest import MONTHS, plural
 from news.nhl import WEB
@@ -497,7 +497,8 @@ def ours_by_name(state: dict, today: str, nationals: Callable[[], list[dict]]) -
 def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: Callable[[set, dict], dict],
             write: Callable[[str], str | None], nationals: Callable[[], list[dict]],
             deliver: Callable[[str, str], tuple[bool, str]], notify: Callable[[str], None],
-            discover: Callable[[set[int]], tuple[list[str], dict]] | None = None) -> list[str]:
+            discover: Callable[[set[int]], tuple[list[str], dict]] | None = None,
+            refresh_fetch=None) -> list[str]:
     """Один проход: → строки для лога. write(промпт, гард) → (текст, кто написал, журнал),
     deliver(дата, рубрика) → итог отправки владельцу/в канал, notify(текст) — владельцу о сбое,
     discover(NHL ID) → новые наши среди героев подписаний/обменов/вызовов (registry.from_story)."""
@@ -507,6 +508,9 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
     # несколько обновлений короткой ленты (40 элементов).
     queued = state.setdefault("pending_items", {})
     raw = list(queued.values()) + fetch(FEED).get("items", [])
+    raw, refreshed = source_watch.prepare(
+        raw, state, now, parse_item, lambda s: body_text(fetch(s.url)),
+        bounded_fetch=(lambda s, timeout: body_text(refresh_fetch(s.url, timeout))) if refresh_fetch else None)
     parsed = {s.eid: (s, it) for it in raw if (s := parse_item(it))}
     items = [s for s, _ in parsed.values()]
     log = []
@@ -552,18 +556,20 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                 save_state(state)
             continue
         try:
-            s.text, s.en = body_text(fetch(s.url))
+            s.text, s.en = refreshed[s.eid] if s.eid in refreshed else body_text(fetch(s.url))
             s.mentioned = set(s.en)
         except RuntimeError as e:
             log.append(f"инфоповод {s.slug}: текст не получен ({e})")
             continue
         names = wiki(s.mentioned | s.pids, registry)
+        packet = fact_packet.extract(s, names, teams_ru, TEAM_EN)
         notes: list[str] = []
         reference = story_provenance.published_reference(s, publish.OUT, msk)
         events_db = event_registry.Registry(publish.OUT / "event_registry.sqlite3")
         try:
             events_db.sync_archive(publish.OUT)
-            revision = events_db.bind_reference(event_registry.extract(s), s.text)
+            extracted = fact_packet.revision(packet) if packet else event_registry.extract(s)
+            revision = events_db.bind_reference(extracted, s.text)
             decision = events_db.classify(revision)
             events_db.register(f"{draft_msk}_{kind}.json", s.slug, revision,
                                {"headline": s.headline, "text": s.text[:20000], "en": s.en})
@@ -586,7 +592,14 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             notes[:] = found
             return issues
 
-        body, source, attempts = write(lambda _p, s=s, names=names: prompt_for(s, names, teams_ru, ours), accept)
+        if packet:
+            body = fact_packet.render(packet)
+            errors = fact_packet.verify(packet, fact_packet.snapshot(s), body)
+            body, source, attempts = (None if errors else body), "fact_template_v1", errors
+            notes = [] if decision["status"] != "review" else decision["reasons"]
+        else:
+            body, source, attempts = write(lambda _p, s=s, names=names: prompt_for(s, names, teams_ru, ours), accept)
+            notes.append("свободный пересказ: утверждения требуют редакторского подтверждения")
         if not body:  # новость есть, а поста нет — владелец должен знать
             failures = state.setdefault("failures", {})
             failures[s.eid] = failures.get(s.eid, 0) + 1
@@ -601,7 +614,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             log.append(f"инфоповод {s.slug}: пересказ не прошёл гард — {why[:300]}")
             continue
         variant = f"пересказ {source}" + (f" · 👀 проверь: {'; '.join(notes)}" if notes else "")
-        goalies = goalie_stats(s, names, ours, fetch)
+        goalies = [] if packet else goalie_stats(s, names, ours, fetch)
         try:
             pic = str(card(s, body, names, ours, goalies, teams_ru, msk, publish.OUT / f"{msk}_{kind}.png"))
         except Exception as e:  # картинка — украшение: без неё пост всё равно выходит
@@ -612,10 +625,23 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                                  "headline": s.headline, "date": s.date.isoformat(),
                                  "text": s.text[:20000], "text_truncated": len(s.text) > 20000,
                                  "en": s.en, "health": health_facts(s)}}
+        data["source_snapshot"] = fact_packet.snapshot(s)
+        data["source_snapshot"]["fetched_at"] = now.isoformat()
+        if packet:
+            data["fact_packet"] = packet
+            data["packet_hash"] = fact_packet.key(packet)
+            main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), None)
+            if main:
+                from datetime import date, time
+                data["expires_at"] = datetime.combine(date.fromisoformat(main["date"]) + timedelta(days=1),
+                                                       time.min, tzinfo=s.date.tzinfo).isoformat()
         if s.kind == "trade":
             data["trade_facts"] = trade_facts(s).data()
-        publish.save_draft(msk, render(s, body, msk, [goalie_line(g) for g in goalies]), [], variant, pic,
+        caption = (fact_packet.caption(packet, data["source_snapshot"], msk) if packet else
+                   render(s, body, msk, [goalie_line(g) for g in goalies]))
+        publish.save_draft(msk, caption, [], variant, pic,
                            kind=kind, data=data)
+        source_watch.remember(state, parsed[s.eid][1], s, now)
         state["draft_dates"][s.eid] = msk
         save_state(state)  # дата черновика переживает сбой доставки и московскую полночь
         ok, info = deliver(msk, kind)

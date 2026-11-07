@@ -8,23 +8,46 @@ import json
 import time
 import urllib.request
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
+
+from news.competition import Scope
 
 WEB = "https://api-web.nhle.com/v1"
 STATS = "https://api.nhle.com/stats/rest/en"
 UA = "KulturaHokkeyaNews/0.1 (+https://altitushkin.github.io/hockey-platform/)"
 FINAL_STATES = {"OFF", "FINAL"}
+API_HOSTS = {"api-web.nhle.com", "api.nhle.com", "forge-dapi.d3.nhle.com"}
+
+
+def validate_url(url: str) -> None:
+    parsed = urlsplit(url)
+    if (parsed.scheme != "https" or parsed.hostname not in API_HOSTS or parsed.username
+            or parsed.password or parsed.port not in (None, 443)):
+        raise ValueError("Неподдержанный адрес NHL API")
+
+
+class _ApiRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        validate_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch_json(url: str, retries: int = 3, timeout: int = 20) -> dict:
+    try:
+        validate_url(url)
+    except ValueError as error:
+        raise RuntimeError("Адрес NHL API заблокирован") from error
+    opener = urllib.request.build_opener(_ApiRedirect())
     last = None
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with opener.open(req, timeout=timeout) as resp:
                 return json.load(resp)
         except Exception as e:  # сеть/5xx/битый JSON — пробуем ещё, потом сдаёмся
             last = e
-            time.sleep(2 * (attempt + 1))
+            if attempt + 1 < retries:
+                time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"НХЛ API не ответил: {url}: {last}")
 
 
@@ -57,6 +80,7 @@ class GameReport:
     last_period: str  # REG / OT / SO
     skaters: list[SkaterLine] = field(default_factory=list)
     goalies: list[GoalieLine] = field(default_factory=list)
+    scope: dict | None = None
 
 
 def parse_box(box: dict, ours: set[int] | None) -> GameReport:
@@ -69,6 +93,12 @@ def parse_box(box: dict, ours: set[int] | None) -> GameReport:
         away_score=box["awayTeam"]["score"],
         last_period=(box.get("gameOutcome") or {}).get("lastPeriodType", "REG"),
     )
+    phase = {1: "preseason", 2: "regular", 3: "playoffs"}.get(box.get("gameType"))
+    if phase and box.get("season"):
+        try:
+            rep.scope = Scope(str(box["season"]), phase).data()
+        except ValueError:
+            pass  # Result remains usable, scope-dependent milestones do not.
     for side in ("homeTeam", "awayTeam"):
         team = box[side]["abbrev"]
         stats = box["playerByGameStats"][side]
@@ -108,12 +138,18 @@ def upcoming_games(nhl_date: str) -> list[dict]:
     return sorted(out, key=lambda g: g["start"])
 
 
-def last_lineup(team: str, season: str, before: str) -> set[int]:
+def last_lineup(team: str, season: str, before: str, scope: Scope | None = None) -> set[int]:
     """Кто сыграл в последнем завершённом матче регулярки клуба до даты (полевые и вратари с бросками).
     Так отсекаем травмированных, «не в составе» и отправленных в фарм: в статистике сезона они есть."""
+    scope = scope or Scope(season)
+    if scope.competition != "nhl" or scope.profile.game_type is None:
+        raise ValueError("Составу NHL нужен NHL-профиль")
+    if scope.edition != season:
+        raise ValueError("Сезон состава не совпадает с областью статистики")
     games = fetch_json(f"{WEB}/club-schedule-season/{team}/{season}").get("games", [])
     done = [g for g in games
-            if g.get("gameType") == 2 and g.get("gameState") in FINAL_STATES and g["gameDate"] < before]
+            if g.get("gameType") == scope.profile.game_type and g.get("gameState") in FINAL_STATES
+            and g["gameDate"] < before]
     if not done:
         return set()
     box = fetch_json(f"{WEB}/gamecenter/{done[-1]['id']}/boxscore")

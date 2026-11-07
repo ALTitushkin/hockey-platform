@@ -123,7 +123,7 @@ def icon(text: str) -> str:
 
 def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_date: str,
                    highlights: list | None = None, lead: str | None = None,
-                   with_teams: bool = True) -> tuple[str, dict]:
+                   with_teams: bool = True, rubric_headline: bool = False) -> tuple[str, dict]:
     """Подпись к карточке: как у больших спортивных каналов — заголовок-новость, абзац, блоки через
     пустую строку, одна метка на строку, подпись рубрики в конце. Счёт всех матчей — на картинке,
     в тексте — сюжет и очки наших. with_teams=False — запасной вариант, если не влезает в 1024 знака.
@@ -141,7 +141,7 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
 
     blocks = []
     rest = list(highlights or [])
-    if rest:
+    if rest and not rubric_headline:
         pid, evs = rest[0]
         top = evs[0]
         facts["numbers"] |= top.numbers

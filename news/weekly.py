@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from news import nhl
+from news.competition import Scope, from_data
 from news.digest import MONTHS, plural, save_pct
 
 
@@ -18,12 +19,18 @@ def period(monday: str) -> tuple[str, str]:
     return (day - timedelta(days=7)).isoformat(), (day - timedelta(days=1)).isoformat()
 
 
-def collect(monday: str, players: dict, fetch: Callable[[str], dict] = nhl.fetch_json) -> dict:
+def collect(monday: str, players: dict, fetch: Callable[[str], dict] = nhl.fetch_json,
+            scope: Scope | None = None) -> dict:
     """Two summary requests; reject truncated, duplicate or inconsistent aggregates."""
     start, end = period(monday)
+    year = date.fromisoformat(start).year - (date.fromisoformat(start).month < 7)
+    scope = scope or Scope(f"{year}{year + 1}")
+    if scope.competition != "nhl" or scope.profile.game_type is None:
+        raise ValueError("Недельному NHL-адаптеру нужен поддержанный NHL-профиль")
     query = urlencode({"isAggregate": "true", "isGame": "true", "start": 0, "limit": -1,
-                       "cayenneExp": f'gameTypeId=2 and gameDate>="{start}" and gameDate<="{end}"'})
-    result = {"start": start, "end": end, "sources": [], "skaters": [], "goalies": []}
+                       "cayenneExp": f'seasonId={scope.edition} and gameTypeId={scope.profile.game_type} '
+                       f'and gameDate>="{start}" and gameDate<="{end}"'})
+    result = {"start": start, "end": end, "sources": [], "skaters": [], "goalies": [], "scope": scope.data()}
     for kind, key in (("skater", "skaters"), ("goalie", "goalies")):
         url = f"{nhl.STATS}/{kind}/summary?{query}"
         response = fetch(url)
@@ -86,7 +93,8 @@ def render(data: dict, players: dict) -> tuple[str, dict]:
         headline = f"📊 <b>{name(leader['pid'])} — {score} {plural(score, ('очко', 'очка', 'очков'))} за неделю</b>"
     else:
         headline = f"📊 <b>Неделя наших в НХЛ: {span}</b>"
-    parts = [headline, f"{span}. Итоги регулярного чемпионата по датам матчей НХЛ."]
+    label = from_data(data["scope"]).profile.label if "scope" in data else "регулярного чемпионата"
+    parts = [headline, f"{span}. Итоги {label} по датам матчей НХЛ."]
     achievements = data.get("achievements", [])
     if achievements:
         lines = []

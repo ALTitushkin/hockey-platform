@@ -21,7 +21,7 @@ from datetime import datetime
 from datetime import time as dtime
 from zoneinfo import ZoneInfo
 
-from news import publish
+from news import editorial_queue, publish
 
 MSK = ZoneInfo("Europe/Moscow")
 RETRY = 15 * 60
@@ -43,13 +43,29 @@ def handle_update(update: dict, owner: str, post: publish.Post = publish.http_po
         return f"чужое нажатие от {cb.get('from', {}).get('id')} — игнор"
     # «pub:<рубрика>:<дата>»; у старых кнопок «pub:<дата>» — это «Ночь наших»
     action, *rest = cb.get("data", "").split(":")
-    kind, msk = rest if len(rest) == 2 else ["night", *rest[:1]]
+    if len(rest) not in (1, 2, 3):
+        return "неверный формат кнопки"
+    expected = rest[2] if len(rest) == 3 else None
+    if expected is None:
+        publish.tg_call("answerCallbackQuery", {"callback_query_id": cb["id"],
+                                               "text": "Старая кнопка: запросите новое ревью"}, post)
+        return "устаревшая кнопка без версии: действие отменено"
+    kind, msk = rest[:2] if len(rest) >= 2 else ("night", rest[0])
+    try:
+        path = publish.draft_path(msk, kind)
+        draft = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return "черновик недоступен"
+    if expected and editorial_queue.fingerprint(draft)[:16] != expected:
+        publish.tg_call("answerCallbackQuery", {"callback_query_id": cb["id"],
+                                               "text": "Версия изменилась: откройте новое ревью"}, post)
+        return "устаревшая кнопка: действие отменено"
     msg = cb.get("message", {})
     if action == "pub":
-        ok, report = publish.publish(msk, ["tg", "max"], post, kind)
+        ok, report = publish.publish(msk, ["tg", "max"], post, kind, expected=expected)
         note = ("✅ Опубликовано" if ok else "⚠️ Не всё ушло") + "\n" + "\n".join(report)
     elif action == "rej":
-        publish.reject(msk, kind)
+        publish.reject(msk, kind, expected=expected)
         note = "✖️ Отклонено — в канал не пойдёт"
     else:
         return f"неизвестная кнопка {cb.get('data')}"
