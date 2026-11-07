@@ -67,6 +67,13 @@ def handle_update(update: dict, owner: str, post: publish.Post = publish.http_po
     elif action == "rej":
         publish.reject(msk, kind, expected=expected)
         note = "✖️ Отклонено — в канал не пойдёт"
+    elif action in ("old", "irr"):
+        try:
+            reason = "Материал устарел" if action == "old" else "Материал не соответствует тематике"
+            publish.close_draft(msk, kind, expected, reason)
+            note = "Закрыто с сохранением истории"
+        except ValueError as error:
+            note = "⚠️ " + str(error)
     else:
         return f"неизвестная кнопка {cb.get('data')}"
     publish.tg_call("answerCallbackQuery", {"callback_query_id": cb["id"], "text": note.split("\n")[0]}, post)

@@ -34,7 +34,8 @@ class EventRegistryQA(unittest.TestCase):
 
     def draft(self, kind, event=None):
         return publish.save_draft("2026-11-03", "Хаттон подписал контракт", [], "offline", kind=kind,
-                                  data={"event_revision": self.event if event is None else event, "slug": kind})
+                                  data={"event_revision": self.event if event is None else event, "slug": kind,
+                                        "source_snapshot": {"content_hash": "verified-offline-source"}})
 
     def test_same_revision_in_two_articles_sends_once(self):
         self.draft("story-first")

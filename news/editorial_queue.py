@@ -6,6 +6,8 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from news import editorial_lifecycle
+
 
 def fingerprint(draft: dict) -> str:
     """Bind decisions to content, facts and actual image bytes, never delivery metadata."""
@@ -16,10 +18,16 @@ def fingerprint(draft: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def decision(draft: dict, automatic: bool = False) -> tuple[str, list[str]]:
+def decision(draft: dict, automatic: bool = False, kind: str | None = None) -> tuple[str, list[str]]:
     """One policy for CLI, callbacks and auto; publication ledger remains authoritative for duplicates."""
+    if draft.get("editorial_closed"):
+        return "closed", [draft["editorial_closed"].get("reason", "закрыто редактором")]
     if draft.get("rejected"):
         return "rejected", ["черновик отклонён"]
+    if kind is not None:
+        status, reasons = editorial_lifecycle.classify(draft, kind)
+        if status != "ready":
+            return status, reasons
     if draft.get("issues"):
         return "blocked", list(draft["issues"])
     data = draft.get("data") or {}
@@ -58,7 +66,8 @@ class Queue:
 
     def sync(self, name: str, draft: dict) -> str:
         revision = fingerprint(draft)
-        status, reasons = decision(draft, automatic=True)
+        kind = name.split("_", 1)[1].removesuffix(".json") if "_" in name else None
+        status, reasons = decision(draft, automatic=True, kind=kind)
         metadata = draft.get("data") or {}
         if not isinstance(metadata, dict):
             metadata = {}
@@ -67,10 +76,12 @@ class Queue:
         if published:
             status = "published" if set(targets) <= set(published) else "partial_delivery"
         previous = self.db.execute("SELECT revision, status FROM editorial_tasks WHERE name=?", (name,)).fetchone()
+        if previous and previous[1] == "delivery_unknown" and status != "published":
+            status = "delivery_unknown"
         if previous and previous[0] == revision:
             # Preserve unresolved delivery and manual decisions through restart.
             if previous[1] in ("delivery_unknown", "approved", "superseded") and status not in (
-                    "published", "rejected", "expired"):
+                    "published", "rejected", "expired", "closed", "blocked", "legacy_review", "needs_revalidation"):
                 status = previous[1]
         now = datetime.now(timezone.utc).isoformat()
         with self.db:
@@ -94,12 +105,12 @@ class Queue:
                 newer = self.db.execute(
                     "SELECT 1 FROM editorial_documents WHERE source=? AND observed>? AND source_hash<>?",
                     (source["url"], observed, source["content_hash"])).fetchone()
-                if newer and status not in ("published", "rejected", "delivery_unknown"):
+                if newer and status not in ("published", "rejected", "delivery_unknown", "closed"):
                     status = "superseded"
                 self.db.execute("UPDATE editorial_tasks SET status='superseded' WHERE name IN "
                                 "(SELECT name FROM editorial_documents "
                                 "WHERE source=? AND observed<? AND source_hash<>?) "
-                                "AND status NOT IN ('published','rejected','delivery_unknown')",
+                                "AND status NOT IN ('published','rejected','delivery_unknown','closed')",
                                 (source["url"], observed, source["content_hash"]))
             self.db.execute("""INSERT INTO editorial_tasks VALUES (?,?,?,?,NULL,?)
                 ON CONFLICT(name) DO UPDATE SET revision=excluded.revision,status=excluded.status,
@@ -142,4 +153,4 @@ class Queue:
         fields = ("name", "revision", "status", "reasons", "updated")
         return [dict(zip(fields, row)) for row in self.db.execute(
             "SELECT name,revision,status,reasons,updated FROM editorial_tasks "
-            "WHERE status NOT IN ('published','rejected','superseded') ORDER BY updated")]
+            "WHERE status NOT IN ('published','rejected','superseded','closed') ORDER BY updated")]

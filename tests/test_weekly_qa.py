@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -85,6 +85,9 @@ class WeeklyQATests(unittest.TestCase):
             auto.assert_not_called()
 
     def test_already_published_weekly_channel_is_not_sent_twice(self):
+        clock = patch("news.editorial_lifecycle.utcnow", return_value=datetime(2026, 11, 2, 12, tzinfo=timezone.utc))
+        clock.start()
+        self.addCleanup(clock.stop)
         path = publish.save_draft(self.monday, "saved", [], "offline", kind="weekly", data={"auto": False})
         draft = json.loads(path.read_text(encoding="utf-8"))
         draft["published"] = ["tg"]

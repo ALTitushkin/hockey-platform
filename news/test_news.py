@@ -138,7 +138,9 @@ def test_llm_chain_falls_through():
 def test_publish_gates():
     import os
     import tempfile
+    from datetime import datetime, timezone
     from pathlib import Path
+    from unittest.mock import patch
 
     from news import publish
 
@@ -152,6 +154,8 @@ def test_publish_gates():
     publish.OUT = Path(tempfile.mkdtemp())
     os.environ.update({"NEWS_BOT_TOKEN": "t", "NEWS_CHANNEL": "@ch", "OWNER_CHAT_ID": "42"})
     os.environ.pop("MAX_BOT_TOKEN", None)
+    clock = patch("news.editorial_lifecycle.utcnow", return_value=datetime(2026, 10, 24, 12, tzinfo=timezone.utc))
+    now = clock.start()
     try:
         assert publish.publish("2026-10-24", ["tg"], fake_post)[0] is False  # черновика нет
         publish.save_draft("2026-10-24", "Пост", ["выдумка: 7"], "шаблон")
@@ -168,12 +172,14 @@ def test_publish_gates():
         # автопубликация: пост в канал, отчёт владельцу; повтор той же даты не уходит ни в канал, ни владельцу
         # (25.10.2026 повтор прислал владельцу «вышло автоматически», хотя в канал ничего не ушло)
         sent.clear()
+        now.return_value = datetime(2026, 10, 25, 12, tzinfo=timezone.utc)
         publish.save_draft("2026-10-25", "Пост", [], "шаблон")
         assert publish.auto_publish("2026-10-25", fake_post)[0]
         assert [c for _, c, _ in sent] == ["@ch", "42"]
         publish.auto_publish("2026-10-25", fake_post)
         assert [c for _, c, _ in sent] == ["@ch", "42"]
     finally:
+        clock.stop()
         publish.OUT = old_out
         os.environ.clear()
         os.environ.update(old_env)
@@ -216,6 +222,7 @@ def test_service_buttons_and_schedule():
     import tempfile
     from datetime import datetime, time
     from pathlib import Path
+    from unittest.mock import patch
 
     from news import editorial_queue, publish, service
 
@@ -228,6 +235,8 @@ def test_service_buttons_and_schedule():
     old_out = publish.OUT
     publish.OUT = Path(tempfile.mkdtemp())
     os.environ.update({"NEWS_BOT_TOKEN": "t", "NEWS_CHANNEL": "@ch", "OWNER_CHAT_ID": "42"})
+    clock = patch("news.editorial_lifecycle.utcnow", return_value=datetime(2026, 10, 25, 12, tzinfo=service.MSK))
+    now = clock.start()
     try:
         publish.save_draft("2026-10-25", "Пост", [], "шаблон")
         assert publish.review("2026-10-25", fake_post)[0]
@@ -255,6 +264,7 @@ def test_service_buttons_and_schedule():
         publish.review("2026-10-27", fake_post)
         assert [b["text"] for b in calls[-1][1]["reply_markup"]["inline_keyboard"][0]] == ["✖️ Отклонить"]
         # рубрики не путаются: кнопка «Ночи в НХЛ» публикует её черновик, «Ночь наших» той же даты не трогает
+        now.return_value = datetime(2026, 10, 28, 12, tzinfo=service.MSK)
         publish.save_draft("2026-10-28", "Лига", [], "шаблон", kind="league")
         publish.save_draft("2026-10-28", "Наши", [], "шаблон")
         publish.review("2026-10-28", fake_post, kind="league")
@@ -263,6 +273,7 @@ def test_service_buttons_and_schedule():
         assert [b.get("text") for m, b in calls if m == "sendMessage"] == ["Лига"]
         assert publish.publish("2026-10-28", ["tg"], fake_post)[0]  # «Ночь наших» ещё не выходила
     finally:
+        clock.stop()
         publish.OUT = old_out
         for k in ("NEWS_BOT_TOKEN", "NEWS_CHANNEL", "OWNER_CHAT_ID"):
             os.environ.pop(k, None)

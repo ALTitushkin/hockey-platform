@@ -466,6 +466,17 @@ def cmd_serve(_args) -> int:
         msg = upd.get("message") or {}
         if owner and str(msg.get("chat", {}).get("id")) == owner:
             command = (msg.get("text") or "").strip().split()
+            if command and command[0] == "/close":
+                parts = (msg.get("text") or "").strip().split(maxsplit=4)
+                try:
+                    if len(parts) != 5:
+                        raise ValueError("Формат: /close DATE KIND VERSION причина")
+                    publish.close_draft(parts[1], parts[2], parts[3], parts[4])
+                    info = "Закрыто с сохранением истории. Пост не отправлен."
+                except (OSError, ValueError) as error:
+                    info = str(error)
+                publish.tg_call("sendMessage", {"chat_id": owner, "text": info[:4000]})
+                return "владелец: закрытие редакционной задачи"
             if command and command[0] == "/review":
                 try:
                     if len(command) != 3:
@@ -478,7 +489,8 @@ def cmd_serve(_args) -> int:
             if (msg.get("text") or "").strip() == "/queue":
                 tasks = publish.editorial_pending()
                 lines = [f"Редакционная очередь: {len(tasks)}"]
-                lines.extend(f"{t['name']}: {t['status']} — {t['reasons']}" for t in tasks[:15])
+                lines.extend(f"{t['name']}: {t['status']} · версия {t['revision'][:16]} — {t['reasons']}"
+                             for t in sorted(tasks, key=lambda t: (t['status'], t['updated']))[:15])
                 publish.tg_call("sendMessage", {"chat_id": owner, "text": "\n".join(lines)[:4000]})
                 return "владелец: редакционная очередь"
             reply = registry.owner_command(msg.get("text") or "")

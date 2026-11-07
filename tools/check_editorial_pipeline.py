@@ -49,7 +49,7 @@ def main() -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return int(any(case["issues"] for case in result["cases"]))
     patterns = ("test_pipeline_core.py", "test_fact_packets.py", "test_source_watch.py",
-                "test_pipeline_adversarial_qa.py")
+                "test_pipeline_adversarial_qa.py", "test_queue_lifecycle_qa.py")
     suite = unittest.TestSuite(unittest.defaultTestLoader.discover(str(ROOT / "tests"), pattern=p) for p in patterns)
     result = unittest.TextTestRunner().run(suite)
     return int(not result.wasSuccessful())

@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -21,6 +22,9 @@ class AchievementLinksQA(unittest.TestCase):
     channel = "@hockey_tests"
 
     def setUp(self):
+        clock = patch("news.editorial_lifecycle.utcnow", return_value=datetime(2026, 11, 1, 12, tzinfo=timezone.utc))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.out = Path(self.tmp.name)

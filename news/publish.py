@@ -130,7 +130,8 @@ def save_draft(msk: str, text: str, issues: list[str], variant: str, card: str |
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     d = {"date": msk, "text": text, "issues": issues, "variant": variant, "card": card,
          "published": old.get("published", []), "messages": old.get("messages", {})}
-    for key in ("channels", "rejected", "deleted_messages", "deletion_reason", "event_receipts", "delivery_targets"):
+    for key in ("channels", "rejected", "deleted_messages", "deletion_reason", "event_receipts", "delivery_targets",
+                "editorial_closed"):
         if key in old:
             d[key] = old[key]
     if data is not None:
@@ -147,6 +148,48 @@ def sync_editorial(path: Path, draft: dict) -> str:
         return queue.sync(path.name, draft)
     finally:
         queue.close()
+
+
+def close_draft(msk: str, kind: str, expected: str, reason: str) -> None:
+    """Close this exact unpublished version, retaining the source, receipts and audit trail."""
+    from news.editorial_lifecycle import utcnow
+    path = draft_path(msk, kind)
+    draft = json.loads(path.read_text(encoding="utf-8"))
+    if not expected or fingerprint_for_close(draft) != expected:
+        raise ValueError("Версия изменилась: откройте новое ревью")
+    if draft.get("editorial_closed"):
+        raise ValueError("Задача уже закрыта; первоначальная причина сохранена")
+    if draft.get("published"):
+        raise ValueError("Опубликованный материал нельзя закрыть как неопубликованный")
+    queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
+    try:
+        if queue.status(path.name) in ("delivery_unknown", "sending"):
+            raise ValueError("Сначала сверить неопределённую доставку")
+    finally:
+        queue.close()
+    if (OUT / "event_registry.sqlite3").exists():
+        ledger = event_registry.Registry(OUT / "event_registry.sqlite3")
+        try:
+            if ledger.db.execute("SELECT 1 FROM publications WHERE document=? "
+                                 "AND status IN ('published','sending','uncertain')", (path.name,)).fetchone():
+                raise ValueError("Реестр доставки требует сверки перед закрытием")
+        finally:
+            ledger.close()
+    if not isinstance(reason, str) or not 3 <= len(reason.strip()) <= 300:
+        raise ValueError("Нужна причина закрытия:3–300 знаков")
+    draft["editorial_closed"] = {"reason": reason.strip(), "at": utcnow().isoformat(), "revision": expected}
+    draft["rejected"] = True  # Older release images also fail closed after rollback.
+    temporary = path.with_suffix(".closing-" + uuid.uuid4().hex)
+    try:
+        temporary.write_text(json.dumps(draft, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    sync_editorial(path, draft)
+
+
+def fingerprint_for_close(draft: dict) -> str:
+    return editorial_queue.fingerprint(draft)[:16]
 
 
 def editorial_pending() -> list[dict]:
@@ -180,7 +223,7 @@ def tg_call(method: str, body: dict, post: Post = http_post) -> dict:
 
 def control_text(d: dict, kind: str = "night") -> str:
     guard_line = "гард: чисто" if not d["issues"] else "⚠️ гард: " + html.escape("; ".join(d["issues"]))
-    state, reasons = editorial_queue.decision(d, automatic=True)
+    state, reasons = editorial_queue.decision(d, automatic=True, kind=kind)
     why = "\n" + html.escape("; ".join(reasons)) if reasons else ""
     return (f"📝 <b>Черновик {title(kind)} {d['date']}</b> выше\n"
             f"{html.escape(d['variant'])} · {guard_line}\nСтатус: {state}{why}")
@@ -219,10 +262,16 @@ def review(msk: str, post: Post = http_post, kind: str = "night", *, force: bool
     if not ok:
         return ok, info
     buttons = [{"text": "✖️ Отклонить", "callback_data": f"rej:{kind}:{msk}:{revision[:16]}"}]
-    if not d["issues"]:
+    status, _ = editorial_queue.decision(d, kind=kind)
+    if status == "ready":
         buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{kind}:{msk}:{revision[:16]}"})
+    close_buttons = []
+    if not d.get("published") and not d.get("editorial_closed"):
+        close_buttons = [{"text": label, "callback_data": f"{action}:{kind}:{msk}:{revision[:16]}"}
+                         for action, label in (("old", "Закрыть: устарело"), ("irr", "Закрыть: не по теме"))]
+    keyboard = [buttons] + ([close_buttons] if close_buttons else [])
     r = tg_call("sendMessage", {"chat_id": owner, "text": control_text(d, kind), "parse_mode": "HTML",
-                                "reply_markup": {"inline_keyboard": [buttons]}}, post)
+                                "reply_markup": {"inline_keyboard": keyboard}}, post)
     if r.get("ok"):
         queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
         try:
@@ -274,7 +323,7 @@ def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "n
         queue.close()
     if expected is not None and revision[:16] != expected:
         return False, ["Версия черновика изменилась: откройте новое ревью"]
-    status, reasons = editorial_queue.decision(d, automatic=automatic)
+    status, reasons = editorial_queue.decision(d, automatic=automatic, kind=kind)
     if status != "ready":
         return False, [f"{status}: " + "; ".join(reasons)]
     data = d.get("data") or {}
