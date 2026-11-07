@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-07",
+  "release": "v0.21.0",
+  "commit": "2ee399422852ff463e4d229aa6b72d178898a321",
+  "workflow_run": 42394864874,
+  "image": "sha256:e2384c6b4090285a1ed3c10b5521476119721d98b37b38569ca142f4ad7901a9",
+  "news": {"status": "running", "restart": 0, "oom": false, "fatal": 0,
+    "memory_peak_bytes": 50233344, "memory_limit_bytes": 402653184, "swap_bytes": 0},
+  "shadow": {"status": "running", "health": "healthy", "restart": 0, "fatal": 0},
+  "bot": {"status": "running", "restart": 0, "fatal": 0},
+  "runtime_queue": {"needs_review": 5, "blocked": 1},
+  "diagnostic_messages_sent": 0,
+  "previous_image": "sha256:c869908b6f430a1d876cde35e458c82a0b5e9e29fba800e365e61e8c5ca145da",
+  "limitations": ["startup and runtime smoke only", "no new live auto/LLM publication cycle observed", "Trivy unavailable"]
+}

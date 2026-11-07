@@ -1,4 +1,15 @@
-# Кандидат v0.21.0 — 07.11.2026
+# v0.21.0 в проде — 07.11.2026
+
+Коммит **2ee399422852ff463e4d229aa6b72d178898a321**, [CI/CD](https://github.com/ALTitushkin/hockey-platform/actions/runs/42394864874):
+test/news-image/deploy/release-tag success. SHA серверного checkout совпал с релизом.
+News running, пик47.9MiB/384, restart/OOM/swap0, fatal0; shadow healthy, бот running.
+Проверка runtime без отправок: SQLite-очередь needs_review5/blocked1, профиль playoffs
+создаётся отдельно; конфигурация боевой регулярки не менялась. Аннотированный тег создан CI.
+Откат previous → проверенный c869908b6f43 (v0.20.2), runtime/квитанции сохранять.
+Это runtime smoke, не наблюдение полного нового цикла auto/LLM. Следующий шаг — разбор
+реальных review/новых версий и расширение корпуса; затем сегментация Status Report.
+
+## Работа и предрелизная проверка
 
 Реализованы первый слой единой цепочки, SQLite-review, version-bound кнопки, source-watch,
 typed fact templates и явные scopes. [Релизный отчёт](../process/releases/v0.21.0.md).

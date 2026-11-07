@@ -7,7 +7,9 @@
 
 ## Решение 07.11.2026 — пайплайны и расширяемость
 
-Кандидат v0.21.0 реализован и проверен:270 проверок, QA/security, replay4 без LLM/отправок.
+**v0.21.0 (2ee3994) в проде**:270 проверок, QA/security, replay4 без LLM/отправок.
+CI/CD42394864874 все4job success; runtime smoke:47.9MiB/384, restart/OOM/swap/fatal0,
+очередь needs_review5/blocked1. Полный новый auto/LLM-цикл пока не наблюдался.
 Очередь, stale approvals, bounded source-watch, typed templates, scope и соседние заголовки
 в первом пакете. [Границы/откат](../process/releases/v0.21.0.md). Владелец разрешил релиз.
 Следующая очередь работ после наблюдения:
