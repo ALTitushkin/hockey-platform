@@ -3,7 +3,7 @@
 Точка входа в проектную документацию. Сам **сайт** живёт в `../docs/` (GitHub Pages), **код** — в `../bot/`, `../tools/`, данные — в `../data/`. Здесь — только «как мы это строим».
 
 **Что за проект:** образовательная хоккейная платформа (словарь EN→RU + история + бот). Обзор и архитектура — `../CLAUDE.md`.
-**Живой статус проекта** ведётся в Obsidian-дашборде (у Саши). История версий — `../CHANGELOG.md`. Текущий релиз канала — **v0.21.1**, [чек-лист](process/releases/v0.21.1.md); [точка продолжения](handoff/current.md).
+**Живой статус проекта** ведётся в Obsidian-дашборде (у Саши). История версий — `../CHANGELOG.md`. Текущий релиз канала — **v0.21.2**, [чек-лист](process/releases/v0.21.2.md); [точка продолжения](handoff/current.md).
 
 ---
 
@@ -33,7 +33,7 @@
 
 ### ⚙️ [process/](process/) — как работаем
 - [local-checks.md](process/local-checks.md) — проектная .venv/Python3.12 на D:, локальные проверки и офлайн-replay
-- [publication-stabilization-2026-11-08.md](process/publication-stabilization-2026-11-08.md) — локальный кандидат исправлений публикации, проверки и ограничения; прод пока v0.21.1
+- [publication-stabilization-2026-11-08.md](process/publication-stabilization-2026-11-08.md) — исправления публикации v0.21.2, проверки и ограничения
 - [scenario-pipelines.md](process/scenario-pipelines.md) — обязательный контракт пайплайна, реестр сценариев и проверки по риску; принят07.11
 - [editorial-system.md](planning/editorial-system.md) — принятая архитектура; первый слой v0.21.0 в проде, расширение по бэклогу
 - [trade-direction.md](process/trade-direction.md) — проверка направления обменов, границы автопубликации и регрессии
