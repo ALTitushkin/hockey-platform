@@ -76,6 +76,7 @@ jobs:
           pip install -q ruff
           ruff check bot/ tools/ news/ tests/
           bash -n deploy/deploy.sh
+          bash -n deploy/ci-ssh.sh
       - name: Validate data (целостность реестров + паритет зеркал + status)
         run: python tools/validate_data.py
       - name: Validate calendar (формат событий + отчёт покрытия)
@@ -123,38 +124,27 @@ jobs:
       && ((github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.news-image.result == 'success')
           || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: read
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1
+        run: bash deploy/ci-ssh.sh
         env:
           DEPLOY_SHA: ${{ github.sha }}
           NEWS_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.news_image || github.sha }}
           GHCR_USER: ${{ github.actor }}
           # Токен джоба живёт, пока идёт джоб: на сервере не остаётся постоянного секрета.
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          envs: DEPLOY_SHA,NEWS_TAG,GHCR_USER,GHCR_TOKEN
-          # Через `bash`, а не напрямую — не зависим от exec-бита файла:
-          # git на Windows его не трекает, иначе SSH падает с 126 Permission denied.
-          # Healthcheck («Бот запущен» в логах контейнера) внутри deploy.sh —
-          # так ручной деплой защищён тем же гейтом, что и автоматический.
-          script: |
-            # Сначала обновляем файл: shell должен разобрать новую версию deploy.sh.
-            # Иначе первый выкат изменения самого скрипта выполняет прежнее тело main().
-            git -C /opt/hockey-platform diff --quiet || exit $?
-            git -C /opt/hockey-platform diff --cached --quiet || exit $?
-            git -C /opt/hockey-platform fetch origin "$DEPLOY_SHA" || exit $?
-            git -C /opt/hockey-platform switch --detach "$DEPLOY_SHA" || exit $?
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
-            NEWS_TAG="$NEWS_TAG" bash /opt/hockey-platform/deploy/deploy.sh; rc=$?
-            docker logout ghcr.io >/dev/null
-            exit $rc
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          # Public host key read through the trusted SSH connection on08.11; never TOFU in CI.
+          VPS_HOST_KEY: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDkWnSh+2HGLW73Kdu1IuoRprOA905+IhAPjaV/kKngs
 
   release-tag:
     needs: deploy
