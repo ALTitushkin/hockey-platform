@@ -4,6 +4,12 @@
 > Обновляй его при каждом значимом изменении архитектуры или решений.
 > Последнее обновление: 25.10.2026 · v0.16+
 
+Локальные проверки Windows (08.11): использовать проектную `.venv` на Python3.12,
+команды и восстановление — [project/process/local-checks.md](project/process/local-checks.md).
+Не запускать полные тесты через глобальный Python из профиля C:; для stdlib helpers
+сохранён отдельный runtime по AGENT_RULES. Актуальный статус кода/прода —
+[project/handoff/current.md](project/handoff/current.md).
+
 ---
 
 ## Что это за проект

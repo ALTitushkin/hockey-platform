@@ -33,7 +33,8 @@ def parse_hhmm(value: str, default: str) -> dtime:
     return dtime(h, m)
 
 
-def handle_update(update: dict, owner: str, post: publish.Post = publish.http_post) -> str | None:
+def handle_update(update: dict, owner: str, post: publish.Post = publish.http_post,
+                  revalidate: Callable | None = None) -> str | None:
     """Одно обновление Telegram → что сделали (для лога). Чистая логика, сеть — через post."""
     cb = update.get("callback_query")
     if not cb:
@@ -61,6 +62,20 @@ def handle_update(update: dict, owner: str, post: publish.Post = publish.http_po
                                                "text": "Версия изменилась: откройте новое ревью"}, post)
         return "устаревшая кнопка: действие отменено"
     msg = cb.get("message", {})
+    if action == "rev":
+        if revalidate is None:
+            from news.run import revalidate_draft
+            revalidate = revalidate_draft
+        try:
+            ok, info = revalidate(msk, kind, expected)
+        except (OSError, ValueError, RuntimeError) as error:
+            ok, info = False, str(error)
+        publish.tg_call("answerCallbackQuery", {"callback_query_id": cb["id"],
+                                               "text": "Перепроверено" if ok else "Перепроверка не завершена"}, post)
+        publish.tg_call("sendMessage", {"chat_id": owner, "text": info[:3500]}, post)
+        if ok:
+            publish.review(msk, post, kind=kind, force=True)
+        return f"rev {kind} {msk}: {'обновлено' if ok else 'нужна проверка'}"
     if action == "pub":
         ok, report = publish.publish(msk, ["tg", "max"], post, kind, expected=expected)
         note = ("✅ Опубликовано" if ok else "⚠️ Не всё ушло") + "\n" + "\n".join(report)

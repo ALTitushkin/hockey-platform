@@ -381,6 +381,15 @@ def cmd_night(args) -> int:
     return 1 if build_night(msk, args.llm, args.review) == "guard" else 0
 
 
+def revalidate_draft(msk: str, kind: str, expected: str) -> tuple[bool, str]:
+    from news import revalidation
+    reg, teams = load()
+    ours = {key: value for key, value in reg["players"].items() if value.get("ru")}
+    return revalidation.refresh(msk, kind, expected, datetime.now(MSK),
+                                lambda url: nhl.fetch_json(url, retries=1, timeout=5), ours,
+                                teams, names.league_players)
+
+
 def run_stories(now: datetime) -> list[str]:
     """Проход по ленте NHL.com. Черновики владельцу, пока не включена NEWS_STORIES_AUTO=1:
     рубрика новая, гард пересказа ещё не обкатан на живых новостях."""
@@ -397,7 +406,8 @@ def run_stories(now: datetime) -> list[str]:
             ok, info = publish.auto_publish(msk, kind=kind)
         else:
             ok, info = publish.review(msk, kind=kind)
-        return ok, info
+        return ok, ("канал: " if os.environ.get("NEWS_STORIES_AUTO") == "1" and d["data"].get("auto")
+                    else "редакторская проверка: ") + info
 
     def notify(text: str) -> None:
         publish.tg_call("sendMessage", {"chat_id": owner, "text": text, "link_preview_options": {"is_disabled": True}})

@@ -5,6 +5,43 @@ import re
 from datetime import date, timedelta
 from urllib.parse import urlsplit
 
+from news import event_registry, fact_packet
+
+
+def equivalent_draft(story, packet, out, msk):
+    """Reuse work for identical source or supported facts, including unresolved review."""
+    today = date.fromisoformat(msk)
+    source_hash = fact_packet.snapshot(story)["content_hash"]
+    revision = fact_packet.revision(packet) if packet else None
+    for offset in range(4):
+        for path in sorted(out.glob(f"{today - timedelta(days=offset)}_story-*.json")):
+            try:
+                if path.stat().st_size > 128 * 1024:
+                    continue
+                draft = json.loads(path.read_text(encoding="utf-8"))
+                data = draft.get("data") or {}
+                old = data.get("event_revision")
+                # New extraction capabilities must not silently auto-publish the old
+                # review backlog. Reinterpret its frozen evidence for comparison only.
+                frozen = data.get("source_snapshot") or {}
+                if (packet and not event_registry.complete(old) and frozen.get("content_hash")
+                        and fact_packet.source_hash(frozen) == frozen["content_hash"]):
+                    claim = packet["claims"][0]
+                    rebuilt = fact_packet.extract(fact_packet.restore(frozen),
+                        {str(claim["subject"]): {"ru": packet["actor_name"]}},
+                        {claim["club"]: packet["club_name"]}, {claim["club"]: packet["club_alias"]})
+                    if rebuilt:
+                        old = fact_packet.revision(rebuilt)
+                same_source = (data.get("slug") == story.slug
+                               and data.get("source_snapshot", {}).get("content_hash") == source_hash)
+                same_facts = (revision and event_registry.complete(old)
+                              and event_registry.revision_key(old) == event_registry.revision_key(revision))
+                if same_source or same_facts:
+                    return path, draft
+            except (OSError, ValueError, AttributeError, TypeError, KeyError):
+                continue
+    return None
+
 
 def published_reference(story, out, msk):
     today = date.fromisoformat(msk)

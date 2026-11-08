@@ -32,6 +32,8 @@
 - Канон истории (9 глав — все опубликованы, формат черновика): [`../docs/history/INDEX.md`](../docs/history/INDEX.md) *(лежит рядом с пайплайном сборки глав)*
 
 ### ⚙️ [process/](process/) — как работаем
+- [local-checks.md](process/local-checks.md) — проектная .venv/Python3.12 на D:, локальные проверки и офлайн-replay
+- [publication-stabilization-2026-11-08.md](process/publication-stabilization-2026-11-08.md) — локальный кандидат исправлений публикации, проверки и ограничения; прод пока v0.21.1
 - [scenario-pipelines.md](process/scenario-pipelines.md) — обязательный контракт пайплайна, реестр сценариев и проверки по риску; принят07.11
 - [editorial-system.md](planning/editorial-system.md) — принятая архитектура; первый слой v0.21.0 в проде, расширение по бэклогу
 - [trade-direction.md](process/trade-direction.md) — проверка направления обменов, границы автопубликации и регрессии

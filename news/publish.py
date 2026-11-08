@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 
-from news import editorial_queue, event_registry, fact_packet
+from news import editorial_queue, event_registry, story_validation
 
 ROOT = Path(__file__).parent
 ENV = ROOT / ".env"
@@ -265,6 +265,8 @@ def review(msk: str, post: Post = http_post, kind: str = "night", *, force: bool
     status, _ = editorial_queue.decision(d, kind=kind)
     if status == "ready":
         buttons.insert(0, {"text": "✅ Опубликовать", "callback_data": f"pub:{kind}:{msk}:{revision[:16]}"})
+    if kind.startswith("story-") and status not in ("closed", "rejected") and not d.get("published"):
+        buttons.insert(0, {"text": "🔄 Перепроверить", "callback_data": f"rev:{kind}:{msk}:{revision[:16]}"})
     close_buttons = []
     if not d.get("published") and not d.get("editorial_closed"):
         close_buttons = [{"text": label, "callback_data": f"{action}:{kind}:{msk}:{revision[:16]}"}
@@ -326,20 +328,11 @@ def publish(msk: str, targets: list[str], post: Post = http_post, kind: str = "n
     status, reasons = editorial_queue.decision(d, automatic=automatic, kind=kind)
     if status != "ready":
         return False, [f"{status}: " + "; ".join(reasons)]
-    data = d.get("data") or {}
-    if data.get("fact_packet"):
-        packet = data["fact_packet"]
-        if fact_packet.key(packet) != data.get("packet_hash"):
-            return False, ["пакет фактов изменён"]
-        # Validate the entire rendered caption, including card headline and source provenance.
-        try:
-            packet_body = fact_packet.render(packet)
-        except (KeyError, TypeError, ValueError, IndexError):
-            return False, ["повреждён пакет фактов"]
-        if fact_packet.verify(packet, data.get("source_snapshot", {}), packet_body):
-            return False, ["доказательства пакета фактов изменены"]
-        if d["text"] != fact_packet.caption(packet, data["source_snapshot"], msk):
-            return False, ["текст не соответствует проверенному пакету фактов"]
+    if automatic and kind.startswith("story-") and not (d.get("data") or {}).get("fact_packet"):
+        return False, ["автопубликация инфоповода требует проверенного пакета фактов"]
+    validation = story_validation.check(d, msk)
+    if validation:
+        return False, validation
     if not automatic:
         queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
         try:

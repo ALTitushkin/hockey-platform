@@ -3,6 +3,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -64,6 +65,9 @@ class ScopeContracts(unittest.TestCase):
 
 class QueueContracts(unittest.TestCase):
     def setUp(self):
+        clock = patch("news.editorial_lifecycle.utcnow", return_value=datetime(2026, 11, 7, 12, tzinfo=timezone.utc))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.out = Path(self.tmp.name)

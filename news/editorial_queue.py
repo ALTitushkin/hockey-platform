@@ -1,5 +1,6 @@
 """Durable editorial lifecycle, independent of feed processing and notification delivery."""
 
+import copy
 import hashlib
 import json
 import sqlite3
@@ -14,6 +15,9 @@ def fingerprint(draft: dict) -> str:
     card = draft.get("card")
     image = hashlib.sha256(Path(card).read_bytes()).hexdigest() if card and Path(card).is_file() else card
     payload = {key: draft.get(key) for key in ("text", "issues", "variant", "data")}
+    payload["data"] = copy.deepcopy(payload["data"])
+    if isinstance(payload["data"], dict) and isinstance(payload["data"].get("source_snapshot"), dict):
+        payload["data"]["source_snapshot"].pop("fetched_at", None)
     payload["card"] = image
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 

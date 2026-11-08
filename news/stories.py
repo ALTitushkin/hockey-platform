@@ -20,7 +20,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from news import event_registry, fact_packet, guard, publish, source_watch, story_provenance, temporal, trades
+from news import (
+    event_registry,
+    fact_packet,
+    guard,
+    publish,
+    source_watch,
+    story_provenance,
+    story_validation,
+    temporal,
+    trades,
+)
 from news.card import render_story_card
 from news.digest import MONTHS, plural
 from news.nhl import WEB
@@ -447,7 +457,11 @@ def focus_teams(s: Story, hero: int | None) -> list[str]:
 
 
 def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], teams_ru: dict,
-         msk: str, path: Path) -> Path:
+         msk: str, path: Path, packet: dict | None = None) -> Path:
+    if packet:
+        spec = fact_packet.card_spec(packet)
+        return render_story_card(spec["label"], spec["teams"], spec["hero"], spec["hero_id"] in ours,
+                                 spec["headline"], None, teams_ru, msk, path)
     head = body.partition("\n\n")[0]
     hero = hero_of(s, names, ours, headline=head)
     g = next((g for g in goalies if g["pid"] == hero), None)
@@ -458,8 +472,12 @@ def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], 
                     if t in teams_ru and guard.mentions(body, teams_ru[t]))
     if report:
         tagged = focus_teams(s, hero)
-    if not tagged and not report:
-        tagged = sorted(s.teams or teams_in(s.headline))
+    if not report:
+        # A single tagged club can identify a tagged headline hero. A club merely
+        # mentioned in the prose can be an opponent, never proof of ownership.
+        tagged = focus_teams(s, hero)
+        if not tagged and hero in s.pids and len(s.teams) == 1:
+            tagged = sorted(s.teams)
     teams = tagged[:1]
     if s.kind == "trade":
         moves = trade_facts(s).moves
@@ -563,6 +581,21 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             continue
         names = wiki(s.mentioned | s.pids, registry)
         packet = fact_packet.extract(s, names, teams_ru, TEAM_EN)
+        equivalent = story_provenance.equivalent_draft(s, packet, publish.OUT, msk)
+        if equivalent:
+            previous_path, previous = equivalent
+            previous_date, previous_kind = previous_path.stem.split("_", 1)
+            if previous.get("published") or previous.get("rejected") or previous.get("editorial_closed"):
+                ok, info = True, "прежний редакционный исход сохранён"
+            else:
+                ok, info = deliver(previous_date, previous_kind)
+            log.append(f"инфоповод {s.slug}: прежние факты, существующая задача — {info}")
+            if ok:
+                source_watch.remember(state, parsed[s.eid][1], s, now)
+                state["seen"][s.eid] = now.isoformat()
+                queued.pop(s.eid, None)
+                save_state(state)
+            continue
         notes: list[str] = []
         reference = story_provenance.published_reference(s, publish.OUT, msk)
         events_db = event_registry.Registry(publish.OUT / "event_registry.sqlite3")
@@ -616,7 +649,8 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         variant = f"пересказ {source}" + (f" · 👀 проверь: {'; '.join(notes)}" if notes else "")
         goalies = [] if packet else goalie_stats(s, names, ours, fetch)
         try:
-            pic = str(card(s, body, names, ours, goalies, teams_ru, msk, publish.OUT / f"{msk}_{kind}.png"))
+            pic = str(card(s, body, names, ours, goalies, teams_ru, msk,
+                           publish.OUT / f"{msk}_{kind}.png", packet=packet))
         except Exception as e:  # картинка — украшение: без неё пост всё равно выходит
             pic = None
             log.append(f"инфоповод {s.slug}: карточка не собралась ({type(e).__name__}: {e})")
@@ -630,11 +664,12 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         if packet:
             data["fact_packet"] = packet
             data["packet_hash"] = fact_packet.key(packet)
-            main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), None)
-            if main:
-                from datetime import date, time
-                data["expires_at"] = datetime.combine(date.fromisoformat(main["date"]) + timedelta(days=1),
-                                                       time.min, tzinfo=s.date.tzinfo).isoformat()
+            expiry = fact_packet.expires_at(packet)
+            if expiry:
+                data["expires_at"] = expiry
+            if pic:
+                data["card_spec"] = fact_packet.card_spec(packet)
+                data["card_hash"] = story_validation.image_hash(pic)
         if s.kind == "trade":
             data["trade_facts"] = trade_facts(s).data()
         caption = (fact_packet.caption(packet, data["source_snapshot"], msk) if packet else
