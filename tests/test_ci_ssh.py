@@ -17,7 +17,9 @@ class NativeSSH(unittest.TestCase):
             raise unittest.SkipTest("bash unavailable: native SSH wrapper requires offline shell verification")
 
     def run_wrapper(self, ssh_exit):
-        tmp = tempfile.TemporaryDirectory(dir=self.root / "news" / "out")
+        temporary_root = self.root / "news" / "out"
+        temporary_root.mkdir(parents=True, exist_ok=True)
+        tmp = tempfile.TemporaryDirectory(dir=temporary_root)
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name)
         binaries, scratch, capture = [root / name for name in ("bin", "scratch", "capture")]
