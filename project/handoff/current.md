@@ -10,12 +10,7 @@ news-image, deploy и release-tag — success. Deploy log подтвердил h
 `hockey-shadow running:0`. Миграций БД нет; откат — workflow_dispatch `news_image=previous`,
 предыдущий рабочий news image `b84a6db297eb` (v0.21.2).
 
-После выката read-only проверка: `hockey-news Up`, `NEWS_AUTO_PUBLISH=1`,
-`NEWS_STORIES_AUTO=1`; старые review-задачи/квитанции сохранены. За короткое окно наблюдения
-новый инфоповод для end-to-end live-подтверждения не появился. Поэтому успешный deployment и
-healthcheck подтверждены, а фактическая публикация нового story с корректной картинкой ещё
-ожидает естественного свежего события. Существующие `needs_revalidation` не были переписаны
-задним числом.
+После выката read-only проверка подтвердила `hockey-news Up` и оба флага автопубликации. Первый новый live-story Фабера опубликован в Telegram (14.11, message_id 91): `auto=true`, typed fact ожидаемого дебюта за MIN на 14 ноября. Подпись и CardSpec совпадают; PNG воспроизведена из production-пакета и визуально проверена — логотип Minnesota Wild, label «ДЕБЮТ», тот же игрок и заголовок. Это подтверждает полный live-цикл для данного шаблона. Старые `needs_revalidation` не переписывались; backlog требует отдельного поштучного refresh и проверки актуальности.
 
 Локальные release gates: 290 unittest, 26 news tests, 5 delivery tests, tests бота, Ruff,
 валидация данных/календаря, bash syntax и version gate — зелёные. Переработаны точные claim
