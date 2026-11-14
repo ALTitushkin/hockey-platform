@@ -1,4 +1,4 @@
-# Текущий спринт: стабилизация публикации после v0.21.3 — 15.11.2026
+# v0.21.4 выкачен — стабилизация автопубликации, 15.11.2026
 
 Работа ведётся в чистом worktree `D:/MyFolder/Projects/.worktrees/hockey-autopublish-stability`,
 ветка `release/autopublish-v0.21.4`, база `origin/main=ecd40f6c76cd3e88244f879fdf0d8fc8f3ec021a`.
@@ -15,12 +15,10 @@ negative: историческое `last season` в соседнем абзац�
 
 Проверки на чистой базе `main`: **297 unittest**, **26 news**, **5 delivery**, Ruff, data/calendar
 validators, bot search/calendar, bash syntax и `release_version.py` (`v0.21.4`); `git diff --check`.
-В этом чистом worktree пока нет `.venv`: Python 3.12.13 запущен из существующего проектного
-окружения соседнего `hockey-codex-release`, при рабочем каталоге нового worktree.
+Для релизного гейта в worktree создана `.venv` на Python 3.12.13 с Pillow 12.3.0, tzdata 2026.6 и Ruff 0.17.5; установлены только зависимости `news/requirements.txt` и Ruff.
 Дополнительно целевые очереди — 16 тестов, факт-парсеры/auto pipeline — 29. Git fetch снова работает
-через локально заданный repo proxy; небезопасный global `http.sslVerify=false` удалён. История
-production — container image `459e3fc…`, 17 story JSON за 14.11: только Faber typed/auto/published,
-остальные 16 без fact packet. Код production, drafts и Telegram не менялись.
+через локально заданный repo proxy; небезопасный global `http.sslVerify=false` удалён. До релиза production — container image `459e3fc…`, 17 story JSON за 14.11: только Faber typed/auto/published,
+остальные 16 без fact packet. Сохранённые drafts и Telegram при релизе не переписывались.
 Повторный read-only check 15.11 подтвердил тот же production image `459e3fc…`, started
 `2026-11-14T10:56:17Z`, restarts=0. Визуально просмотрены четыре архивных PNG RNH: два с неверным VAN logo, один с EDM, один пустой;
 все `published=[]`, `auto=false`, без CardSpec. Это старые review-черновики, не публичные посты;
