@@ -296,12 +296,12 @@ def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, st
         by_why: dict[str, list[str]] = {}
         for _, name, why in skip:
             by_why.setdefault(why, []).append(name)
-        # травма — точно не сыграет; не было в прошлом матче — под вопросом (может вернуться в состав)
+        # Пропуск предыдущего матча не подтверждает текущий статус травмы.
         sure = [f"{', '.join(names)} — {why}" for why, names in by_why.items() if why != NOT_PLAYED]
         if sure:
             blocks.append("🚑 <b>Не сыграют</b>\n" + "\n".join(sure))
         if NOT_PLAYED in by_why:
-            blocks.append(f"❔ <b>Под вопросом</b>\n{', '.join(by_why[NOT_PLAYED])} — {NOT_PLAYED}")
+            blocks.append(f"ℹ️ <b>Не играли прошлый матч</b>\n{', '.join(by_why[NOT_PLAYED])}")
     if hook:
         blocks.append(hook[0])
         facts["teams"] |= set(hook[1])
@@ -327,3 +327,4 @@ def with_lead(text: str, lead: str) -> str:
     """Вставить вводную фразу цитатой сразу после заголовка; сам блок статистики не трогаем."""
     title, _, body = text.partition("\n\n")
     return f"{title}\n\n<blockquote>{lead}</blockquote>\n\n{body}"
+

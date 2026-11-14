@@ -23,6 +23,15 @@ class EventRegistryQA(unittest.TestCase):
         self.env = patch.dict(os.environ, {"NEWS_CHANNEL": "@hockey_test"})
         self.env.start()
         self.addCleanup(self.env.stop)
+        fixture_now = datetime(2026, 11, 3, 12, tzinfo=timezone.utc)
+        lifecycle_clock = patch("news.editorial_lifecycle.utcnow", return_value=fixture_now)
+        lifecycle_clock.start()
+        self.addCleanup(lifecycle_clock.stop)
+        queue_clock = patch("news.editorial_queue.datetime")
+        mocked_datetime = queue_clock.start()
+        mocked_datetime.now.return_value = fixture_now
+        mocked_datetime.fromisoformat = datetime.fromisoformat
+        self.addCleanup(queue_clock.stop)
         self.channel_patch = patch.object(publish, "channel_key", return_value="tg:-1001234567890")
         self.channel_patch.start()
         self.addCleanup(self.channel_patch.stop)
@@ -98,6 +107,13 @@ class EventRegistryQA(unittest.TestCase):
         finally:
             db.close()
 
+    def test_complete_multi_actor_revision_is_a_stable_event_key(self):
+        event = {**self.event, "family": "health", "actors": [1, 2], "phase": "injury",
+                 "facts": {"action": "injury_event"}}
+        self.assertTrue(event_registry.complete(event))
+        self.assertFalse(event_registry.complete({**event, "actors": [1, 1]}))
+        self.assertFalse(event_registry.complete({**event, "actors": [1, True]}))
+
     def test_uncertain_publication_is_not_evidence_of_confirmed_duplicate(self):
         db = event_registry.Registry(self.out / "event_registry.sqlite3")
         try:
@@ -131,31 +147,26 @@ class EventRegistryQA(unittest.TestCase):
         assert not accept(body)
         return body, "offline", []
 
-    def test_process_deduplicates_published_revision_after_first_source_leaves_feed(self):
+    def test_untyped_story_cannot_seed_published_receipt_or_send(self):
         with patch.object(publish, "tg_send", return_value=(True, "message_id 50")) as send:
             self.process_story(self.story, self.accepted_write)
-            # Free model prose is now review-only. Explicit editor approval seeds the published ledger.
-            self.assertTrue(publish.publish("2026-11-03", ["tg"], kind="story-a")[0])
-            later = copy.deepcopy(self.story)
-            later.eid, later.slug = "b", "followup"
-            write = Mock(side_effect=AssertionError("same facts must not call model again"))
-            self.process_story(later, write)
-            write.assert_not_called()
-            self.assertEqual(send.call_count, 1)
-            self.assertFalse(publish.draft_path("2026-11-03", "story-b").exists())
+            draft = json.loads(publish.draft_path("2026-11-03", "story-a").read_text(encoding="utf-8"))
+            self.assertTrue(draft["data"]["editorial_task"])
+            self.assertFalse(draft["data"]["auto"])
+            self.assertFalse(publish.publish("2026-11-03", ["tg"], kind="story-a")[0])
+            self.assertEqual(send.call_count, 0)
 
-    def test_process_preserves_partial_followup_as_review_even_with_published_actor(self):
+    def test_untyped_followup_remains_editorial_task(self):
         with patch.object(publish, "tg_send", return_value=(True, "message_id 50")) as send:
             self.process_story(self.story, self.accepted_write)
-            self.assertTrue(publish.publish("2026-11-03", ["tg"], kind="story-a")[0])
             later = copy.deepcopy(self.story)
             later.eid, later.slug = "b", "followup"
             later.text = "Hutton signed a PTO. Conditions are being discussed."
             self.process_story(later, self.accepted_write)
             draft = json.loads(publish.draft_path("2026-11-03", "story-b").read_text(encoding="utf-8"))
             self.assertFalse(draft["data"]["auto"])
-            self.assertEqual(draft["data"]["event_decision"]["status"], "review")
-            self.assertEqual(send.call_count, 1)
+            self.assertTrue(draft["data"]["editorial_task"])
+            self.assertEqual(send.call_count, 0)
 
     def test_database_rebuild_uses_frozen_receipt_not_changed_draft_facts(self):
         path = self.draft("story-first")
@@ -230,3 +241,4 @@ class ChannelKeyQA(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

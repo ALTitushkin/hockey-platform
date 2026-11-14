@@ -460,7 +460,8 @@ def card(s: Story, body: str, names: dict, ours: set[int], goalies: list[dict], 
          msk: str, path: Path, packet: dict | None = None) -> Path:
     if packet:
         spec = fact_packet.card_spec(packet)
-        return render_story_card(spec["label"], spec["teams"], spec["hero"], spec["hero_id"] in ours,
+        hero_ids = spec["hero_id"] if isinstance(spec["hero_id"], list) else [spec["hero_id"]]
+        return render_story_card(spec["label"], spec["teams"], spec["hero"], any(pid in ours for pid in hero_ids),
                                  spec["headline"], None, teams_ru, msk, path)
     head = body.partition("\n\n")[0]
     hero = hero_of(s, names, ours, headline=head)
@@ -564,15 +565,35 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         draft_msk = state.setdefault("draft_dates", {}).get(s.eid, msk)
         # После сбоя доставки повторяем тот же черновик: уже отправленные каналы
         # пропустит publish(), модель и источник повторно не вызываются.
-        if publish.draft_path(draft_msk, kind).exists():
-            ok, info = deliver(draft_msk, kind)
-            log.append(f"инфоповод {s.slug} ({s.kind}): {'ок' if ok else 'ошибка'} — {info}")
-            if ok:
-                state["seen"][s.eid] = now.isoformat()
-                queued.pop(s.eid, None)
-                report_repeat(s, state, now)
-                save_state(state)
-            continue
+        existing_path = publish.draft_path(draft_msk, kind)
+        if existing_path.exists():
+            existing = json.loads(existing_path.read_text(encoding="utf-8"))
+            existing_data = existing.get("data") or {}
+            candidate_legacy = (not existing_data.get("fact_packet")
+                                and not existing_data.get("editorial_task")
+                                and not existing.get("published") and not existing.get("rejected")
+                                and not existing.get("editorial_closed"))
+            unresolved_delivery = False
+            if candidate_legacy:
+                ledger = event_registry.Registry(publish.OUT / "event_registry.sqlite3")
+                try:
+                    ledger.sync_archive(publish.OUT)
+                    unresolved_delivery = bool(ledger.document_statuses(existing_path.name)
+                                               & {"published", "sending", "uncertain"})
+                finally:
+                    ledger.close()
+            unsafe_legacy = candidate_legacy and not unresolved_delivery
+            if unsafe_legacy:
+                log.append(f"инфоповод {s.slug}: старый свободный черновик заменяется задачей с источником")
+            else:
+                ok, info = deliver(draft_msk, kind)
+                log.append(f"инфоповод {s.slug} ({s.kind}): {'ок' if ok else 'ошибка'} — {info}")
+                if ok:
+                    state["seen"][s.eid] = now.isoformat()
+                    queued.pop(s.eid, None)
+                    report_repeat(s, state, now)
+                    save_state(state)
+                continue
         try:
             s.text, s.en = refreshed[s.eid] if s.eid in refreshed else body_text(fetch(s.url))
             s.mentioned = set(s.en)
@@ -631,8 +652,40 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             body, source, attempts = (None if errors else body), "fact_template_v1", errors
             notes = [] if decision["status"] != "review" else decision["reasons"]
         else:
-            body, source, attempts = write(lambda _p, s=s, names=names: prompt_for(s, names, teams_ru, ours), accept)
-            notes.append("свободный пересказ: утверждения требуют редакторского подтверждения")
+            # Unsupported semantics must not be presented as a publishable draft.
+            # Keep an actionable source task for the editor; do not run the
+            # unconstrained paraphraser or render its potentially empty card.
+            body, source = None, "editorial_task"
+            attempts = ["нет проверенного шаблона фактов; требуется редакторская формулировка",
+                        "личность/клуб и связь фактов не подтверждены типизированным источником"]
+            notes.extend(attempts)
+        if source == "editorial_task":
+            variant = "редакторская задача · нет проверенного шаблона"
+            caption = (f"📝 <b>Нужна редакторская сборка</b>\n\n"
+                       f"{html.escape(s.headline)}\n\n"
+                       f"Причина: {html.escape('; '.join(attempts))}\n\n"
+                       f"🔗 <a href=\"{s.link}\">Открыть источник NHL.com</a>")
+            data = {"slug": s.slug, "auto": False, "event_revision": revision,
+                    "event_decision": decision,
+                    "source_event": {"kind": s.kind, "pids": sorted(s.pids), "teams": sorted(s.teams),
+                                     "headline": s.headline, "date": s.date.isoformat(),
+                                     "text": s.text[:20000], "text_truncated": len(s.text) > 20000,
+                                     "en": s.en},
+                    "source_snapshot": fact_packet.snapshot(s), "editorial_task": True}
+            if s.kind == "trade":
+                data["trade_facts"] = trade_facts(s).data()
+            publish.save_draft(draft_msk, caption, ["требуется редакторская сборка"], variant, None,
+                               kind=kind, data=data)
+            source_watch.remember(state, parsed[s.eid][1], s, now)
+            state["draft_dates"][s.eid] = draft_msk
+            save_state(state)
+            ok, info = deliver(draft_msk, kind)
+            log.append(f"инфоповод {s.slug}: редакторская задача без публикации — {info}")
+            if ok:
+                state["seen"][s.eid] = now.isoformat()
+                queued.pop(s.eid, None)
+                save_state(state)
+            continue
         if not body:  # новость есть, а поста нет — владелец должен знать
             failures = state.setdefault("failures", {})
             failures[s.eid] = failures.get(s.eid, 0) + 1
@@ -688,3 +741,4 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             save_state(state)
     save_state(state)
     return log
+
