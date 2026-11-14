@@ -3,7 +3,12 @@
 from news.digest import SUFFIX
 
 
-def night_lead(reports, players, teams):
+def night_lead(reports, players, teams, highlights=None):
+    # The lead must describe the same game as the selected headline highlight.
+    # Otherwise a goalie from another game can hijack the post's opening.
+    if highlights:
+        pid = highlights[0][0]
+        reports = [r for r in reports if any(x.pid == pid for x in r.skaters + r.goalies)]
     candidates = [(g.saves, r.game_id, g, r) for r in reports for g in r.goalies
                   if g.decision == "W" and str(g.pid) in players]
     if not candidates:
@@ -57,3 +62,4 @@ def comeback_text(event, teams):
     x, y = event["final"]
     return (f"{teams[event['winner']]} отыгрался с {a}:{b}. "
             f"{teams[event['winner']]} — {teams[event['loser']]} {x}:{y}{SUFFIX.get(event['period'], '')}.")
+

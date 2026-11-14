@@ -1,6 +1,5 @@
 """Small evidence-backed templates. Unknown prose stays review, never guessed by the renderer."""
 
-import copy
 import hashlib
 import html
 import json
@@ -100,30 +99,58 @@ def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | N
     if len(sections) != 1:
         return None
     club, text = sections[0]
-    # Select a single sentence, never transfer another player's medical context.
-    lead = text.split("\n\n")[0]
-    if any(other != pid and re.search(r"\b" + re.escape(name) + r"\b", lead, re.I)
-           for other, name in story.en.items()):
-        return None
-    selected = copy.copy(story)
-    selected.headline = "Selected section"
-    selected.text = lead
-    selected.pids, selected.teams = {pid}, {club}
-    packet = extract(selected, names, teams, club_names)
-    if packet:
-        packet["source_hash"] = snapshot(story)["content_hash"]
-    return packet
+    # The source is a league-wide report; bind only its first factual sentence
+    # for this uniquely identified headline actor and club section. Later injury
+    # history, stats and quotes must not leak into the new event.
+    lead = text.split("\n\n")[0].strip()
+    english = story.en[pid]
+    subject = r"[-\s]+".join(re.escape(part) for part in re.split(r"[-\s]+", english))
+    weekday = "(" + "|".join(WEEKDAYS) + ")"
+    patterns = (
+        ("season_debut", "confirmed", rf"{subject} made his season debut "
+         rf"(?:for the {re.escape(club_names[club][1])} )?against .+? on {weekday}"),
+        ("expected_debut", "expected",
+         rf"{subject} is expected to make his season debut "
+         rf"(?:for the {re.escape(club_names[club][1])} )?against .+? on {weekday}"),
+        ("expected_debut", "expected",
+         rf"{subject} could make his season debut "
+         rf"(?:for the {re.escape(club_names[club][1])} )?against .+? on {weekday}"),
+        ("expected_return", "expected",
+         rf"{subject} will return to the lineup for (?:the )?{re.escape(club_names[club][1])} "
+         rf"against .+? on {weekday}"),
+    )
+    for kind, modality, pattern in patterns:
+        match = re.match(pattern + r"(?:\s*\([^)]*\))?[.,]?", lead, re.I)
+        if not match:
+            continue
+        day_word = match[1].lower()
+        target = WEEKDAYS[day_word]
+        if modality == "expected":
+            delta = (target - story.date.weekday()) % 7
+            if delta > 3:
+                continue
+            action_day = story.date.date() + timedelta(days=delta)
+        else:
+            action_day = story.date.date() - timedelta(days=(story.date.weekday() - target) % 7)
+        packet = {"version": 1, "source_hash": snapshot(story)["content_hash"],
+                  "claims": [{"subject": pid, "club": club, "kind": kind, "modality": modality,
+                              "date": action_day.isoformat(), "evidence": match[0].strip()}],
+                  "actor_name": names[str(pid)]["ru"], "club_name": teams[club],
+                  "club_alias": list(club_names[club])}
+        return packet
+    return None
 
 
 def debut(story, pid, club, record, teams, club_names):
     """Explicit season debut, preserving expected versus completed action."""
     subject = r"[-\s]+".join(re.escape(p) for p in re.split(r"[-\s]+", story.en[pid]))
-    nickname = club_names[club][1]
+    city, nickname = club_names[club]
+    club_name = r"(?:" + "|".join(re.escape(x) for x in (nickname, " ".join((city, nickname))) if x) + r")"
     lead = story.text.strip().split("\n\n")[0]
     if re.search(r"\b(?:but|not|cancelled|canceled|ruled out|setback|initially)\b|\b20\d{2}\b", lead, re.I):
         return None
-    match = re.match(subject + r" (?P<action>made|is expected to make|could make) his season debut "
-                         r"for the " + re.escape(nickname) + r"\s+against [^.\n]+?\bon ("
+    match = re.match(subject + r" (?P<action>made|will make|is expected to make|could make) his season debut "
+                         r"(?:for (?:the )?" + club_name + r"\s+)?against [^.\n]+?\bon ("
                          + "|".join(WEEKDAYS) + r")(?:\s*\([^\n]*?\))?\.(?=\s|$)", lead, re.I)
     if not match:
         return None
@@ -139,10 +166,54 @@ def debut(story, pid, club, record, teams, club_names):
             "actor_name": record["ru"], "club_name": teams[club], "club_alias": list(club_names[club])}
 
 
+def paired_injury(story, names, teams, club_names):
+    """A narrow two-player injury lead: both named actors, one club and one dated game fact."""
+    if story.kind not in ("injury", "injury_minor") or len(story.pids) != 2 or len(story.teams) != 1:
+        return None
+    club = next(iter(story.teams))
+    if club not in teams or club not in club_names:
+        return None
+    lead = story.text.strip().split("\n\n")[0]
+    if re.search(r"\b20\d{2}\b|\b(?:initially|later|returned|but)\b", lead, re.I):
+        return None
+    actors = []
+    for pid in story.pids:
+        english, record = story.en.get(pid), names.get(str(pid))
+        if not english or not record or not record.get("ru") or english not in lead:
+            return None
+        actors.append((lead.index(english), pid, english, record["ru"]))
+    actors.sort()
+    (_, first, english_a, ru_a), (_, second, english_b, ru_b) = actors
+    subject_a = r"[-\s]+".join(re.escape(x) for x in re.split(r"[-\s]+", english_a))
+    subject_b = r"[-\s]+".join(re.escape(x) for x in re.split(r"[-\s]+", english_b))
+    city, nickname = club_names[club]
+    owner = r"(?:the\s+)?" + re.escape(" ".join(x for x in (city, nickname) if x))
+    weekday = "(" + "|".join(WEEKDAYS) + ")"
+    pattern = (rf"{subject_a}\s+and\s+{subject_b}\s+each sustained a lower-body injury "
+               rf"in the second period of a \d+-\d+ (?:overtime )?loss for {owner} "
+               rf"against .+? on {weekday}")
+    match = re.match(pattern + r"[.,]?", lead, re.I)
+    if not match:
+        return None
+    day_word = match[1].lower()
+    action_day = story.date.date() - timedelta(days=(story.date.weekday() - WEEKDAYS[day_word]) % 7)
+    evidence = match[0].strip()
+    actor_names = {str(first): ru_a, str(second): ru_b}
+    return {"version": 1, "source_hash": snapshot(story)["content_hash"],
+            "claims": [{"subject": pid, "club": club, "kind": "injury_event", "modality": "confirmed",
+                        "date": action_day.isoformat(), "evidence": evidence}
+                       for pid in (first, second)],
+            "actor_name": f"{ru_a} и {ru_b}", "actor_names": actor_names,
+            "club_name": teams[club], "club_alias": list(club_names[club])}
+
+
 def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> dict | None:
     """One actor/club and explicit action wording only; multiple health events remain review."""
     if "status report" in story.headline.lower():
         return report_packet(story, names, teams, club_names or {})
+    paired = paired_injury(story, names, teams, club_names or {})
+    if paired:
+        return paired
     if len(story.pids) != 1 or len(story.teams) != 1:
         return None
     if getattr(story, "kind", None) not in ("return", "injury", "injury_minor", "signing"):
@@ -172,6 +243,20 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
         return None
     city, nickname = club_names[club]
     owner = re.escape(" ".join(part for part in (city, nickname) if part))
+    if story.kind == "return":
+        lead = story.text.strip().split("\n\n")[0]
+        city_names = {city, "LA" if club == "LAK" else city}
+        club_forms = "|".join(re.escape(" ".join(x for x in (name, nickname) if x))
+                               for name in city_names)
+        activation = re.fullmatch(r"(?:The\s+)?(?:" + club_forms + r")\s+have activated\s+"
+                                 r"(?:forward\s+|defenseman\s+|goaltender\s+)?\*{0,2}" + re.escape(english) +
+                                 r"\*{0,2}\s+from injured reserve(?:\s*\(IR\))?\.?", lead, re.I)
+        if activation:
+            return {"version": 1, "source_hash": snapshot(story)["content_hash"],
+                    "claims": [{"subject": pid, "club": club, "kind": "activation", "modality": "confirmed",
+                                "date": story.date.date().isoformat(), "evidence": activation[0]}],
+                    "actor_name": record["ru"], "club_name": teams[club],
+                    "club_alias": list(club_names[club])}
     if story.kind == "signing":
         lead = re.split(r"(?<=[.!?])\s+|\n\s*\n", story.text.strip())[0]
         contract = re.fullmatch(r"(?:The\s+)?" + owner + r"\s+announced\s+today\s+that\s+"
@@ -186,8 +271,8 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
                             "date": story.date.date().isoformat(), "years": years,
                             "phase": "entry_level" if contract[2] else "standard", "evidence": lead}],
                 "actor_name": record["ru"], "club_name": teams[club], "club_alias": [city, nickname]}
-    if not re.search(subject + r"\s+(?:is\s+)?(?:(?:likely|expected)\s+to\s+)?"
-                     r"(?:return to|rejoin|practiced with|practices with|of)\s+(?:the\s+)?" + owner,
+    if not re.search(subject + r"\s+(?:is\s+)?(?:(?:likely|expected)\s+to\s+|could\s+|will\s+)?"
+                     r"(?:return(?: to| for)|rejoin|practiced with|practices with|of)\s+(?:the\s+)?" + owner,
                      story.text, re.I):
         return None
     claims = []
@@ -196,7 +281,7 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
         # Do not interpret quotations, negatives or reported historical anecdotes as current action.
         if any(char in sentence for char in ('"', '“', '”')) or re.search(r"\bnot\b|\bno\b", sentence, re.I):
             continue
-        match = re.search(r"\b" + subject + r"\s+(?:is\s+)?(?:likely|expected)\s+to\s+"
+        match = re.search(r"\b" + subject + r"\s+(?:is\s+)?(?:(?:likely|expected)\s+to\s+|could\s+|will\s+)"
                           r"(?:return|rejoin)[^.\n]{0,180}?\bon\s+(" + "|".join(WEEKDAYS) + r")\b",
                           sentence, re.I)
         kind = "expected_return"
@@ -212,6 +297,8 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
         weekday = WEEKDAYS[match[1].lower()]
         delta = (weekday - story.date.weekday()) % 7 if kind == "expected_return" else -(
             (story.date.weekday() - weekday) % 7)
+        if kind == "expected_return" and delta > 3:
+            continue
         action_day = story.date.date() + timedelta(days=delta)
         claims.append({"subject": pid, "club": club, "kind": kind, "date": action_day.isoformat(),
                        "modality": "expected" if kind == "expected_return" else "confirmed",
@@ -241,6 +328,12 @@ def render(packet: dict) -> str:
                   else "провёл первый матч в сезоне")
         return (f"{packet['actor_name']} {action} {day(claims[0])}\n\n"
                 f"Команда — «{packet['club_name']}».")
+    if claims[0]["kind"] == "injury_event":
+        return (f"{packet['actor_name']} получили повреждения в матче {day(claims[0])}\n\n"
+                f"Оба игрока выступают за «{packet['club_name']}».")
+    if claims[0]["kind"] == "activation":
+        return (f"{packet['actor_name']} активирован из списка травмированных {day(claims[0])}\n\n"
+                f"Клуб «{packet['club_name']}» вернул игрока в состав.")
     if expectation:
         headline = f"{packet['actor_name']} может вернуться в состав {day(expectation)}"
     elif claims[0]["kind"] == "left_game":
@@ -265,14 +358,17 @@ def revision(packet: dict) -> dict:
     """Use the existing ledger, with modality preserved in phase/facts."""
     main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), packet["claims"][0])
     signing = main["kind"] == "signing"
-    return {"version": 1, "family": "signing" if signing else "health", "actors": [main["subject"]],
+    actors = sorted({claim["subject"] for claim in packet["claims"]})
+    return {"version": 1, "family": "signing" if signing else "health", "actors": actors,
             "clubs": [main["club"]], "effective_date": main["date"],
-            "date_basis": "explicit" if signing else "action_weekday",
+            "date_basis": ("explicit" if signing else
+                           ("publication_date" if main["kind"] == "activation" else "action_weekday")),
             "phase": (main["phase"] if signing else
-                      {"season_debut": "return", "expected_debut": "expected_return"}.get(main["kind"], main["kind"])),
+                      {"season_debut": "return", "expected_debut": "expected_return",
+                       "activation": "activated", "injury_event": "injury"}.get(main["kind"], main["kind"])),
             "facts": ({"years": main["years"]} if signing else
                       {"modality": main["modality"], **({"action": main["kind"]}
-                       if main["kind"] in ("season_debut", "expected_debut") else {})}),
+                       if main["kind"] in ("season_debut", "expected_debut", "injury_event") else {})}),
             "complete": True, "reasons": [], "references": []}
 
 
@@ -282,8 +378,11 @@ def caption(packet: dict, source: dict, msk: str) -> str:
     parsed = date.fromisoformat(msk)
     head, _, body = render(packet).partition("\n\n")
     signing = packet["claims"][0]["kind"] == "signing"
-    injury = packet["claims"][0]["kind"] == "left_game"
-    emoji, tag = ("✍️", "#Контракты") if signing else (("🚑", "#Травмы") if injury else ("✅", "#Возвращения"))
+    injury = packet["claims"][0]["kind"] in ("left_game", "injury_event")
+    debut = packet["claims"][0]["kind"] in ("season_debut", "expected_debut")
+    emoji, tag = (("✍️", "#Контракты") if signing else
+                  (("🚑", "#Травмы") if injury else
+                   (("🏒", "#Дебюты") if debut else ("✅", "#Возвращения"))))
     return (f"{emoji} <b>{html.escape(head)}</b>\n\n{html.escape(body)}\n\n"
             f"🔗 <a href=\"{html.escape(source['url'], quote=True)}\">NHL.com</a>\n"
             f"⚡ {tag} · {parsed.day} {MONTHS[parsed.month - 1]}")
@@ -304,9 +403,14 @@ def card_spec(packet: dict) -> dict:
     """Render inputs come from the same claims as the caption, never from word matching."""
     claim = packet["claims"][0]
     kind = claim["kind"]
-    return {"version": 1, "hero_id": claim["subject"], "hero": packet["actor_name"],
+    label = ("КОНТРАКТ" if kind == "signing" else
+             ("ТРАВМА" if kind in ("left_game", "injury_event") else
+              ("ДЕБЮТ" if kind in ("season_debut", "expected_debut") else "ВОЗВРАЩЕНИЕ")))
+    actor_ids = sorted({item["subject"] for item in packet["claims"]})
+    return {"version": 1, "hero_id": actor_ids[0] if len(actor_ids) == 1 else actor_ids,
+            "hero": packet["actor_name"],
             "teams": [claim["club"]], "headline": render(packet).partition("\n\n")[0],
-            "label": "КОНТРАКТ" if kind == "signing" else ("ТРАВМА" if kind == "left_game" else "ВОЗВРАЩЕНИЕ")}
+            "label": label}
 
 
 def verify(packet: dict, source: dict, body: str) -> list[str]:
@@ -316,7 +420,8 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
     claims = packet.get("claims")
     if (not isinstance(claims, list) or not claims or any(not isinstance(c, dict) for c in claims)
             or any(c.get("kind") not in ("practice", "expected_return", "signing", "left_game",
-                                          "season_debut", "expected_debut") for c in claims)):
+                                          "season_debut", "expected_debut", "activation", "injury_event")
+                   for c in claims)):
         return ["нет поддержанных утверждений"]
     required = ("subject", "club", "kind", "date", "modality", "evidence")
     if any(any(field not in c for field in required) or type(c["subject"]) is not int
@@ -340,11 +445,14 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
         return ["текст изменён вне проверенного шаблона"]
     try:
         original = restore(source)
-        actor, club = packet["claims"][0]["subject"], packet["claims"][0]["club"]
-        rebuilt = extract(original, {str(actor): {"ru": packet["actor_name"]}},
-                          {club: packet["club_name"]}, {club: packet["club_alias"]})
+        claims = packet["claims"]
+        club = claims[0]["club"]
+        actor_names = packet.get("actor_names") or {str(claims[0]["subject"]): packet["actor_name"]}
+        names = {str(claim["subject"]): {"ru": actor_names[str(claim["subject"])]} for claim in claims}
+        rebuilt = extract(original, names, {club: packet["club_name"]}, {club: packet["club_alias"]})
     except (KeyError, TypeError, ValueError, IndexError):
         return ["неполный контракт фактов/источника"]
     if rebuilt != packet:
         return ["утверждения не соответствуют повторному разбору доказательств"]
     return []
+

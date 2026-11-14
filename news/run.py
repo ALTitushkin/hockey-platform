@@ -101,7 +101,7 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
     if chain is not None:
         # Causal/team attribution is rendered from game relations. Membership-only
         # lexical guards cannot validate unrestricted generated match narratives.
-        phrase = match_facts.night_lead(reports, players, teams)
+        phrase = match_facts.night_lead(reports, players, teams, highlights)
         if phrase:
             variant = "шаблон + вводная по фактам матча"
     # Модели дали полный текст по матчам (render_night) — ей нужен контекст. В канал идёт подпись
@@ -589,3 +589,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

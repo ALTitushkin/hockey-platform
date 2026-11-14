@@ -7,11 +7,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from news import llm, publish, run, stories
+from news import publish, run, stories
 
 
 class RetryCases(unittest.TestCase):
-    def test_model_failure_retries_after_story_disappears_from_feed(self):
+    def test_unsupported_story_is_saved_as_source_task_without_model_retry(self):
         now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
         story = stories.Story("event", "event", "Player signs contract", "", now,
                               "signing", set(), set(), True)
@@ -20,20 +20,22 @@ class RetryCases(unittest.TestCase):
                 patch.object(stories, "STATE", Path(tmp) / "state.json"), \
                 patch.object(stories, "parse_item", return_value=story), \
                 patch.object(stories, "body_text", return_value=("source", {})), \
-                patch.object(stories, "card", return_value=Path(tmp) / "card.png"), \
                 patch.object(stories, "check", return_value=([], [])):
-            write = Mock(side_effect=[(None, "fake", []), ("Heading\n\nBody", "fake", [])])
+            write = Mock(side_effect=AssertionError("unsupported stories are not paraphrased"))
             deliver = Mock(return_value=(True, "ok"))
             args = (lambda url: feed, {}, {}, lambda p, r: {}, write, lambda: [], deliver, lambda text: None)
             stories.process(now, *args)
-            self.assertIn("event", stories.load_state(now)["pending_items"])
+            draft = json.loads(publish.draft_path("2026-10-31", "story-event").read_text(encoding="utf-8"))
+            self.assertTrue(draft["data"]["editorial_task"])
+            self.assertIsNone(draft["card"])
             feed["items"] = []
             later = now + timedelta(minutes=30)
             stories.process(later, *args)
-            deliver.assert_called_once_with("2026-10-31", "story-event")
+            self.assertEqual(deliver.call_count, 1)
             state = stories.load_state(later)
             self.assertIn("event", state["seen"])
             self.assertNotIn("event", state["pending_items"])
+            write.assert_not_called()
 
     def test_two_status_reports_with_same_hero_keep_both_for_fact_review(self):
         now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
@@ -46,16 +48,15 @@ class RetryCases(unittest.TestCase):
                 patch.object(stories, "STATE", Path(tmp) / "state.json"), \
                 patch.object(stories, "parse_item", side_effect=lambda raw: records[raw["id"]]), \
                 patch.object(stories, "body_text", return_value=("source", {})), \
-                patch.object(stories, "card", return_value=Path(tmp) / "card.png"), \
                 patch.object(stories, "check", return_value=([], [])):
             deliver = Mock(return_value=(True, "ok"))
-            write = Mock(return_value=("Heading\n\nBody", "fake", []))
+            write = Mock(side_effect=AssertionError("unsupported stories are not paraphrased"))
             stories.process(now + timedelta(minutes=2),
                             lambda url: {"items": [{"id": "first"}, {"id": "second"}]},
                             {}, {}, lambda p, r: {}, write, lambda: [], deliver, lambda text: None)
             self.assertEqual(deliver.call_args_list, [unittest.mock.call("2026-10-31", "story-first"),
                                                       unittest.mock.call("2026-10-31", "story-second")])
-            self.assertEqual(write.call_count, 2)
+            write.assert_not_called()
             self.assertIn("second", stories.load_state(now)["seen"])
 
     def test_partial_delivery_across_midnight_uses_original_draft(self):
@@ -66,9 +67,8 @@ class RetryCases(unittest.TestCase):
                 patch.object(stories, "STATE", Path(tmp) / "state.json"), \
                 patch.object(stories, "parse_item", return_value=story), \
                 patch.object(stories, "body_text", return_value=("source", {})), \
-                patch.object(stories, "card", return_value=Path(tmp) / "card.png"), \
                 patch.object(stories, "check", return_value=([], [])):
-            write = Mock(return_value=("Heading\n\nBody", "fake", []))
+            write = Mock(side_effect=AssertionError("unsupported stories are not paraphrased"))
             calls = []
 
             def deliver(msk, kind):
@@ -89,7 +89,7 @@ class RetryCases(unittest.TestCase):
             process(now)
             process(now + timedelta(minutes=2))
             self.assertEqual(calls, ["2026-10-31", "2026-10-31"])
-            self.assertEqual(write.call_count, 1)
+            write.assert_not_called()
             self.assertIn("event", stories.load_state(now + timedelta(minutes=2))["seen"])
 
     def test_model_outage_retries_without_repeated_owner_notifications(self):
@@ -101,15 +101,15 @@ class RetryCases(unittest.TestCase):
                 patch.object(stories, "parse_item", return_value=story), \
                 patch.object(stories, "body_text", return_value=("source", {})):
             notify = Mock()
-            write = Mock(return_value=(None, "fake", []))
-            deliver = Mock()
+            write = Mock(side_effect=AssertionError("unsupported stories are not paraphrased"))
+            deliver = Mock(return_value=(True, "ok"))
             for minutes in (0, 15, 30, 359, 720):
                 stories.process(now + timedelta(minutes=minutes), lambda url: {"items": [{}]},
                                 {}, {}, lambda p, r: {}, write, lambda: [], deliver, notify)
-            self.assertEqual(write.call_count, 4)
-            self.assertEqual(notify.call_count, 2)
-            deliver.assert_not_called()
-            self.assertNotIn("event", stories.load_state(now + timedelta(hours=12))["seen"])
+            write.assert_not_called()
+            self.assertEqual(deliver.call_count, 1)
+            self.assertEqual(notify.call_count, 0)
+            self.assertIn("event", stories.load_state(now + timedelta(hours=12))["seen"])
 
     def test_source_excerpt_keeps_full_late_paragraph_about_our_player(self):
         now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
@@ -123,7 +123,7 @@ class RetryCases(unittest.TestCase):
         self.assertIn(needed, excerpt)
         self.assertIn("Opening paragraph.", excerpt)
 
-    def test_editorial_skip_notifies_without_closing_story(self):
+    def test_unsupported_story_is_actionable_without_model_skip(self):
         now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
         story = stories.Story("event", "event", "Player signs contract", "", now,
                               "signing", set(), set(), True)
@@ -131,19 +131,19 @@ class RetryCases(unittest.TestCase):
                 patch.object(stories, "STATE", Path(tmp) / "state.json"), \
                 patch.object(stories, "parse_item", return_value=story), \
                 patch.object(stories, "body_text", return_value=("source", {})):
-            notify, deliver = Mock(), Mock()
+            notify, deliver = Mock(), Mock(return_value=(True, "ok"))
 
-            def write(prompt, accept):
-                return llm.ask(prompt, accept, stories.clean, chain="fake",
-                               providers={"fake": lambda text: "SKIP: нет нового события"})
+            write = Mock(side_effect=AssertionError("unsupported stories are not paraphrased"))
 
             stories.process(now, lambda url: {"items": [{}]}, {}, {}, lambda p, r: {},
                             write, lambda: [], deliver, notify)
-            self.assertNotIn("event", stories.load_state(now)["seen"])
-            self.assertIn("event", stories.load_state(now)["pending_items"])
-            notify.assert_called_once()
-            self.assertIn("Инфоповод без поста", notify.call_args.args[0])
-            deliver.assert_not_called()
+            self.assertIn("event", stories.load_state(now)["seen"])
+            self.assertNotIn("event", stories.load_state(now)["pending_items"])
+            draft = json.loads(publish.draft_path("2026-10-31", "story-event").read_text(encoding="utf-8"))
+            self.assertTrue(draft["data"]["editorial_task"])
+            write.assert_not_called()
+            notify.assert_not_called()
+            deliver.assert_called_once()
 
     def test_rejected_regular_post_is_not_redelivered(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(publish, "OUT", Path(tmp)):
@@ -167,3 +167,4 @@ class RetryCases(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

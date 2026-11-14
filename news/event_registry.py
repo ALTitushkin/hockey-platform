@@ -35,9 +35,9 @@ def complete(event):
         return False
     if event.get("family") not in ("signing", "health") or not isinstance(event.get("facts"), dict):
         return False
-    if not isinstance(event.get("actors"), list) or len(event["actors"]) != 1:
-        return False
-    if type(event["actors"][0]) is not int or event["actors"][0] <= 0:
+    if (not isinstance(event.get("actors"), list) or not 1 <= len(event["actors"]) <= 8
+            or any(type(actor) is not int or actor <= 0 for actor in event["actors"])
+            or len(set(event["actors"])) != len(event["actors"])):
         return False
     if not isinstance(event.get("clubs"), list) or len(event["clubs"]) != 1:
         return False
@@ -49,10 +49,11 @@ def complete(event):
     except (ValueError, TypeError, KeyError):
         return False
     allowed = {"signing": {"pto", "standard", "entry_level", "terminated"},
-               "health": {"surgery", "practice", "expected_return", "activated", "return", "left_game", "unavailable"}}
+               "health": {"surgery", "practice", "expected_return", "activated", "return", "left_game",
+                          "unavailable", "injury"}}
     return (isinstance(event.get("phase"), str) and event["phase"] in allowed[event["family"]]
             and not event.get("reasons")
-            and event.get("date_basis") in ("explicit", "action_weekday"))
+            and event.get("date_basis") in ("explicit", "action_weekday", "publication_date"))
 
 
 def links(text):
@@ -222,6 +223,11 @@ class Registry:
                 self.db.execute("INSERT OR IGNORE INTO revisions VALUES(?,?,?)",
                                 (revision_key(event), topic_key(event), canonical(event)))
 
+    def document_statuses(self, document):
+        """Delivery states attached to a draft file, including unresolved crash outcomes."""
+        return {row[0] for row in self.db.execute(
+            "SELECT status FROM publications WHERE document=?", (document,))}
+
     def bind_reference(self, event, text):
         related = []
         for slug in links(text):
@@ -340,3 +346,4 @@ class Registry:
                 raise ValueError("No unresolved publication claim")
             self.db.execute("INSERT INTO resolutions(revision,channel,outcome,note) VALUES(?,?,?,?)",
                             (revision_key(event), channel, "sent" if sent else "not_sent", note))
+

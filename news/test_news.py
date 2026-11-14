@@ -342,7 +342,7 @@ def test_tonight():
                                  {"TBL": [(5, "Кучеров", "травма"), (4, "Шестёркин", "не играл прошлый матч")]}, items)
     assert "🔥 <b>Интриги вечера</b>\n🎯 <b>Капризов</b> — 2 гола до 250 в НХЛ · 02:00" in text
     assert "🚑 <b>Не сыграют</b>\nКучеров — травма" in text
-    assert "❔ <b>Под вопросом</b>\nШестёркин — не играл прошлый матч" in text
+    assert "ℹ️ <b>Не играли прошлый матч</b>\nШестёркин" in text
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
 
     # хук: играет наш полевой — «кто из наших забьёт»; только вратари или никого — прогноз на матч
@@ -649,16 +649,19 @@ def test_stories():
                                lambda msk, kind: (True, sent.append(kind) or "ок"), told.append)
 
     log = run(good)
-    assert sent == ["story-nhl"] and "(signing): ок" in log[0]
+    assert sent == ["story-nhl"] and "редакторская задача без публикации — ок" in log[0]
     d = json.loads(publish.draft_path("2026-10-25", "story-nhl").read_text(encoding="utf-8"))
     # No explicit action date: retain the news for review, not automatic publication.
-    assert d["issues"] == [] and not d["data"]["auto"] and "⚡ #Контракты" in d["text"]
+    assert d["issues"] == ["требуется редакторская сборка"] and not d["data"]["auto"]
+    assert d["data"]["editorial_task"] and "Нужна редакторская сборка" in d["text"] and d["card"] is None
     assert d["data"]["event_decision"]["status"] == "review"
     assert run(good) == []  # второй проход: новость уже видели
     stories.save_state({"since": (now - timedelta(hours=6)).isoformat(), "seen": {}})
     publish.draft_path("2026-10-25", "story-nhl").unlink()  # отдельная попытка генерации без старого черновика
     run(good.replace("850", "900"))
-    assert told and "Инфоповод без поста" in told[0] and len(sent) == 1
+    assert len(sent) == 2 and "редакторская задача без публикации" in log[-1]
+    refreshed = json.loads(publish.draft_path("2026-10-25", "story-nhl").read_text(encoding="utf-8"))
+    assert refreshed["data"]["editorial_task"] and refreshed["card"] is None
     assert publish.title("story-nhl") == "«Инфоповод»" and publish.title("night") == "«Ночь наших»"
 
 
@@ -755,3 +758,4 @@ if __name__ == "__main__":
     for t in tests:
         t()
     print(f"news: {len(tests)} тестов — ок")
+

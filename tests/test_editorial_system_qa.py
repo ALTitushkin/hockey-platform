@@ -39,29 +39,26 @@ class EditorialSystemQA(unittest.TestCase):
                 self.receipt(**changes)
                 self.assertIsNone(story_provenance.published_reference(self.source, self.out, "2026-11-04"))
 
-    def test_hutton_followup_is_saved_for_review_not_auto_published(self):
+    def test_hutton_followup_is_saved_as_source_task_without_unverified_copy_or_card(self):
         self.receipt()
-        body = "Бен Хаттон подписал пробный контракт с Айлендерс\n\nЗащитник провёл тренировку."
-        def write(prompt, accept):
-            self.assertFalse(accept(body))
-            return body, "offline", []
+        write = Mock(side_effect=AssertionError("untyped follow-up is not paraphrased"))
         with (
             patch.object(publish, "OUT", self.out),
             patch.object(stories, "STATE", self.out / "state.json"),
             patch.object(stories, "parse_item", return_value=self.source),
             patch.object(stories, "select", return_value=[self.source]),
             patch.object(stories, "body_text", return_value=(self.source.text, {1: "Ben Hutton"})),
-            patch.object(stories, "check", return_value=([], [])),
-            patch.object(stories, "goalie_stats", return_value=[]),
-            patch.object(stories, "card", return_value=self.out / "unused.png"),
         ):
             stories.process(self.now, lambda url: {"items": [{}]}, {}, {"NYI": "Айлендерс"},
                             lambda pids, reg: {"1": {"ru": "Бен Хаттон", "surname": "Хаттон"}},
                             write, lambda: [], Mock(return_value=(True, "reviewed")), lambda msg: None)
             draft = json.loads(publish.draft_path("2026-11-04", "story-followup").read_text(encoding="utf-8"))
             self.assertFalse(draft["data"]["auto"])
-            self.assertIn("islanders-sign-hutton", draft["variant"])
+            self.assertTrue(draft["data"]["editorial_task"])
+            self.assertIsNone(draft["card"])
+            self.assertIn("hutton-followup", draft["text"])
             self.assertEqual(draft["data"]["source_event"]["pids"], [1])
+        write.assert_not_called()
 
     def test_malformed_receipt_does_not_disable_all_story_processing(self):
         for changes in ({"messages": None}, {"data": None}, {"published": None}):
@@ -118,3 +115,4 @@ class EditorialSystemQA(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

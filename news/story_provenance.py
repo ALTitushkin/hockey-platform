@@ -26,13 +26,18 @@ def equivalent_draft(story, packet, out, msk):
                 frozen = data.get("source_snapshot") or {}
                 if (packet and not event_registry.complete(old) and frozen.get("content_hash")
                         and fact_packet.source_hash(frozen) == frozen["content_hash"]):
-                    claim = packet["claims"][0]
+                    claims = packet["claims"]
+                    actor_names = packet.get("actor_names") or {
+                        str(claims[0]["subject"]): packet["actor_name"]}
                     rebuilt = fact_packet.extract(fact_packet.restore(frozen),
-                        {str(claim["subject"]): {"ru": packet["actor_name"]}},
-                        {claim["club"]: packet["club_name"]}, {claim["club"]: packet["club_alias"]})
+                        {str(claim["subject"]): {"ru": actor_names[str(claim["subject"])]}
+                         for claim in claims},
+                        {claims[0]["club"]: packet["club_name"]},
+                        {claims[0]["club"]: packet["club_alias"]})
                     if rebuilt:
                         old = fact_packet.revision(rebuilt)
-                same_source = (data.get("slug") == story.slug
+                same_source = (bool(data.get("fact_packet") or data.get("editorial_task"))
+                               and data.get("slug") == story.slug
                                and data.get("source_snapshot", {}).get("content_hash") == source_hash)
                 same_facts = (revision and event_registry.complete(old)
                               and event_registry.revision_key(old) == event_registry.revision_key(revision))
@@ -77,3 +82,4 @@ def published_reference(story, out, msk):
             if slug and slug != story.slug and referenced:
                 return {"slug": slug, "messages": draft["messages"]["tg"]}
     return None
+
