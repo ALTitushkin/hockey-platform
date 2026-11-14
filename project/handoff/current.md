@@ -1,28 +1,28 @@
-# v0.21.2 в проде — локальный кандидат стабилизации 14.11
+# v0.21.3 выкачен — авто-публикация инфоповодов
 
 Последний разбор публикаций: [аудит текстов/PNG и live-очереди](../process/latest-posts-audit-2026-11-08.md).
-Live read-only срез14.11: NEWS_AUTO_PUBLISH=1 и NEWS_STORIES_AUTO=1; последние32 story draft
-за12–14.11 — все `auto=false`, без `fact_packet` и без публикации. Типичные причины: смешаны
-участники/клубы Status Report, нет привязки даты, много событий в одном source snapshot. Из-за
-этого они останавливались на owner review, даже при `issues=[]`; 21 задача сейчас
-`needs_revalidation`, 77 прошлых ревизий `superseded`. Регулярные league/night при этом
-публиковались. Это не ошибка токена/Telegram, а узкое покрытие typed extractor плюс недостающий
-путь ручной редакторской сборки.
 
-Локально кандидат исправляет это для части Status Report: типизировано выбирает одно первое
-утверждение из уникального раздела главного игрока (завершённый/ожидаемый дебют, ожидаемое
-возвращение), отделяет факт от травматического/статистического фона; общий packet ведёт caption,
-рубрику, карточку, дату и срок актуальности. Самостоятельно проверена PNG «Трой Терри · ДЕБЮТ» с логотипом
-ANA. Неподдержанные сюжеты остаются source-task без свободного LLM-текста/пустой картинки;
-старые свободные drafts заменяются только при отсутствии delivery ledger `published/sending/uncertain`.
-Исправлена вводная night, подпись `NOT_PLAYED`, stale-task reuse. Дополнительно типизированы точечная активация Фиалы из IR, ожидаемый дебют Фиалы, ожидаемое возвращение Джордана Стаала и строгое утверждение о травмах Маккиннона/Макар. Подписания, операции и identity без ID пока остаются review.
+**Релиз:** PR [#3](https://github.com/ALTitushkin/hockey-platform/pull/3) squash-merged в `main`,
+commit `c90882d43b74efc4a16ec4e1cb50a8001023eb34`, тег `v0.21.3`, news image
+`ghcr.io/altitushkin/hockey-news:c90882d43b74efc4a16ec4e1cb50a8001023eb34`.
+[CI/CD run](https://github.com/ALTitushkin/hockey-platform/actions/runs/43587515742): test,
+news-image, deploy и release-tag — success. Deploy log подтвердил healthcheck бота/новостника и
+`hockey-shadow running:0`. Миграций БД нет; откат — workflow_dispatch `news_image=previous`,
+предыдущий рабочий news image `b84a6db297eb` (v0.21.2).
 
-Полный suite290 тестов зелёный (`.venv/Scripts/python.exe` Python3.12.13; для Windows temp race
-выделен `news/out/test-tmp`); Ruff и diff-check чистые. Тексты старых опубликованных постов не
-менялись. Кандидат `v0.21.3` прошёл локальные CI-проверки; готовится отдельная ветка и PR в актуальный `main`. На прод-срезе14.11 контейнер Up6days, утренние league/night публикации проходят, story-инфоповоды всё ещё уходят на review/ошибаются; изменения ещё не выкачены. Для подтверждения результата нужны зелёный PR CI, deploy и наблюдение свежего story-цикла. Парная травма уже покрыта шаблоном; операции пока остаются review.
+После выката read-only проверка: `hockey-news Up`, `NEWS_AUTO_PUBLISH=1`,
+`NEWS_STORIES_AUTO=1`; старые review-задачи/квитанции сохранены. За короткое окно наблюдения
+новый инфоповод для end-to-end live-подтверждения не появился. Поэтому успешный deployment и
+healthcheck подтверждены, а фактическая публикация нового story с корректной картинкой ещё
+ожидает естественного свежего события. Существующие `needs_revalidation` не были переписаны
+задним числом.
 
-Прод-состояние, подтверждённое ранее: **4cf41b5dd7684b91535fbd06bf3ccea64fa3f170**, image
-b84a6db297eb; никаких изменений после этого среза не выкатывалось.
+Локальные release gates: 290 unittest, 26 news tests, 5 delivery tests, tests бота, Ruff,
+валидация данных/календаря, bash syntax и version gate — зелёные. Переработаны точные claim
+extractors для избранных Status Report, единый packet текста/PNG, source-task для неподдержанных
+сюжетов и регрессия вводной/статуса неигравшего игрока. Узкие шаблоны покрывают ожидаемый дебют/
+возвращение, активацию из IR и ровно описанную парную травму. Операции, неподдержанные подписания
+и события без надёжного NHL ID остаются на редакторском ревью.
 
 Выкачен **4cf41b5dd7684b91535fbd06bf3ccea64fa3f170**, image b84a6db297eb,
 [CI/CD](https://github.com/ALTitushkin/hockey-platform/actions/runs/42472519768):4job success,
