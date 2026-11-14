@@ -130,3 +130,13 @@ ledger, validator и однократный mocked publish. Полный suite29
 - Read-only baseline до выката14.11: `hockey-news` Up6days; регулярные утренние записи проходили, story-сюжеты оставались review/fail.
 - Релиз `v0.21.3` выполнен: PR #3 → squash merge `c90882d43b74efc4a16ec4e1cb50a8001023eb34`; CI test/image/deploy/tag success; новостник и shadow прошли startup healthcheck. После deploy контейнер Up, автофлаги включены, старые статусы/квитанции сохранены. Live E2E подтверждён новым story Фабера: `auto=true`, ожидаемый дебют MIN на 14.11, `published=[tg]`, Telegram message_id 91. Подпись/CardSpec согласованы; карточка визуально сверена с тем же hero/team/claim. Старые 32 черновика остались без packet, их нельзя считать исправленными этим релизом; нужна отдельная поштучная проверка/refresh. Откат: workflow_dispatch `news_image=previous` → `b84a6db297eb`.
 
+
+## Backlog после live-публикации14.11
+
+Read-only срез после выката: 43 story JSON за 12–14.11, 18 уникальных source headlines. 40 документов остаются review без typed packet, 2 — untyped editorial task, один typed Faber story имеет `auto=true` и `published=[tg]` (message_id 91). Повторные документы одного URL/сюжета не являются отдельными поводами к публикации.
+
+- 31 документ от 12–13.11 — прошедшие/повторные события (Ullmark, Terry, Fiala, MacKinnon/Makar injury lead, Staal, Faber, прочее); не refresh и не публиковать задним числом. Faber уже закрыт успешной публикацией 14.11.
+- Свежие source examples 14.11: Staal confirmed return (дата игры 14.11), Kreider out 6–8 weeks, MacKinnon out 1 month / Makar 2 weeks, и sold-out Sabrehood workshop. Последний — промо-анонс, не новостной хоккейный инфоповод.
+- Нынешний fact-template безопасно покрывает не все эти формулировки: Staal article формулирует definite return без weekday-forecast; duration injuries требуют отдельных шаблонов и привязки периода к каждому игроку. Workshop нужно исключать как промо. До появления template такие items остаются review; не ослаблять guard.
+- `revalidation.refresh` обрабатывает только одну задачу с CAS fingerprint, актуальным source fetch, packet verification и event-ledger check; после успешного refresh пересобирает draft, но не отправляет его в канал. Невалидный/устаревший source не должен автоматически получать новое право публикации. Массовый refresh для этих файлов не запускался.
+
