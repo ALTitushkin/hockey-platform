@@ -37,11 +37,13 @@ production — container image `459e3fc…`, 17 story JSON за 14.11: толь�
 подтверждает `ready` в 16:00 ET и `expired` после игрового окна. Перепубликацию этих сохранённых
 задач не выполнял.
 
-Локальный diff просмотрен, локальные проверки зелёные. GitHub workflow сам собирает новостной
-Docker-образ и делает smoke в runner; локальный Docker Desktop для этого проекта не нужен.
-Незавершено: прогон кандидатного CI и отдельное решение о релизе; live-поведение нового кода не
-проверено. 15.11 по ошибке предпринималась попытка поднять локальный Docker Desktop; это не
-проектный блокер и не меняло production. Старые черновики не обновлять и не публиковать задним ходом.
+Локальный diff просмотрен, локальные проверки зелёные. Коммит `5c9ff5b` отправлен в
+`release/autopublish-v0.21.4`; открыт draft PR [#4](https://github.com/ALTitushkin/hockey-platform/pull/4).
+GitHub Actions: push run [43644061687](https://github.com/ALTitushkin/hockey-platform/actions/runs/43644061687)
+и PR run [43644192916](https://github.com/ALTitushkin/hockey-platform/actions/runs/43644192916) —
+test и news-image/build+smoke success; deploy/release-tag skipped. Локальный Docker Desktop этому
+проекту не нужен. Незавершено: live-проверка кандидата и отдельный релиз; production не менялся.
+Старые черновики не обновлять и не публиковать задним ходом.
 
 # v0.21.3 выкачен — авто-публикация инфоповодов
 

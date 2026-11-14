@@ -12,7 +12,8 @@
 
 ### Проверено
 - На чистом worktree от `origin/main=ecd40f6`: 297 unittest, 26 news tests, 5 delivery tests, Ruff, data/calendar validators, bot search/calendar, bash syntax, release version gate и `git diff --check`.
-- Mock E2E Status Report проверяет карточку Фейбера, одну отправку до ET-дедлайна и expiry после; CI/PR/release и live-проверка ещё не выполнялись.
+- Mock E2E Status Report проверяет карточку Фейбера, одну отправку до ET-дедлайна и expiry после.
+- Draft PR [#4](https://github.com/ALTitushkin/hockey-platform/pull/4), commit `5c9ff5b`. GitHub Actions push run `43644061687` и PR run `43644192916`: test и image build/smoke success; deploy/tag skipped. Release и live-проверка не выполнялись.
 
 ## [0.21.3] — 2026-11-14
 
