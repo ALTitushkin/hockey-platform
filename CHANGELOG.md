@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.21.4] — кандидат
+
+### Исправлено
+- Review-only story-версии индексируются вместе с typed-документами; новые версии заменяют старые задачи, включая legacy-черновики без `fetched_at` (порядок берётся из первой записи истории ревизии), а superseded-кнопка не может повторно отправить устаревший текст.
+- «Last season» в фоне другой новости больше не отклоняет подтверждённый лид о возвращении игрока. Добавлены точные шаблоны NHL для сроков травм одного игрока и двух игроков с привязкой каждого срока к своему ID.
+- Status Report с `will make his season debut` получает typed claim. Для NHL.com weekday и срок ожидаемого действия считаются по `America/New_York`, чтобы смена московской даты не закрывала окно до матча.
+- Причина отклонения устаревшего draft сообщает, что окно актуальности фактов закрыто.
+
+### Проверено
+- На чистом worktree от `origin/main=ecd40f6`: 297 unittest, 26 news tests, 5 delivery tests, Ruff, data/calendar validators, bot search/calendar, bash syntax, release version gate и `git diff --check`.
+- Mock E2E Status Report проверяет карточку Фейбера, одну отправку до ET-дедлайна и expiry после.
+- Draft PR [#4](https://github.com/ALTitushkin/hockey-platform/pull/4), commit `5c9ff5b`. GitHub Actions push run `43644061687` и PR run `43644192916`: test и image build/smoke success; deploy/tag skipped. Release и live-проверка не выполнялись.
+
 ## [0.21.3] — 2026-11-14
 
 ### Исправлено

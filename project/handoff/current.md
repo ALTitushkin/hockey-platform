@@ -1,3 +1,50 @@
+# Текущий спринт: стабилизация публикации после v0.21.3 — 15.11.2026
+
+Работа ведётся в чистом worktree `D:/MyFolder/Projects/.worktrees/hockey-autopublish-stability`,
+ветка `release/autopublish-v0.21.4`, база `origin/main=ecd40f6c76cd3e88244f879fdf0d8fc8f3ec021a`.
+Старый dirty worktree `hockey-codex-release` и пользовательский `Projects/hockey-platform` не менялись.
+
+Исправлены review-only версии без `fetched_at`: timestamp сохраняется, старые активные версии
+мигрируют из JSON по первой записи соответствующей ревизии в `editorial_history` (если её нет —
+по `editorial_tasks.updated`), переходят в `superseded`, повторный sync не воскрешает их,
+stale/force review и publish блокируются до Telegram. Регрессия сдвигает `updated` вперёд и
+подтверждает, что версия всё равно упорядочена по первому наблюдению. Исправлен Staal false
+negative: историческое `last season` в соседнем абзаце не отменяет актуальный лид; тест также
+сохраняет блокировку явного отзыва. Добавлены точные injury-duration шаблоны для Крайдера и
+Маккиннона/Макара, карточка и текст строятся из одного packet. Причина expiry стала точнее.
+
+Проверки на чистой базе `main`: **297 unittest**, **26 news**, **5 delivery**, Ruff, data/calendar
+validators, bot search/calendar, bash syntax и `release_version.py` (`v0.21.4`); `git diff --check`.
+В этом чистом worktree пока нет `.venv`: Python 3.12.13 запущен из существующего проектного
+окружения соседнего `hockey-codex-release`, при рабочем каталоге нового worktree.
+Дополнительно целевые очереди — 16 тестов, факт-парсеры/auto pipeline — 29. Git fetch снова работает
+через локально заданный repo proxy; небезопасный global `http.sslVerify=false` удалён. История
+production — container image `459e3fc…`, 17 story JSON за 14.11: только Faber typed/auto/published,
+остальные 16 без fact packet. Код production, drafts и Telegram не менялись.
+Повторный read-only check 15.11 подтвердил тот же production image `459e3fc…`, started
+`2026-11-14T10:56:17Z`, restarts=0. Визуально просмотрены четыре архивных PNG RNH: два с неверным VAN logo, один с EDM, один пустой;
+все `published=[]`, `auto=false`, без CardSpec. Это старые review-черновики, не публичные посты;
+текущий typed путь выбирает EDM по регрессии, сохранённые артефакты не переписывались.
+
+Свежий read-only срез15.11 нашёл три review-записи без fact packet. Два черновика Barzal — одна
+и та же статья/URL: в вводной отдельно активируют Barzal и помещают MacLean на waivers; источник
+привязал оба ID, но не дал English name map. Автопубликацию для них не включал: субъект события
+нельзя безопасно выбрать из тегов, это остаётся review. Третий сюжет — Status Report о дебюте
+Фейбера: опубликован 14.11 20:21 UTC, обработан около21:00 UTC, игра ожидалась в 19:00 ET. Его
+отклонял узкий шаблон, потому что он знал `is expected/could make`, но пропускал формулировку
+`will make`; кроме того, expiry в MSK закрывал окно до начала матча. Кандидат теперь разбирает эту
+форму в изолированной секции игрока, считает игровой день и срок по `America/New_York`; тест
+подтверждает `ready` в 16:00 ET и `expired` после игрового окна. Перепубликацию этих сохранённых
+задач не выполнял.
+
+Локальный diff просмотрен, локальные проверки зелёные. Коммит `5c9ff5b` отправлен в
+`release/autopublish-v0.21.4`; открыт draft PR [#4](https://github.com/ALTitushkin/hockey-platform/pull/4).
+GitHub Actions: push run [43644061687](https://github.com/ALTitushkin/hockey-platform/actions/runs/43644061687)
+и PR run [43644192916](https://github.com/ALTitushkin/hockey-platform/actions/runs/43644192916) —
+test и news-image/build+smoke success; deploy/release-tag skipped. Локальный Docker Desktop этому
+проекту не нужен. Незавершено: live-проверка кандидата и отдельный релиз; production не менялся.
+Старые черновики не обновлять и не публиковать задним ходом.
+
 # v0.21.3 выкачен — авто-публикация инфоповодов
 
 Последний разбор публикаций: [аудит текстов/PNG и live-очереди](../process/latest-posts-audit-2026-11-08.md).

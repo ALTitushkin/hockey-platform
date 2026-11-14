@@ -12,6 +12,7 @@ import test_publication_stabilization as incident
 from PIL import Image
 
 from news import (
+    editorial_lifecycle,
     editorial_queue,
     event_registry,
     fact_packet,
@@ -315,6 +316,56 @@ class StabilizationQA(unittest.TestCase):
         self.assertEqual(draft["data"]["fact_packet"]["claims"][0]["kind"], "season_debut")
         self.assertEqual(draft["data"]["fact_packet"]["claims"][0]["subject"], 8478873)
 
+    def test_live_staal_return_source_reaches_auto_delivery_once(self):
+        now = datetime(2026, 11, 14, 16, 9, tzinfo=timezone.utc)
+        story = stories.Story(
+            "live-staal", "jordan-staal-returns-to-hurricanes-lineup-for-global-series-finale",
+            "Staal to return for Hurricanes in Global Series finale against Kraken", "", now,
+            "return", {8473533}, {"CAR"}, True,
+            text=("Jordan Staal will return for the Carolina Hurricanes against the Seattle Kraken in the "
+                  "2026 NHL Global Series Finland finale on Saturday.\n\n"
+                  "The 38-year-old center hasn't played since Oct. 10, missing the past 14 games "
+                  "with a calf injury.\n\n"
+                  "He won the Conn Smythe Trophy last season as most valuable player of the playoffs.\n\n"
+                  "\"We're getting him back,\" Carolina coach Rod Brind'Amour said. "
+                  "\"I don't expect a ton out of him tonight.\""),
+            en={8473533: "Jordan Staal", 8482093: "Seth Jarvis", 8476422: "Mike Reilly"})
+        actors = {"8473533": {"ru": "Джордан Стаал", "surname": "Стаал"}}
+        self.assertIsNotNone(fact_packet.extract(story, actors, {"CAR": "Каролина"}, stories.TEAM_EN))
+        retracted = copy.deepcopy(story)
+        retracted.text += "\n\nJordan Staal is no longer expected to return on Saturday."
+        self.assertIsNone(fact_packet.extract(retracted, actors, {"CAR": "Каролина"}, stories.TEAM_EN))
+        send = Mock(return_value={"ok": True, "result": {"message_id": 912}})
+        write = Mock(side_effect=AssertionError("confirmed return has a typed template"))
+
+        def deliver(day, kind):
+            ok, report = publish.publish(day, ["tg"], send, kind, automatic=True)
+            return ok, "; ".join(report)
+
+        with patch.object(stories, "STATE", self.out / "stories_state.json"), \
+                patch.object(stories, "parse_item", return_value=story), \
+                patch.object(stories, "select", return_value=[story]), \
+                patch.object(stories, "body_text", return_value=(story.text, story.en)), \
+                patch.object(stories, "render_story_card", side_effect=self.draw), \
+                patch.dict("os.environ", {"NEWS_BOT_TOKEN": "offline", "NEWS_CHANNEL": "-100123456"}):
+            stories.process(now, lambda url: {"items": [{"id": story.eid}]} if url == stories.FEED else {},
+                            actors, {"CAR": "Каролина"}, lambda pids, registry: actors,
+                            write, lambda: [], deliver, Mock())
+
+        write.assert_not_called()
+        send.assert_called_once()
+        draft = json.loads(next(self.out.glob("*_story-*.json")).read_text(encoding="utf-8"))
+        claim = draft["data"]["fact_packet"]["claims"][0]
+        self.assertTrue(draft["data"]["auto"])
+        self.assertEqual(claim["kind"], "expected_return")
+        self.assertEqual(claim["subject"], 8473533)
+        self.assertEqual(claim["date"], "2026-11-14")
+        spec = draft["data"]["card_spec"]
+        self.assertEqual(spec["hero_id"], 8473533)
+        self.assertEqual(spec["teams"], ["CAR"])
+        self.assertIn("Стаал может вернуться", spec["headline"])
+        self.assertIn(spec["headline"], draft["text"])
+
     def test_two_player_injury_reaches_auto_delivery_once(self):
         now = datetime(2026, 11, 13, 12, tzinfo=timezone.utc)
         story = stories.Story(
@@ -346,6 +397,78 @@ class StabilizationQA(unittest.TestCase):
         self.assertEqual(draft["data"]["event_revision"]["actors"], [8477492, 8480069])
         self.assertEqual(draft["published"], ["tg"])
         self.assertTrue(draft["data"]["auto"])
+
+    def test_injury_duration_update_uses_source_freshness_and_publishes_once(self):
+        now = datetime(2026, 11, 8, 12, tzinfo=timezone.utc)
+        story = stories.Story(
+            "avalanche-injury-durations", "mackinnon-makar-injuries",
+            "MacKinnon out one month, Makar two weeks", "", now, "injury",
+            {8477492, 8480069}, {"COL"}, True,
+            text=("Nathan MacKinnon will be out one month and Cale Makar will be sidelined two weeks "
+                  "for the Colorado Avalanche.\n\n"
+                  "Each sustained a lower-body injury in the second period of a 4-3 overtime loss "
+                  "for the Colorado Avalanche against the Ottawa Senators on Thursday."),
+            en={8477492: "Nathan MacKinnon", 8480069: "Cale Makar"})
+        actors = {"8477492": {"ru": "Натан Маккиннон", "surname": "Маккиннон"},
+                  "8480069": {"ru": "Кейл Макар", "surname": "Макар"}}
+        send = Mock(return_value={"ok": True, "result": {"message_id": 911}})
+
+        def deliver(day, kind):
+            ok, report = publish.publish(day, ["tg"], send, kind, automatic=True)
+            return ok, "; ".join(report)
+
+        with patch.object(stories, "STATE", self.out / "stories_state.json"), \
+                patch.object(stories, "parse_item", return_value=story), \
+                patch.object(stories, "select", return_value=[story]), \
+                patch.object(stories, "body_text", return_value=(story.text, story.en)), \
+                patch.object(stories, "render_story_card", side_effect=self.draw), \
+                patch.dict("os.environ", {"NEWS_BOT_TOKEN": "offline", "NEWS_CHANNEL": "-100123456"}):
+            stories.process(now, lambda url: {"items": [{"id": story.eid}]} if url == stories.FEED else {},
+                            actors, {"COL": "Колорадо"}, lambda pids, registry: actors,
+                            Mock(side_effect=AssertionError("typed duration must not use LLM")),
+                            lambda: [], deliver, Mock())
+
+        send.assert_called_once()
+        draft = json.loads(next(self.out.glob("*_story-*.json")).read_text(encoding="utf-8"))
+        packet = draft["data"]["fact_packet"]
+        self.assertTrue(draft["data"]["auto"])
+        self.assertEqual(draft["published"], ["tg"])
+        self.assertEqual([claim["date"] for claim in packet["claims"]], ["2026-11-05", "2026-11-05"])
+        self.assertEqual([claim["published_date"] for claim in packet["claims"]], ["2026-11-08", "2026-11-08"])
+        self.assertEqual(draft["data"]["expires_at"], "2026-11-10T00:00:00+03:00")
+        self.assertEqual(draft["data"]["card_spec"]["label"], "ТРАВМА")
+        self.assertIn("Натан Маккиннон выбыл на 1 месяц", draft["text"])
+        self.assertIn("Кейл Макар — на 2 недели", draft["text"])
+        self.assertEqual(story_validation.check(draft, "2026-11-08"), [])
+        ok, report = publish.publish("2026-11-08", ["tg"], send, next(p.name.split("_", 1)[1][:-5]
+                                                                       for p in self.out.glob("*_story-*.json")),
+                                    automatic=True)
+        self.assertTrue(ok, report)
+        send.assert_called_once()
+        corrupted = copy.deepcopy(draft)
+        corrupt_packet = corrupted["data"]["fact_packet"]
+        corrupt_packet["claims"][1]["duration"] = 1
+        corrupted["published"] = []
+        corrupted["data"]["packet_hash"] = fact_packet.key(corrupt_packet)
+        corrupted["data"]["event_revision"] = fact_packet.revision(corrupt_packet)
+        corrupted["data"]["card_spec"] = fact_packet.card_spec(corrupt_packet)
+        corrupted["text"] = fact_packet.caption(corrupt_packet, corrupted["data"]["source_snapshot"],
+                                                "2026-11-08")
+        (self.out / "2026-11-08_story-corrupt.json").write_text(
+            json.dumps(corrupted, ensure_ascii=False), encoding="utf-8")
+        rejected, reasons = publish.publish("2026-11-08", ["tg"], send, "story-corrupt", automatic=True)
+        self.assertFalse(rejected)
+        self.assertIn("утверждения не соответствуют повторному разбору доказательств", " ".join(reasons))
+        send.assert_called_once()
+        stale_story = copy.deepcopy(story)
+        stale_story.date = datetime(2026, 11, 5, 12, tzinfo=timezone.utc)
+        stale_packet = fact_packet.extract(stale_story, actors, {"COL": "Колорадо"}, stories.TEAM_EN)
+        stale_draft = {"date": "2026-11-08", "data": {
+            "source_snapshot": fact_packet.snapshot(stale_story),
+            "event_revision": fact_packet.revision(stale_packet),
+            "expires_at": fact_packet.expires_at(stale_packet)}}
+        status, reasons = editorial_lifecycle.classify(stale_draft, "story-old", now)
+        self.assertEqual((status, reasons[0]), ("expired", "окно публикации этого сценария закрыто"))
 
     def test_legacy_two_player_review_refreshes_to_verified_card_without_sending(self):
         now = datetime(2026, 11, 13, 12, tzinfo=timezone.utc)
@@ -543,6 +666,106 @@ class StabilizationQA(unittest.TestCase):
         self.assertEqual(fact_packet.verify(packet, fact_packet.snapshot(story),
                                             fact_packet.render(packet)), [])
 
+    def test_two_player_injury_durations_remain_attached_to_the_correct_actor(self):
+        story = stories.Story(
+            "avalanche-injury-durations", "mackinnon-makar-injuries",
+            "MacKinnon out one month, Makar two weeks", "",
+            datetime(2026, 11, 14, 17, 41, tzinfo=timezone.utc), "injury",
+            {8477492, 8480069}, {"COL"}, True,
+            text=("Nathan MacKinnon will be out one month and Cale Makar will be sidelined two weeks "
+                  "for the Colorado Avalanche.\n\n"
+                  "Each sustained a lower-body injury in the second period of a 4-3 overtime loss "
+                  "for the Colorado Avalanche against the Ottawa Senators on Thursday."),
+            en={8477492: "Nathan MacKinnon", 8480069: "Cale Makar"})
+        names = {"8477492": {"ru": "Натан Маккиннон"}, "8480069": {"ru": "Кейл Макар"}}
+        teams = {"COL": "Колорадо"}
+        packet = fact_packet.extract(story, names, teams, stories.TEAM_EN)
+        self.assertIsNotNone(packet)
+        self.assertEqual([(c["subject"], c["duration"], c["duration_unit"]) for c in packet["claims"]],
+                         [(8477492, 1, "month"), (8480069, 2, "week")])
+        body = fact_packet.render(packet)
+        self.assertIn("Натан Маккиннон выбыл на 1 месяц", body)
+        self.assertIn("Кейл Макар — на 2 недели", body)
+        self.assertEqual(fact_packet.revision(packet)["facts"]["duration_by_actor"], [
+            {"subject": 8477492, "duration": 1, "unit": "month"},
+            {"subject": 8480069, "duration": 2, "unit": "week"}])
+        self.assertEqual(fact_packet.card_spec(packet)["label"], "ТРАВМА")
+        self.assertEqual(fact_packet.expires_at(packet), "2026-11-16T00:00:00+03:00")
+        self.assertEqual(fact_packet.verify(packet, fact_packet.snapshot(story), body), [])
+        late_utc = copy.deepcopy(story)
+        late_utc.date = datetime(2026, 11, 14, 22, 30, tzinfo=timezone.utc)
+        late_packet = fact_packet.extract(late_utc, names, teams, stories.TEAM_EN)
+        self.assertEqual(late_packet["claims"][0]["published_date"], "2026-11-15")
+        self.assertEqual(fact_packet.expires_at(late_packet), "2026-11-17T00:00:00+03:00")
+        changed = copy.deepcopy(packet)
+        changed["claims"][1]["duration"] = 1  # internally consistent render, wrong source fact
+        changed_body = fact_packet.render(changed)
+        self.assertTrue(fact_packet.verify(changed, fact_packet.snapshot(story), changed_body))
+
+    def test_single_player_injury_duration_range_publishes_from_one_verified_packet(self):
+        now = datetime(2026, 11, 14, 16, 50, tzinfo=timezone.utc)
+        story = stories.Story(
+            "kreider-injury-duration", "canadiens-chris-kreider-out-6-8-weeks-with-lower-body-injury",
+            "Kreider out 6-8 weeks for Canadiens with lower-body injury", "", now, "injury",
+            {8475184}, {"MTL"}, True,
+            text=("Chris Kreider is out 6-8 weeks for the Montreal Canadiens because of a lower-body injury, "
+                  "the team announced on Saturday.\n\n"
+                  "The forward appeared to sustain a leg injury in a 5-2 win against the Boston Bruins "
+                  "on Thursday. Kreider left at 6:27 of the third period and did not return."),
+            en={8475184: "Chris Kreider"})
+        names = {"8475184": {"ru": "Крис Крайдер", "surname": "Крайдер"}}
+        teams = {"MTL": "Монреаль"}
+        packet = fact_packet.extract(story, names, teams, stories.TEAM_EN)
+        self.assertIsNotNone(packet)
+        claim = packet["claims"][0]
+        self.assertEqual((claim["subject"], claim["duration_min"], claim["duration_max"],
+                          claim["duration_unit"], claim["region"]),
+                         (8475184, 6, 8, "week", "lower"))
+        self.assertEqual((claim["date"], claim["published_date"]), ("2026-11-12", "2026-11-14"))
+        body = fact_packet.render(packet)
+        self.assertIn("Крис Крайдер выбыл на 6–8 недель", body)
+        self.assertEqual(fact_packet.revision(packet)["facts"]["duration_by_actor"], [
+            {"subject": 8475184, "duration_min": 6, "duration_max": 8, "unit": "week"}])
+        self.assertEqual(fact_packet.expires_at(packet), "2026-11-16T00:00:00+03:00")
+        self.assertEqual(fact_packet.verify(packet, fact_packet.snapshot(story), body), [])
+        changed = copy.deepcopy(packet)
+        changed["claims"][0]["duration_min"] = 5
+        self.assertTrue(fact_packet.verify(changed, fact_packet.snapshot(story), fact_packet.render(changed)))
+        changed_source = copy.deepcopy(story)
+        changed_source.date = datetime(2026, 11, 17, 16, 50, tzinfo=timezone.utc)
+        stale = fact_packet.extract(changed_source, names, teams, stories.TEAM_EN)
+        self.assertEqual(fact_packet.expires_at(stale), "2026-11-19T00:00:00+03:00")
+
+        send = Mock(return_value={"ok": True, "result": {"message_id": 928}})
+
+        def deliver(day, kind):
+            ok, report = publish.publish(day, ["tg"], send, kind, automatic=True)
+            return ok, "; ".join(report)
+
+        with (
+                patch.object(stories, "STATE", self.out / "stories_state.json"),
+                patch.object(stories, "parse_item", return_value=story),
+                patch.object(stories, "select", return_value=[story]),
+                patch.object(stories, "body_text", return_value=(story.text, story.en)),
+                patch.object(stories, "render_story_card", side_effect=self.draw),
+                patch.dict("os.environ", {"NEWS_BOT_TOKEN": "offline", "NEWS_CHANNEL": "-100123456"}),
+        ):
+            stories.process(now, lambda url: {"items": [{"id": story.eid}]} if url == stories.FEED else {},
+                            names, teams, lambda pids, registry: names,
+                            Mock(side_effect=AssertionError("typed injury duration must not use LLM")),
+                            lambda: [], deliver, Mock())
+        send.assert_called_once()
+        draft = json.loads(next(self.out.glob("*_story-*.json")).read_text(encoding="utf-8"))
+        self.assertEqual(draft["data"]["fact_packet"], packet)
+        self.assertEqual(draft["data"]["card_spec"]["hero_id"], 8475184)
+        self.assertEqual(draft["data"]["card_spec"]["label"], "ТРАВМА")
+        self.assertIn("Крис Крайдер выбыл на 6–8 недель", draft["text"])
+        self.assertEqual(draft["published"], ["tg"])
+        self.assertEqual(story_validation.check(draft, "2026-11-14"), [])
+        publish.publish("2026-11-14", ["tg"], send, next(p.name.split("_", 1)[1][:-5]
+                       for p in self.out.glob("*_story-*.json")), automatic=True)
+        send.assert_called_once()
+
     def test_report_clock_parentheses_preserve_expected_and_do_not_roll_stale_weekday(self):
         self.story.headline = "NHL Status Report: Nikishin to make season debut"
         self.story.pids, self.story.teams = set(), set()
@@ -561,3 +784,61 @@ class StabilizationQA(unittest.TestCase):
         self.story.date = self.now  # Sunday update still mentioning Saturday cannot mean next Saturday.
         self.assertIsNone(fact_packet.extract(self.story, names, teams, stories.TEAM_EN))
 
+    def test_status_report_will_make_debut_uses_eastern_event_day_and_expiry(self):
+        self.story.headline = "NHL Status Report: Faber to make season debut for Wild against Bruins"
+        self.story.slug = "nhl-status-report-news-and-notes-november-13-2026"
+        self.story.date = datetime(2026, 11, 14, 20, 21, tzinfo=timezone.utc)
+        self.story.pids, self.story.teams = set(), set()  # Status Report identifies through linked full names.
+        self.story.en = {8482122: "Brock Faber", 8478445: "Mathew Barzal"}
+        self.story.text = (
+            "## **Minnesota Wild**\n\n"
+            "Brock Faber will make his season debut for the Wild against the Boston Bruins on Saturday "
+            "(7 p.m. ET; Wild+, MINNHL, NESN). The defenseman has not played after sustaining a skull fracture "
+            "on Sept. 25 in a preseason game against the Dallas Stars.\n\n"
+            "## **New York Islanders**\n\nMathew Barzal is day to day.")
+        names = {"8482122": {"ru": "Брок Фейбер"}}
+        teams = {"MIN": "Миннесота"}
+
+        packet = fact_packet.extract(self.story, names, teams, stories.TEAM_EN)
+
+        self.assertIsNotNone(packet)
+        claim = packet["claims"][0]
+        self.assertEqual((claim["subject"], claim["club"], claim["kind"], claim["date"]),
+                         (8482122, "MIN", "expected_debut", "2026-11-14"))
+        self.assertEqual(claim["action_timezone"], "America/New_York")
+        self.assertEqual(fact_packet.expires_at(packet), "2026-11-15T00:00:00-05:00")
+        body = fact_packet.render(packet)
+        self.assertEqual(fact_packet.verify(packet, fact_packet.snapshot(self.story), body), [])
+        draft = {"date": "2026-11-15", "data": {
+            "source_snapshot": fact_packet.snapshot(self.story),
+            "event_revision": fact_packet.revision(packet), "expires_at": fact_packet.expires_at(packet)}}
+        ready, _ = editorial_lifecycle.classify(draft, "story-faber", datetime(2026, 11, 14, 21, tzinfo=timezone.utc))
+        expired, _ = editorial_lifecycle.classify(draft, "story-faber", datetime(2026, 11, 15, 5, tzinfo=timezone.utc))
+        self.assertEqual((ready, expired), ("ready", "expired"))
+
+        now = datetime(2026, 11, 15, 0, tzinfo=timezone(timedelta(hours=3)))
+        send = Mock(return_value={"ok": True, "result": {"message_id": 929}})
+
+        def deliver(day, kind):
+            ok, report = publish.publish(day, ["tg"], send, kind, automatic=True)
+            return ok, "; ".join(report)
+
+        with (
+                patch.object(stories, "STATE", self.out / "stories_state.json"),
+                patch.object(stories, "parse_item", return_value=self.story),
+                patch.object(stories, "select", return_value=[self.story]),
+                patch.object(stories, "body_text", return_value=(self.story.text, self.story.en)),
+                patch.object(stories, "render_story_card", side_effect=self.draw),
+                patch.dict("os.environ", {"NEWS_BOT_TOKEN": "offline", "NEWS_CHANNEL": "-100123456"}),
+        ):
+            stories.process(now, lambda url: {"items": [{"id": self.story.eid}]} if url == stories.FEED else {},
+                            names, teams, lambda pids, registry: names,
+                            Mock(side_effect=AssertionError("typed debut must not use LLM")),
+                            lambda: [], deliver, Mock())
+        send.assert_called_once()
+        published = json.loads(next(self.out.glob("*_story-*.json")).read_text(encoding="utf-8"))
+        self.assertEqual(published["published"], ["tg"])
+        self.assertTrue(published["data"]["auto"])
+        self.assertEqual(published["data"]["card_spec"]["hero_id"], 8482122)
+        self.assertEqual(published["data"]["card_spec"]["teams"], ["MIN"])
+        self.assertEqual(story_validation.check(published, "2026-11-15"), [])

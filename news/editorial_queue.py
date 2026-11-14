@@ -55,6 +55,7 @@ class Queue:
     """Additive SQLite tables; old JSON drafts can be indexed without sending anything."""
 
     def __init__(self, path: Path):
+        self.out = Path(path).parent
         self.db = sqlite3.connect(path)
         self.db.execute("""CREATE TABLE IF NOT EXISTS editorial_tasks (
             name TEXT PRIMARY KEY, revision TEXT NOT NULL, status TEXT NOT NULL,
@@ -67,6 +68,39 @@ class Queue:
 
     def close(self):
         self.db.close()
+
+    def _backfill_source_documents(self, source_url: str, current_name: str) -> None:
+        """Index legacy review snapshots before superseding them with a new version.
+
+        Older drafts did not persist fetched_at. Their durable editorial task
+        timestamp is the best available observation order and remains stable
+        across queue rebuilds and notification retries.
+        """
+        rows = self.db.execute(
+            "SELECT task.name,COALESCE(MIN(history.at),task.updated) "
+            "FROM editorial_tasks AS task LEFT JOIN editorial_history AS history "
+            "ON history.name=task.name AND history.revision=task.revision "
+            "WHERE task.name<>? AND task.name GLOB '????-??-??_story-*.json' "
+            "AND task.status NOT IN ('published','rejected','delivery_unknown','closed') "
+            "GROUP BY task.name,task.updated",
+            (current_name,)).fetchall()
+        for name, updated in rows:
+            indexed = self.db.execute("SELECT 1 FROM editorial_documents WHERE name=?", (name,)).fetchone()
+            if indexed:
+                continue
+            try:
+                draft = json.loads((self.out / name).read_text(encoding="utf-8"))
+                metadata = (draft.get("data") or {}).get("source_snapshot") or {}
+                if metadata.get("url") != source_url or not metadata.get("content_hash"):
+                    continue
+                observed = datetime.fromisoformat(updated)
+                if observed.tzinfo is None:
+                    raise ValueError("task timestamp needs timezone")
+                observed = observed.astimezone(timezone.utc).isoformat()
+            except (OSError, TypeError, ValueError, AttributeError):
+                continue
+            self.db.execute("INSERT OR IGNORE INTO editorial_documents VALUES (?,?,?,?)",
+                            (name, source_url, metadata["content_hash"], observed))
 
     def sync(self, name: str, draft: dict) -> str:
         revision = fingerprint(draft)
@@ -84,6 +118,8 @@ class Queue:
             status = "delivery_unknown"
         if previous and previous[0] == revision:
             # Preserve unresolved delivery and manual decisions through restart.
+            if previous[1] == "superseded" and status not in ("published", "rejected", "closed", "delivery_unknown"):
+                status = "superseded"
             if previous[1] in ("delivery_unknown", "approved", "superseded") and status not in (
                     "published", "rejected", "expired", "closed", "blocked", "legacy_review", "needs_revalidation"):
                 status = previous[1]
@@ -104,6 +140,7 @@ class Queue:
                 if not observed:
                     source = {}
             if source.get("url") and source.get("content_hash") and source.get("fetched_at"):
+                self._backfill_source_documents(source["url"], name)
                 self.db.execute("INSERT OR REPLACE INTO editorial_documents VALUES (?,?,?,?)",
                                 (name, source["url"], source["content_hash"], observed))
                 newer = self.db.execute(

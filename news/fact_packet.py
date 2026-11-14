@@ -4,13 +4,28 @@ import hashlib
 import html
 import json
 import re
-from datetime import timedelta
+from datetime import timedelta, timezone
 from types import SimpleNamespace
+from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 from news.digest import MONTHS, plural
 
 WEEKDAYS = {word: n for n, word in enumerate(
     ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"))}
+EASTERN = ZoneInfo("America/New_York")
+
+
+def source_day(story):
+    """NHL article weekdays and game dates use Eastern local time, not UTC/MSK."""
+    host = urlsplit(story.link).hostname
+    zone = EASTERN if host in ("www.nhl.com", "nhl.com") else story.date.tzinfo
+    return story.date.astimezone(zone).date()
+
+
+def source_timezone(story):
+    """Return a timezone only where the source fixes the event's local calendar."""
+    return EASTERN.key if urlsplit(story.link).hostname in ("www.nhl.com", "nhl.com") else None
 
 
 def snapshot(story) -> dict:
@@ -113,6 +128,9 @@ def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | N
          rf"{subject} is expected to make his season debut "
          rf"(?:for the {re.escape(club_names[club][1])} )?against .+? on {weekday}"),
         ("expected_debut", "expected",
+         rf"{subject} will make his season debut "
+         rf"(?:for the {re.escape(club_names[club][1])} )?against .+? on {weekday}"),
+        ("expected_debut", "expected",
          rf"{subject} could make his season debut "
          rf"(?:for the {re.escape(club_names[club][1])} )?against .+? on {weekday}"),
         ("expected_return", "expected",
@@ -125,16 +143,19 @@ def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | N
             continue
         day_word = match[1].lower()
         target = WEEKDAYS[day_word]
+        published_day = source_day(story)
         if modality == "expected":
-            delta = (target - story.date.weekday()) % 7
+            delta = (target - published_day.weekday()) % 7
             if delta > 3:
                 continue
-            action_day = story.date.date() + timedelta(days=delta)
+            action_day = published_day + timedelta(days=delta)
         else:
-            action_day = story.date.date() - timedelta(days=(story.date.weekday() - target) % 7)
+            action_day = published_day - timedelta(days=(published_day.weekday() - target) % 7)
         packet = {"version": 1, "source_hash": snapshot(story)["content_hash"],
                   "claims": [{"subject": pid, "club": club, "kind": kind, "modality": modality,
-                              "date": action_day.isoformat(), "evidence": match[0].strip()}],
+                              "date": action_day.isoformat(), "evidence": match[0].strip(),
+                              **({"action_timezone": source_timezone(story)}
+                                 if source_timezone(story) else {})}],
                   "actor_name": names[str(pid)]["ru"], "club_name": teams[club],
                   "club_alias": list(club_names[club])}
         return packet
@@ -168,12 +189,14 @@ def debut(story, pid, club, record, teams, club_names):
 
 def paired_injury(story, names, teams, club_names):
     """A narrow two-player injury lead: both named actors, one club and one dated game fact."""
-    if story.kind not in ("injury", "injury_minor") or len(story.pids) != 2 or len(story.teams) != 1:
+    if (story.kind not in ("injury", "injury_minor") or story.date.tzinfo is None
+            or len(story.pids) != 2 or len(story.teams) != 1):
         return None
     club = next(iter(story.teams))
     if club not in teams or club not in club_names:
         return None
-    lead = story.text.strip().split("\n\n")[0]
+    paragraphs = [p.strip() for p in story.text.strip().split("\n\n") if p.strip()]
+    lead = paragraphs[0]
     if re.search(r"\b20\d{2}\b|\b(?:initially|later|returned|but)\b", lead, re.I):
         return None
     actors = []
@@ -189,6 +212,42 @@ def paired_injury(story, names, teams, club_names):
     city, nickname = club_names[club]
     owner = r"(?:the\s+)?" + re.escape(" ".join(x for x in (city, nickname) if x))
     weekday = "(" + "|".join(WEEKDAYS) + ")"
+    if len(paragraphs) >= 2:
+        amount_a = r"(?P<amount_a>one|two|three|four|five|six|seven|eight|nine|ten|\d+)"
+        unit_a = r"(?P<unit_a>days?|weeks?|months?)"
+        amount_b = r"(?P<amount_b>one|two|three|four|five|six|seven|eight|nine|ten|\d+)"
+        unit_b = r"(?P<unit_b>days?|weeks?|months?)"
+        duration_pattern = (rf"{subject_a}\s+will be out {amount_a}\s+{unit_a}\s+and\s+"
+                            rf"{subject_b}\s+will be sidelined {amount_b}\s+{unit_b}\s+for {owner}")
+        duration_match = re.fullmatch(duration_pattern + r"[.!]?", lead, re.I)
+        date_match = re.match(rf"Each sustained a lower-body injury in the second period of a "
+                              rf"\d+-\d+ (?:overtime )?loss for {owner} against .+? on {weekday}[.]?",
+                              paragraphs[1], re.I)
+        if duration_match and date_match:
+            def amount(value):
+                words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                         "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+                return int(value) if value.isdigit() else words.get(value.lower(), 0)
+            day_word = date_match[1].lower()
+            action_day = story.date.date() - timedelta(days=(story.date.weekday() - WEEKDAYS[day_word]) % 7)
+            claims = []
+            for pid, evidence, value, unit in (
+                    (first, duration_match.group(0) + "\n\n" + date_match.group(0),
+                     duration_match.group("amount_a"), duration_match.group("unit_a")),
+                    (second, duration_match.group(0) + "\n\n" + date_match.group(0),
+                     duration_match.group("amount_b"), duration_match.group("unit_b"))):
+                claims.append({"subject": pid, "club": club, "kind": "injury_duration",
+                               "modality": "confirmed", "date": action_day.isoformat(),
+                               "published_date": story.date.astimezone(timezone(timedelta(hours=3)))
+                               .date().isoformat(),
+                               "duration": amount(value), "duration_unit": unit.rstrip("s").lower(),
+                               "evidence": evidence})
+            if all(c["duration"] > 0 for c in claims):
+                actor_names = {str(first): ru_a, str(second): ru_b}
+                return {"version": 1, "source_hash": snapshot(story)["content_hash"],
+                        "claims": claims, "actor_name": f"{ru_a} и {ru_b}",
+                        "actor_names": actor_names, "club_name": teams[club],
+                        "club_alias": list(club_names[club])}
     pattern = (rf"{subject_a}\s+and\s+{subject_b}\s+each sustained a lower-body injury "
                rf"in the second period of a \d+-\d+ (?:overtime )?loss for {owner} "
                rf"against .+? on {weekday}")
@@ -205,6 +264,51 @@ def paired_injury(story, names, teams, club_names):
                        for pid in (first, second)],
             "actor_name": f"{ru_a} и {ru_b}", "actor_names": actor_names,
             "club_name": teams[club], "club_alias": list(club_names[club])}
+
+
+def single_injury_duration(story, pid, club, record, teams, club_names):
+    """Parse one explicit NHL.com injury duration, keeping injury and update dates separate."""
+    if (story.kind not in ("injury", "injury_minor") or story.date.tzinfo is None
+            or club not in teams or club not in club_names):
+        return None
+    english = story.en.get(pid)
+    if not english or not record.get("ru"):
+        return None
+    paragraphs = [p.strip() for p in story.text.strip().split("\n\n") if p.strip()]
+    if len(paragraphs) < 2:
+        return None
+    lead = paragraphs[0]
+    subject = r"[-\s]+".join(re.escape(part) for part in re.split(r"[-\s]+", english))
+    city, nickname = club_names[club]
+    owner = re.escape(" ".join(part for part in (city, nickname) if part))
+    weekday = "(" + "|".join(WEEKDAYS) + ")"
+    match = re.fullmatch(
+        rf"{subject} is out (?P<minimum>\d{{1,2}})[-–](?P<maximum>\d{{1,2}}) "
+        rf"(?P<unit>days?|weeks?|months?) for (?:the )?{owner} because of a "
+        rf"(?P<region>upper|lower)-body injury, the team announced on {weekday}[.]?",
+        lead, re.I)
+    if not match:
+        return None
+    minimum, maximum = int(match["minimum"]), int(match["maximum"])
+    if not 1 <= minimum <= maximum <= 52:
+        return None
+    injury_date = re.search(
+        rf"\b(?:sustain(?:ed)?|injury)\b[^.\n]{{0,180}}?\bon {weekday}\b",
+        paragraphs[1], re.I)
+    if not injury_date:
+        return None
+    injury_weekday = WEEKDAYS[injury_date[1].lower()]
+    action_day = story.date.date() - timedelta(days=(story.date.weekday() - injury_weekday) % 7)
+    published_date = story.date.astimezone(timezone(timedelta(hours=3))).date().isoformat()
+    evidence = "\n\n".join(paragraphs[:2])
+    return {"version": 1, "source_hash": snapshot(story)["content_hash"],
+            "claims": [{"subject": pid, "club": club, "kind": "injury_duration",
+                        "modality": "confirmed", "date": action_day.isoformat(),
+                        "published_date": published_date, "duration_min": minimum,
+                        "duration_max": maximum, "duration_unit": match["unit"].rstrip("s").lower(),
+                        "region": match["region"].lower(), "evidence": evidence}],
+            "actor_name": record["ru"], "club_name": teams[club],
+            "club_alias": list(club_names[club])}
 
 
 def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> dict | None:
@@ -231,15 +335,23 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
     subject = r"(?:" + "|".join(re.escape(a) for a in aliases) + r")"
     if not club_names or club not in club_names:
         return None
+    duration = single_injury_duration(story, pid, club, record, teams, club_names)
+    if duration:
+        return duration
     first_game = debut(story, pid, club, record, teams, club_names)
     if first_game:
         return first_game
     incident = left_game(story, pid, club, record, teams, club_names)
     if incident:
         return incident
-    if re.search(r"\blast (?:season|year|month|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b"
-                 r"|previously expected|cancell?ed|no longer|ruled out|will not|won't|not expected|setback",
-                 story.text, re.I):
+    # Background paragraphs often mention an unrelated historical season. Only
+    # block a return when stale/negative wording is attached to this player.
+    subject_sentences = [sentence for sentence in
+                         re.split(r"(?<=[.!?])\s+|\n\s*\n", story.text)
+                         if re.search(subject, sentence, re.I)]
+    if any(re.search(r"\blast (?:season|year|month|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b"
+                     r"|previously expected|cancell?ed|no longer|ruled out|will not|won't|not expected|setback",
+                     sentence, re.I) for sentence in subject_sentences):
         return None
     city, nickname = club_names[club]
     owner = re.escape(" ".join(part for part in (city, nickname) if part))
@@ -331,6 +443,30 @@ def render(packet: dict) -> str:
     if claims[0]["kind"] == "injury_event":
         return (f"{packet['actor_name']} получили повреждения в матче {day(claims[0])}\n\n"
                 f"Оба игрока выступают за «{packet['club_name']}».")
+    if claims[0]["kind"] == "injury_duration":
+        def duration_text(claim):
+            unit = claim["duration_unit"]
+            if "duration_min" in claim:
+                minimum, maximum = claim["duration_min"], claim["duration_max"]
+                forms = {"month": ("месяц", "месяца", "месяцев"),
+                         "week": ("неделю", "недели", "недель"),
+                         "day": ("день", "дня", "дней")}[unit]
+                return f"{minimum}–{maximum} {plural(maximum, forms)}"
+            n = claim["duration"]
+            if unit == "month":
+                return f"{n} {plural(n, ('месяц', 'месяца', 'месяцев'))}"
+            if unit == "week":
+                return f"{n} {plural(n, ('неделю', 'недели', 'недель'))}"
+            return f"{n} {plural(n, ('день', 'дня', 'дней'))}"
+        if len(claims) == 1:
+            claim = claims[0]
+            return (f"{packet['actor_name']} выбыл на {duration_text(claim)}\n\n"
+                    f"Игрок «{packet['club_name']}» получил повреждение {day(claim)}; "
+                    f"срок объявлен {day({**claim, 'date': claim['published_date']})}.")
+        first, second = claims
+        return (f"{packet['actor_names'][str(first['subject'])]} выбыл на {duration_text(first)}, "
+                f"{packet['actor_names'][str(second['subject'])]} — на {duration_text(second)}\n\n"
+                f"Оба игрока «{packet['club_name']}» получили травмы {day(first)}.")
     if claims[0]["kind"] == "activation":
         return (f"{packet['actor_name']} активирован из списка травмированных {day(claims[0])}\n\n"
                 f"Клуб «{packet['club_name']}» вернул игрока в состав.")
@@ -359,16 +495,29 @@ def revision(packet: dict) -> dict:
     main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), packet["claims"][0])
     signing = main["kind"] == "signing"
     actors = sorted({claim["subject"] for claim in packet["claims"]})
+    if signing:
+        facts = {"years": main["years"]}
+    elif main["kind"] == "injury_duration":
+        facts = {"duration_by_actor": sorted(
+            [{"subject": c["subject"], **(
+                {"duration_min": c["duration_min"], "duration_max": c["duration_max"]}
+                if "duration_min" in c else {"duration": c["duration"]}),
+              "unit": c["duration_unit"]} for c in packet["claims"]], key=lambda item: item["subject"])}
+    else:
+        facts = {"modality": main["modality"]}
+        if main["kind"] in ("season_debut", "expected_debut", "injury_event"):
+            facts["action"] = main["kind"]
+        if main.get("action_timezone"):
+            facts["action_timezone"] = main["action_timezone"]
     return {"version": 1, "family": "signing" if signing else "health", "actors": actors,
             "clubs": [main["club"]], "effective_date": main["date"],
             "date_basis": ("explicit" if signing else
                            ("publication_date" if main["kind"] == "activation" else "action_weekday")),
             "phase": (main["phase"] if signing else
                       {"season_debut": "return", "expected_debut": "expected_return",
-                       "activation": "activated", "injury_event": "injury"}.get(main["kind"], main["kind"])),
-            "facts": ({"years": main["years"]} if signing else
-                      {"modality": main["modality"], **({"action": main["kind"]}
-                       if main["kind"] in ("season_debut", "expected_debut", "injury_event") else {})}),
+                       "activation": "activated", "injury_event": "injury",
+                       "injury_duration": "injury"}.get(main["kind"], main["kind"])),
+            "facts": facts,
             "complete": True, "reasons": [], "references": []}
 
 
@@ -378,7 +527,7 @@ def caption(packet: dict, source: dict, msk: str) -> str:
     parsed = date.fromisoformat(msk)
     head, _, body = render(packet).partition("\n\n")
     signing = packet["claims"][0]["kind"] == "signing"
-    injury = packet["claims"][0]["kind"] in ("left_game", "injury_event")
+    injury = packet["claims"][0]["kind"] in ("left_game", "injury_event", "injury_duration")
     debut = packet["claims"][0]["kind"] in ("season_debut", "expected_debut")
     emoji, tag = (("✍️", "#Контракты") if signing else
                   (("🚑", "#Травмы") if injury else
@@ -389,13 +538,17 @@ def caption(packet: dict, source: dict, msk: str) -> str:
 
 
 def expires_at(packet: dict) -> str | None:
-    """Forecast until its stated day ends; dated practice/game news through the following day."""
+    """Forecast/game events expire by action date; injury-duration updates by publication date."""
     from datetime import date, datetime, time, timezone
     main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), packet["claims"][0])
     if main["kind"] == "signing":
         return None
     days = 1 if main["kind"] in ("expected_return", "expected_debut") else 2
-    return datetime.combine(date.fromisoformat(main["date"]) + timedelta(days=days), time.min,
+    basis = main.get("published_date", main["date"]) if main["kind"] == "injury_duration" else main["date"]
+    if main["kind"] in ("expected_return", "expected_debut") and main.get("action_timezone"):
+        zone = ZoneInfo(main["action_timezone"])
+        return datetime.combine(date.fromisoformat(basis) + timedelta(days=days), time.min, zone).isoformat()
+    return datetime.combine(date.fromisoformat(basis) + timedelta(days=days), time.min,
                             timezone(timedelta(hours=3))).isoformat()
 
 
@@ -404,7 +557,7 @@ def card_spec(packet: dict) -> dict:
     claim = packet["claims"][0]
     kind = claim["kind"]
     label = ("КОНТРАКТ" if kind == "signing" else
-             ("ТРАВМА" if kind in ("left_game", "injury_event") else
+             ("ТРАВМА" if kind in ("left_game", "injury_event", "injury_duration") else
               ("ДЕБЮТ" if kind in ("season_debut", "expected_debut") else "ВОЗВРАЩЕНИЕ")))
     actor_ids = sorted({item["subject"] for item in packet["claims"]})
     return {"version": 1, "hero_id": actor_ids[0] if len(actor_ids) == 1 else actor_ids,
@@ -420,7 +573,8 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
     claims = packet.get("claims")
     if (not isinstance(claims, list) or not claims or any(not isinstance(c, dict) for c in claims)
             or any(c.get("kind") not in ("practice", "expected_return", "signing", "left_game",
-                                          "season_debut", "expected_debut", "activation", "injury_event")
+                                          "season_debut", "expected_debut", "activation", "injury_event",
+                                          "injury_duration")
                    for c in claims)):
         return ["нет поддержанных утверждений"]
     required = ("subject", "club", "kind", "date", "modality", "evidence")
@@ -455,4 +609,3 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
     if rebuilt != packet:
         return ["утверждения не соответствуют повторному разбору доказательств"]
     return []
-
