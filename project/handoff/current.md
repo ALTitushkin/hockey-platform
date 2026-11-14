@@ -15,7 +15,7 @@ negative: историческое `last season` в соседнем абзац�
 
 Проверки на чистой базе `main`: **297 unittest**, **26 news**, **5 delivery**, Ruff, data/calendar
 validators, bot search/calendar, bash syntax и `release_version.py` (`v0.21.4`); `git diff --check`.
-Для релизного гейта в worktree создана `.venv` на Python 3.12.13 с Pillow 12.3.0, tzdata 2026.6 и Ruff 0.17.5; установлены только зависимости `news/requirements.txt` и Ruff.
+Для релизного гейта в worktree создана `.venv` на Python 3.12.13 с Pillow 12.3.0, tzdata 2026.6 и Ruff 0.17.4; установлены только зависимости `news/requirements.txt` и Ruff.
 Дополнительно целевые очереди — 16 тестов, факт-парсеры/auto pipeline — 29. Git fetch снова работает
 через локально заданный repo proxy; небезопасный global `http.sslVerify=false` удалён. До релиза production — container image `459e3fc…`, 17 story JSON за 14.11: только Faber typed/auto/published,
 остальные 16 без fact packet. Сохранённые drafts и Telegram при релизе не переписывались.
