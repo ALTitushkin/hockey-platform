@@ -672,6 +672,9 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                                      "text": s.text[:20000], "text_truncated": len(s.text) > 20000,
                                      "en": s.en},
                     "source_snapshot": fact_packet.snapshot(s), "editorial_task": True}
+            # Keep review-only documents in the same source-version registry as
+            # typed drafts so a later NHL revision can supersede stale buttons.
+            data["source_snapshot"]["fetched_at"] = now.isoformat()
             if s.kind == "trade":
                 data["trade_facts"] = trade_facts(s).data()
             publish.save_draft(draft_msk, caption, ["требуется редакторская сборка"], variant, None,
@@ -741,4 +744,3 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             save_state(state)
     save_state(state)
     return log
-

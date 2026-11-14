@@ -32,7 +32,7 @@ def check(draft: dict, msk: str) -> list[str]:
             return ["текст не соответствует проверенному пакету фактов"]
         expected_expiry = fact_packet.expires_at(packet)
         if expected_expiry and data.get("expires_at") != expected_expiry:
-            return ["окно публикации не соответствует дате факта"]
+            return ["окно публикации не соответствует сроку актуальности фактов"]
         if draft.get("card"):
             if data.get("card_spec") != fact_packet.card_spec(packet):
                 return ["карточка не соответствует проверенному пакету фактов"]

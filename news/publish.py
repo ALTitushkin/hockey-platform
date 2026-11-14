@@ -253,6 +253,8 @@ def review(msk: str, post: Post = http_post, kind: str = "night", *, force: bool
     revision = sync_editorial(draft_path(msk, kind), d)
     queue = editorial_queue.Queue(OUT / "editorial.sqlite3")
     try:
+        if queue.status(draft_path(msk, kind).name) == "superseded":
+            return False, "версия заменена более свежим источником; ревью этой задачи недоступно"
         if not force and queue.notified(draft_path(msk, kind).name, revision):
             return True, "эта версия уже доставлена на редакторскую проверку"
     finally:

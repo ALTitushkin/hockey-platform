@@ -168,6 +168,80 @@ class EventRegistryQA(unittest.TestCase):
             self.assertTrue(draft["data"]["editorial_task"])
             self.assertEqual(send.call_count, 0)
 
+    def test_changed_untyped_source_supersedes_old_review_and_blocks_its_button(self):
+        self.process_story(self.story, self.accepted_write)
+        old_path = publish.draft_path("2026-11-03", "story-a")
+        old_draft = json.loads(old_path.read_text(encoding="utf-8"))
+        self.assertTrue(old_draft["data"]["source_snapshot"].get("fetched_at"))
+
+        newer = copy.deepcopy(self.story)
+        newer.eid = "b"
+        newer.text += " The team confirmed the update on Tuesday."
+        newer.date = datetime(2026, 11, 4, tzinfo=timezone.utc)
+        with patch("news.editorial_lifecycle.utcnow", return_value=newer.date), \
+                patch("news.editorial_queue.datetime") as queue_datetime:
+            queue_datetime.now.return_value = newer.date
+            queue_datetime.fromisoformat = datetime.fromisoformat
+            self.process_story(newer, self.accepted_write)
+
+        current_path = publish.draft_path("2026-11-04", "story-b")
+        current = json.loads(current_path.read_text(encoding="utf-8"))
+        self.assertTrue(current["data"]["source_snapshot"].get("fetched_at"))
+        queue = publish.editorial_queue.Queue(self.out / "editorial.sqlite3")
+        try:
+            self.assertEqual(queue.status(old_path.name), "superseded")
+            self.assertNotEqual(queue.status(current_path.name), "superseded")
+        finally:
+            queue.close()
+        self.assertEqual([task["name"] for task in publish.editorial_pending()], [current_path.name])
+        calls = []
+        self.assertFalse(publish.publish("2026-11-03", ["tg"], lambda *a, **k: calls.append(a),
+                                          kind="story-a")[0])
+        self.assertEqual(calls, [])
+
+    def test_new_source_version_backfills_legacy_review_tasks_before_superseding(self):
+        url = "https://www.nhl.com/news/jordan-staal-returns-to-hurricanes-lineup-for-global-series-finale"
+        legacy = {"auto": False, "editorial_task": True,
+                  "source_snapshot": {"url": url, "content_hash": "old-body"}}
+        old_path = publish.save_draft("2026-11-03", "Старая редакторская задача", ["review"], "review",
+                                      kind="story-old", data=legacy)
+        old = json.loads(old_path.read_text(encoding="utf-8"))
+        self.assertNotIn("fetched_at", old["data"]["source_snapshot"])
+        queue = publish.editorial_queue.Queue(self.out / "editorial.sqlite3")
+        try:
+            # A later lifecycle/status transition may update the task row; the
+            # first history entry still records when this source version arrived.
+            with queue.db:
+                queue.db.execute("UPDATE editorial_tasks SET updated=? WHERE name=?",
+                                 ("2026-11-05T00:00:00+00:00", old_path.name))
+        finally:
+            queue.close()
+
+        current = {"auto": False, "editorial_task": True,
+                   "source_snapshot": {"url": url, "content_hash": "new-body",
+                                       "fetched_at": "2026-11-04T00:00:00+00:00"}}
+        current_path = publish.save_draft("2026-11-04", "Новая редакторская задача", ["review"], "review",
+                                          kind="story-new", data=current)
+        queue = publish.editorial_queue.Queue(self.out / "editorial.sqlite3")
+        try:
+            self.assertEqual(queue.status(old_path.name), "superseded")
+            self.assertNotEqual(queue.status(current_path.name), "superseded")
+            stored = queue.db.execute("select source_hash from editorial_documents where name=?",
+                                      (old_path.name,)).fetchone()
+            self.assertEqual(stored[0], "old-body")
+        finally:
+            queue.close()
+        self.assertEqual([task["name"] for task in publish.editorial_pending()], [current_path.name])
+        calls = []
+        self.assertFalse(publish.publish("2026-11-03", ["tg"], lambda *a, **k: calls.append(a),
+                                          kind="story-old")[0])
+        self.assertEqual(calls, [])
+        with patch.object(publish, "tg_send") as send:
+            ok, reason = publish.review("2026-11-03", kind="story-old", force=True)
+        self.assertFalse(ok)
+        self.assertIn("заменена", reason)
+        send.assert_not_called()
+
     def test_database_rebuild_uses_frozen_receipt_not_changed_draft_facts(self):
         path = self.draft("story-first")
         with patch.object(publish, "tg_send", return_value=(True, "message_id 50")):
@@ -241,4 +315,3 @@ class ChannelKeyQA(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

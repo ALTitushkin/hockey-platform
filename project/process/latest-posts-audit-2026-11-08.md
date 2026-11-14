@@ -140,3 +140,60 @@ Read-only срез после выката: 43 story JSON за 12–14.11, 18 у
 - Нынешний fact-template безопасно покрывает не все эти формулировки: Staal article формулирует definite return без weekday-forecast; duration injuries требуют отдельных шаблонов и привязки периода к каждому игроку. Workshop нужно исключать как промо. До появления template такие items остаются review; не ослаблять guard.
 - `revalidation.refresh` обрабатывает только одну задачу с CAS fingerprint, актуальным source fetch, packet verification и event-ledger check; после успешного refresh пересобирает draft, но не отправляет его в канал. Невалидный/устаревший source не должен автоматически получать новое право публикации. Массовый refresh для этих файлов не запускался.
 
+## Повторная live-проверка и фиксы на актуальном main — 14.11.2026
+
+Read-only SSH подтвердил: `hockey-news` Up 10 hours, image ID
+`sha256:459e3fc860ed74e35ee1bbff5171de37a3fc8112679425cef2fa927f7ea7f367`. В 17 story JSON за
+14.11 только Faber имеет typed `expected_debut`, `auto=true`, `published=[tg]`; остальные 16 без
+fact packet. В логах появились ещё два review-уведомления. Продакшен не менялся.
+
+Текущий GitHub main (`ecd40f6`) повторно сверён с источником: broad guard в `fact_packet.py` и
+отсутствие `fetched_at` у `editorial_task` подтверждают две найденные причины. Заодно зафиксирован
+причинный сбой Git: Windows Internet Settings использовал proxy `127.0.0.1:10808`, PowerShell
+автоматически шёл через него, Git — напрямую. Repo-local `http.proxy` восстановил `fetch`; для
+глобального Git удалено небезопасное `http.sslVerify=false` (проверка TLS теперь default-on).
+
+На свежей базе создан чистый `release/autopublish-v0.21.4` от `ecd40f6`. Перенесены только семь
+файлов: очередь/миграция supersede, timestamp review-источника, запрет старых кнопок, Staal guard,
+узкие duration-шаблоны для NHL-формулировок Крайдера и Маккиннона/Макара, сообщения expiry и
+регрессии. Ревью уточнило порядок legacy-версий: использовать первое `editorial_history.at`
+соответствующей ревизии; `editorial_tasks.updated` — только если истории нет. Регрессия сдвигает
+`updated` после новой версии и подтверждает корректный supersede. На этой базе проходят 296 unittest,
+26 news, 5 delivery, Ruff и diff-check. Изменение
+локальное: CI, PR, deploy/live-replay этого кода ещё не было. Не refresh/не отправлять старые
+черновики задним числом.
+
+### Визуальная проверка архивных черновиков RNH — 15.11.2026
+
+Read-only выгружены и просмотрены четыре PNG из production archive:
+
+- `2026-11-08_story-a89d4c96.png` и `2026-11-08_story-d133dd5b.png`: текст про Райана Ньюджент-Хопкинса после попадания шайбы в матче с Vancouver, но на изображении логотип и подпись «Ванкувер» — неверный клуб героя.
+- `2026-11-08_story-abfe0403.png`: логотип «Эдмонтона» соответствует тому же игроку и тексту.
+- `2026-11-09_story-c24d9b89.png`: ожидаемое возвращение Ньюджент-Хопкинса в «Эдмонтон», но карточка оставляет область героя пустой.
+
+Во всех четырёх JSON `published=[]`, `auto=false`, `card_spec` отсутствует. Это ошибочные сохранённые
+review-черновики, не публичные отправки. Production-артефакты не редактировались. Regression
+`test_incident08_opponent_in_prose_never_becomes_hero_club` подтверждает, что typed renderer выбирает
+EDM, хотя VAN упомянут в тексте как соперник; unsupported path сохраняет source-task и не строит
+карточку. Старые черновики вручную не refresh/не отправлять.
+
+Повторный read-only container check 15.11: тот же image ID `459e3fc…`, started
+`2026-11-14T10:56:17Z`, restarts=0. Ни candidate, ни другие серверные изменения не развёрнуты.
+
+### Свежие review-задачи — 15.11.2026
+
+Повторная read-only проверка нашла три новые записи без fact packet и автопубликации. Две записи
+Barzal ведут на один NHL.com URL и содержат одну вводную о двух отдельных кадровых действиях:
+Barzal активирован и MacLean помещён на waivers. В тегах два ID, English name map пуст; оставлено
+review, так как выбрать героя карточки по ID без догадки нельзя. На будущее version queue в
+кандидате v0.21.4 сводит/устаревает предыдущую задачу по тому же URL, но архивные JSON не менялись.
+
+Третья запись — NHL Status Report о дебюте Фейбера. Источник обновлён 14.11 в 20:21 UTC; черновик
+создан около 21:00 UTC, примерно за три часа до матча по ET. Сюжет не распознался, потому что
+Status Report шаблон пропускал `will make his season debut`; московский expiry для action-date
+14.11 также истекал в 21:00 UTC, хотя игра ещё не началась. В candidate v0.21.4 добавлены узкая
+форма `will make` и ET-зона для дня матча/дедлайна. Regression test проверяет typed packet,
+совпадающую CardSpec, ровно одну mock-отправку до дедлайна и expiry после него. Сохранённый
+production draft не переигрывался и не публиковался. Тест/кандидат пока не проходили GitHub CI,
+production остаётся на образе `459e3fc…`.
+
