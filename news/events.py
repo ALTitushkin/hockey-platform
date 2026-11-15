@@ -12,6 +12,7 @@
 import urllib.parse
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date
 
 from news.competition import Scope, from_data
 from news.digest import plural
@@ -114,6 +115,61 @@ def headline(events: list[Event], limit: int = 3) -> list[tuple[int, list[Event]
         by.setdefault(e.pid, []).append(e)
     ranked = sorted(by.items(), key=lambda kv: -max(e.weight for e in kv[1]))
     return [(pid, sorted(evs, key=lambda e: -e.weight)) for pid, evs in ranked[:limit]]
+
+
+def scoring_streaks(reports: list[GameReport], candidates: set[int],
+                    fetch: Callable[[str], dict] = fetch_json) -> list[Event]:
+    """Серии регулярного чемпионата: только если полный журнал содержит и текущий матч, и прошлые игры."""
+    lines = {s.pid: s for report in reports for s in report.skaters if s.pid in candidates}
+    events = []
+    for pid, line in lines.items():
+        report = next(r for r in reports if any(s.pid == pid for s in r.skaters))
+        scope_data = report.scope
+        if not scope_data or scope_data.get("phase") != "regular":
+            continue
+        if scope_data.get("competition") != "nhl":
+            continue
+        try:
+            payload = fetch(f"{WEB}/player/{pid}/game-log/now")
+        except RuntimeError:
+            break  # endpoint недоступен — не повторяем сетевые ретраи для всех оставшихся игроков
+        if not isinstance(payload, dict) or payload.get("gameTypeId") != 2:
+            continue
+        rows = payload.get("gameLog")
+        if not isinstance(rows, list) or not rows:
+            continue
+        if any(not isinstance(row, dict) or type(row.get("gameId")) is not int
+               or not isinstance(row.get("gameDate"), str)
+               or any(type(row.get(k)) is not int or row[k] < 0 for k in ("goals", "points"))
+               for row in rows):
+            continue
+        try:
+            for row in rows:
+                date.fromisoformat(row["gameDate"])
+        except ValueError:
+            continue
+        ordered = sorted(rows, key=lambda row: (row["gameDate"], row["gameId"]), reverse=True)
+        if len({row["gameId"] for row in ordered}) != len(ordered):
+            continue
+        current = next((i for i, row in enumerate(ordered) if row["gameId"] == report.game_id), None)
+        if current is None or (ordered[current]["goals"], ordered[current]["points"]) != (line.goals, line.points):
+            continue  # журнал ещё не обновился или не соответствует box score
+        for key, current_value, label, minimum, weight in (
+                ("points", line.points, "результативную", 4, 75),
+                ("goals", line.goals, "голевую", 3, 70)):
+            prior = 0
+            for row in ordered[current + 1:]:
+                if row[key] == 0:
+                    break
+                prior += 1
+            if current_value and prior >= minimum:
+                length = prior + 1
+                count = plural(length, ("матча", "матчей", "матчей"))
+                events.append(Event(pid, weight, f"продлил {label} серию до {length} {count}", {length}))
+            elif not current_value and prior >= minimum + 1:
+                count = plural(prior, ("матча", "матчей", "матчей"))
+                events.append(Event(pid, weight, f"прервал {label} серию из {prior} {count}", {prior}))
+    return events
 
 
 def context(reports: list[GameReport], fetch: Callable[[str], dict] = fetch_json,

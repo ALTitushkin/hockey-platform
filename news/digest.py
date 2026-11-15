@@ -125,16 +125,14 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
                    highlights: list | None = None, lead: str | None = None,
                    with_teams: bool = True, rubric_headline: bool = False) -> tuple[str, dict]:
     """Подпись к карточке: как у больших спортивных каналов — заголовок-новость, абзац, блоки через
-    пустую строку, одна метка на строку, подпись рубрики в конце. Счёт всех матчей — на картинке,
-    в тексте — сюжет и очки наших. with_teams=False — запасной вариант, если не влезает в 1024 знака.
+    пустую строку, одна метка на строку, подпись рубрики в конце. Счёт и очки — на картинке,
+    в тексте — значимые события наших. with_teams=False — запасной вариант, если не влезает в 1024 знака.
     """
     _, m, d = (int(x) for x in msk_date.split("-"))
     facts = {"numbers": {d}, "pids": set(), "teams": set()}
     if not reports:
         return "", facts
     names = display_names(reports, players)
-    team_of = {s.pid: teams[s.team] for r in reports for s in r.skaters} | \
-              {g.pid: teams[g.team] for r in reports for g in r.goalies}
     for r in reports:
         facts["teams"] |= {teams[r.home], teams[r.away]}
         facts["numbers"] |= {r.home_score, r.away_score}
@@ -144,6 +142,7 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
     if rest and not rubric_headline:
         pid, evs = rest[0]
         top = evs[0]
+        facts["pids"].add(pid)
         facts["numbers"] |= top.numbers
         blocks.append(f"{icon(top.text)} <b>{names[pid]} — {top.text}</b>")
         others = [(pid, evs[1:])] if evs[1:] else []
@@ -155,47 +154,19 @@ def render_caption(reports: list[GameReport], players: dict, teams: dict, msk_da
     if rest:
         lines = ["⭐ <b>Ещё главное</b>"]
         for pid, evs in rest:
+            facts["pids"].add(pid)
             for e in evs:
                 facts["numbers"] |= e.numbers
             lines.append(f"{icon(evs[0].text)} {names[pid]} — {', '.join(e.text for e in evs)}")
         blocks.append("\n".join(lines))
 
-    # Без меток в строках: опора для глаза — фамилия жирным; группы «2+ очка» и «1 очко» — через
-    # пустую строку. Так строки не сливаются и пост не пестрит (выбор владельца 25.10.2026).
-    def club(pid: int) -> str:
-        return f" · {team_of[pid]}" if with_teams else ""
-
-    scorers = sorted((s for r in reports for s in r.skaters), key=lambda s: (-s.points, -s.goals))
-    groups: dict[bool, list[str]] = {True: [], False: []}
-    idle = []
-    for s in scorers:
-        facts["pids"].add(s.pid)
-        facts["numbers"] |= {s.goals, s.assists, s.sog}
-        if s.points:
-            groups[s.points >= 2].append(f"<b>{names[s.pid]}</b> {s.goals}+{s.assists}{club(s.pid)}")
-        else:
-            idle.append(names[s.pid])
-    keepers = []
-    for r in reports:
-        for g in r.goalies:
-            facts["pids"].add(g.pid)
-            facts["numbers"] |= {g.saves, g.shots}
-            word = (DECISION_SO if r.last_period == "SO" else {}).get(g.decision) or DECISION.get(g.decision)
-            result = f", {word}" if word else ""
-            keepers.append(f"🥅 <b>{names[g.pid]}</b> {g.saves} из {g.shots} ({save_pct(g.saves, g.shots, facts)})"
-                           f"{club(g.pid)}{result}")
-    parts = ["\n".join(x) for x in (groups[True], groups[False], keepers) if x]
-    if parts:
-        blocks.append("📊 <b>Очки наших</b>\n" + "\n\n".join(parts))
-    if idle:
-        blocks.append("<blockquote expandable>Без очков: " + ", ".join(idle) + "</blockquote>")
     blocks.append(f"🌙 #НочьНаших · {d} {MONTHS[m - 1]}")
     return "\n\n".join(blocks), facts
 
 
 def render_league(reports: list[GameReport], players: dict, teams: dict, msk_date: str,
-                  highlights: list | None = None, stars: int = 5) -> tuple[str, dict]:
-    """«Ночь в НХЛ»: вся лига. Счёт всех матчей — на карточке, в подписи — события ночи и звёзды по очкам.
+                  highlights: list | None = None) -> tuple[str, dict]:
+    """«Ночь в НХЛ»: вся лига. Счёт и очки лучших — на карточке, в подписи — события ночи.
     players — только игроки с русским именем (names.league_players): кого нет, того нет и в посте."""
     _, m, d = (int(x) for x in msk_date.split("-"))
     facts = {"numbers": {d}, "pids": set(), "teams": set()}
@@ -228,15 +199,6 @@ def render_league(reports: list[GameReport], players: dict, teams: dict, msk_dat
             lines.append(f"{icon(evs[0].text)} {names[pid]} — {', '.join(e.text for e in evs)} · {team_of[pid]}")
         blocks.append("\n".join(lines))
 
-    # звёзды ночи: больше всех очков, от двух; ничья по очкам — больше голов
-    top = sorted((s for s in skaters if s.points >= 2), key=lambda s: (-s.points, -s.goals))
-    if top[:stars]:
-        rows = []
-        for s in top[:stars]:
-            facts["pids"].add(s.pid)
-            facts["numbers"] |= {s.goals, s.assists}
-            rows.append(f"<b>{names[s.pid]}</b> {s.goals}+{s.assists} · {team_of[s.pid]}")
-        blocks.append("📊 <b>Звёзды ночи</b>\n" + "\n".join(rows))
     blocks.append(f"🏒 #НочьВНХЛ · {d} {MONTHS[m - 1]}")
     return "\n\n".join(blocks), facts
 
