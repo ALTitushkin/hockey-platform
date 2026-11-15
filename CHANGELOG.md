@@ -13,7 +13,7 @@
 ### Проверено
 - На чистом worktree от `origin/main=ecd40f6`: 297 unittest, 26 news tests, 5 delivery tests, Ruff, data/calendar validators, bot search/calendar, bash syntax, release version gate и `git diff --check`.
 - Mock E2E Status Report проверяет карточку Фейбера, одну отправку до ET-дедлайна и expiry после.
-- PR [#4](https://github.com/ALTitushkin/hockey-platform/pull/4) squash-слит: `cb8e01cea26dfc0ff7ee47b700deaff54553feb2`. Workflow [43646259285](https://github.com/ALTitushkin/hockey-platform/actions/runs/43646259285): test, news-image/build+smoke, deploy и release-tag — success; deploy log подтвердил запуск бота и новостника. Наблюдение свежего полного auto-поста после релиза ещё не выполнено; старые неоднозначные drafts не переотправлялись.
+- PR [#4](https://github.com/ALTitushkin/hockey-platform/pull/4) squash-слит: `cb8e01cea26dfc0ff7ee47b700deaff54553feb2`. Workflow [43646259285](https://github.com/ALTitushkin/hockey-platform/actions/runs/43646259285): test, news-image/build+smoke, deploy и release-tag — success; deploy log подтвердил запуск бота и новостника. Read-only production-аудит 15.11: Фейбер expectation message 91 сменился confirmed debut message 92 после обновления источника (валидное изменение модальности, не дубль); Крайдер — отдельное injury событие, message 93. Для обоих фактов источник, текст, герой/клуб/заголовок карточки согласованы, SHA256 PNG совпал с card_hash, ручная визуальная проверка пройдена. Из 9 story-файлов 2 auto/published, 6 review с причинами, 1 new без отправки; дублированных delivery receipts не найдено. Старые неоднозначные drafts не переотправлялись.
 
 ## [0.21.3] — 2026-11-14
 
