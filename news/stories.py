@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from news import (
+    editorial_queue,
     event_registry,
     fact_packet,
     guard,
@@ -43,6 +44,14 @@ KEEP = timedelta(days=3)
 # (у Раймера — травма Шестёркина). Релиз клуба ждёт столько, чтобы взять текст NHL.com.
 HOLD_TEAM = timedelta(minutes=60)
 REPORT_REPEAT = timedelta(days=3)
+
+
+def _superseded(path: Path) -> bool:
+    queue = editorial_queue.Queue(Path(path).parent / "editorial.sqlite3")
+    try:
+        return queue.status(Path(path).name) == "superseded"
+    finally:
+        queue.close()
 Fetch = Callable[[str], dict]
 
 SKIP_TAGS = {"game-recap", "game-preview", "postgame", "pregame", "game-coverage", "feature", "player-feature",
@@ -585,6 +594,8 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             unsafe_legacy = candidate_legacy and not unresolved_delivery
             if unsafe_legacy:
                 log.append(f"инфоповод {s.slug}: старый свободный черновик заменяется задачей с источником")
+            elif _superseded(existing_path):
+                log.append(f"инфоповод {s.slug}: superseded черновик заменяется актуальной версией")
             else:
                 ok, info = deliver(draft_msk, kind)
                 log.append(f"инфоповод {s.slug} ({s.kind}): {'ок' if ok else 'ошибка'} — {info}")
@@ -605,6 +616,11 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         equivalent = story_provenance.equivalent_draft(s, packet, publish.OUT, msk)
         if equivalent:
             previous_path, previous = equivalent
+            if _superseded(previous_path):
+                log.append(f"инфоповод {s.slug}: superseded review; пересобираю по актуальному источнику")
+                equivalent = None
+        if equivalent:
+            previous_path, previous = equivalent
             previous_date, previous_kind = previous_path.stem.split("_", 1)
             if previous.get("published") or previous.get("rejected") or previous.get("editorial_closed"):
                 ok, info = True, "прежний редакционный исход сохранён"
@@ -616,7 +632,10 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                 state["seen"][s.eid] = now.isoformat()
                 queued.pop(s.eid, None)
                 save_state(state)
-            continue
+                continue
+            if not _superseded(previous_path):
+                continue
+            log.append(f"инфоповод {s.slug}: superseded review; пересобираю по актуальному источнику")
         notes: list[str] = []
         reference = story_provenance.published_reference(s, publish.OUT, msk)
         events_db = event_registry.Registry(publish.OUT / "event_registry.sqlite3")

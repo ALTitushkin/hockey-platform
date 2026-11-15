@@ -27,6 +27,28 @@ class Stabilization(unittest.TestCase):
     def packet(self):
         return fact_packet.extract(self.story, self.names, self.teams, stories.TEAM_EN)
 
+    def test_superseded_review_is_terminal_and_can_be_replaced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "2026-11-15_story-staal.json"
+            queue = editorial_queue.Queue(Path(directory) / "editorial.sqlite3")
+            try:
+                queue.db.execute(
+                    "INSERT INTO editorial_tasks VALUES (?,?,?,?,NULL,?)",
+                    (path.name, "old-revision", "superseded", "[]", "2026-11-15T00:00:00+00:00"))
+                queue.db.commit()
+            finally:
+                queue.close()
+            self.assertTrue(stories._superseded(path))
+            fresh = {"text": "актуальная версия", "data": {"source_snapshot": {
+                "url": "https://www.nhl.com/news/staal", "content_hash": "new",
+                "fetched_at": "2026-11-15T01:00:00+00:00"}}}
+            queue = editorial_queue.Queue(Path(directory) / "editorial.sqlite3")
+            try:
+                queue.sync(path.name, fresh)
+                self.assertNotEqual(queue.status(path.name), "superseded")
+            finally:
+                queue.close()
+
     def test_incident08_injury_has_verified_template_and_action_date(self):
         p = self.packet()
         self.assertIsNotNone(p)
