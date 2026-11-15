@@ -1,3 +1,24 @@
+# v0.21.5 выкачен — серии и без дублирования статистики, 15.11.2026
+
+PR [#5](https://github.com/ALTitushkin/hockey-platform/pull/5) squash-слит в `main`, merge commit
+`8d609da910ab7ebf588bcd2151187b7d1671cfcf`, тег `v0.21.5`. CI/CD run
+[43706691518](https://github.com/ALTitushkin/hockey-platform/actions/runs/43706691518): test,
+news-image build/smoke, deploy и release-tag — success. Production news image:
+`ghcr.io/altitushkin/hockey-news:8d609da910ab7ebf588bcd2151187b7d1671cfcf`; deploy log подтвердил
+запуск `hockey-news`, перезапуск бота и `hockey-shadow running:0`. Rollback через workflow
+`news_image=previous` (v0.21.4, `cb8e01c`). Независимый SSH-срез не выполнен: ключ deploy в сессии
+недоступен; встроенный CI healthcheck прошёл. Новые посты вручную не отправлялись.
+
+В подписях «Ночь наших»/«Ночь в НХЛ» убраны дубли очков и статистики карточек. Постматчевые
+серии регулярного сезона учитываются только с полным NHL game log, записью текущего матча и
+совпадением голов/очков с бокс-скором. Проверяются игроки наших в «Ночи наших» и топ-10 ночи плюс
+авторы других событий в общей лиге. Предматчевые серии наших и клубов остаются в существующих
+интригах. При плохих/устаревших данных серия не публикуется.
+
+Проверки: **297 unittest**, **27 news**, **5 delivery**, Ruff, валидаторы данных/календаря, тесты
+бота, bash syntax обоих deploy-скриптов, version gate `v0.21.5`, `git diff --check` — зелёные.
+Откат не требует миграции БД. Полный отчёт: [релиз v0.21.5](../process/releases/v0.21.5.md).
+
 # v0.21.4 выкачен — стабилизация автопубликации, 15.11.2026
 
 Работа ведётся в чистом worktree `D:/MyFolder/Projects/.worktrees/hockey-autopublish-stability`,
