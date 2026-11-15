@@ -85,11 +85,14 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
         return "pending"
 
     reports = nhl.collect_night(nhl_date, {int(p) for p in players})
+    candidates = {s.pid for report in reports for s in report.skaters}
     try:
-        highlights = events.headline(events.detect(reports, events.context(reports)))
+        found = events.detect(reports, events.context(reports))
     except RuntimeError as e:  # нет событий — не повод молчать: «Главное» выберется по очкам
         print(f"  ↳ события не собраны: {e}")
-        highlights = []
+        found = []
+    found.extend(events.scoring_streaks(reports, candidates))
+    highlights = events.headline(found)
     highlights, rubric_headline = content_plan.choose(
         highlights, players, content_plan.previous_headline(publish.draft_path(msk, "league")))
     text, facts = render_night(reports, players, teams, msk, highlights)
@@ -153,11 +156,16 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
     try:
         context = events.context(reports, games=games)
         found = [e for e in events.detect(reports, context) if str(e.pid) in players]
-        highlights = events.headline(found, limit=5)
     except RuntimeError as e:
         print(f"  ↳ события не собраны: {e}")
-        highlights = []
+        found = []
         context = {"games": games}
+    top_ids = {s.pid for s in sorted(
+        (s for r in reports for s in r.skaters if str(s.pid) in players),
+        key=lambda s: (-getattr(s, "points", 0), -getattr(s, "goals", 0)))[:10]}
+    streak_candidates = top_ids | {e.pid for e in found}
+    found.extend(events.scoring_streaks(reports, streak_candidates))
+    highlights = events.headline(found, limit=5)
     text, facts = render_league(reports, players, teams, msk, highlights)
     comebacks = [event for r in reports
                  if (event := match_facts.comeback(r, context.get("games", {}).get(r.game_id, {}).get("scoring", [])))]

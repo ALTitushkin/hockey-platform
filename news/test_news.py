@@ -67,13 +67,12 @@ def test_caption():
     assert blocks[0] == "🚨 <b>Капризов — победный гол в овертайме</b>"  # заголовок-новость
     assert blocks[1] == "Капризов вытащил Миннесоту"
     assert blocks[2] == "⭐ <b>Ещё главное</b>\n✨ И. Протас — первый гол в НХЛ"
-    assert blocks[3] == "📊 <b>Очки наших</b>\n<b>Капризов</b> 2+1 · Миннесота"
-    assert blocks[4] == "<b>И. Протас</b> 1+0 · Вашингтон"  # группа «1 очко» — через пустую строку
-    assert blocks[5] == "🥅 <b>Шестёркин</b> 30 из 33 (90,9%) · Миннесота, победа"
+    assert blocks[3] == "🌙 #НочьНаших · 24 октября"
+    assert "2+1" not in text and "1+0" not in text
+    assert "30 из 33" not in text and "90,9%" not in text
     from news.digest import save_pct
     f = {"numbers": set()}
     assert save_pct(27, 27, f) == "100%" and save_pct(18, 23, f) == "78,3%" and f["numbers"] == {100, 78, 3}
-    assert blocks[-1] == "🌙 #НочьНаших · 24 октября"
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
     short, _ = render_caption([rep], PLAYERS, TEAMS, "2026-10-24", with_teams=False)
     assert short.startswith("🌙 <b>Ночь наших · 24 октября</b>") and "(Миннесота)" not in short
@@ -216,6 +215,42 @@ def test_events():
     assert guard.check(text, facts, PLAYERS, TEAMS) == []
 
 
+def test_scoring_streaks_require_complete_current_log():
+    from datetime import date, timedelta
+
+    from news import events
+
+    report = parse_box(BOX, {1, 2, 3, 4, 5})
+    report.scope = {"edition": "20262027", "phase": "regular", "competition": "nhl", "ruleset_version": 1}
+
+    def log(pid, current_points, prior_points):
+        rows = [{"gameId": 100, "gameDate": "2026-10-25", "goals": 2 if pid == 1 else 0,
+                 "points": current_points}]
+        rows += [{"gameId": 100 - i, "gameDate": (date(2026, 10, 25) - timedelta(days=i)).isoformat(),
+                  "goals": 1 if pid == 1 and i <= 3 else 0, "points": value}
+                 for i, value in enumerate(prior_points, 1)]
+        return {"gameTypeId": 2, "gameLog": rows}
+
+    data = {1: log(1, 3, [1] * 20), 3: log(3, 0, [1, 1, 1, 1, 1, 0])}
+    found = events.scoring_streaks(
+        [report], {1, 3}, lambda url: data[int(url.split("/player/")[1].split("/")[0])])
+    assert sorted((event.pid, event.text, event.numbers) for event in found) == sorted([
+        (1, "продлил результативную серию до 21 матча", {21}),
+        (1, "продлил голевую серию до 4 матчей", {4}),
+        (3, "прервал результативную серию из 5 матчей", {5}),
+    ])
+    report.scope["phase"] = "playoffs"
+    assert events.scoring_streaks(
+        [report], {1, 3}, lambda _url: (_ for _ in ()).throw(AssertionError())) == []
+    report.scope["phase"] = "regular"
+    assert events.scoring_streaks([report], {1}, lambda _url: {"gameTypeId": 2, "gameLog": []}) == []
+    stale = log(1, 2, [1] * 20)  # текущая строка расходится с бокс-скором
+    assert events.scoring_streaks([report], {1}, lambda _url: stale) == []
+    invalid = log(1, 3, [1] * 20)
+    invalid["gameLog"][0]["gameDate"] = "not-a-date"
+    assert events.scoring_streaks([report], {1}, lambda _url: invalid) == []
+
+
 def test_service_buttons_and_schedule():
     import json
     import os
@@ -315,7 +350,7 @@ def test_league_names_and_post():
     hl = [(999, [Event(999, 55, "хет-трик")]), (1, [Event(1, 40, "победный гол")])]
     text, facts = render_league([rep], league, TEAMS, "2026-10-25", hl)
     assert text.startswith("🎩 <b>Макдэвид — хет-трик</b> · Вашингтон")
-    assert "<b>Капризов</b> 2+1 · Миннесота" in text and "#НочьВНХЛ · 25 октября" in text
+    assert "2+1" not in text and "#НочьВНХЛ · 25 октября" in text
     assert guard.check(text, facts, league, TEAMS) == []
     # без русского имени игрока в посте нет — ни в событиях, ни в звёздах
     text, _ = render_league([rep], PLAYERS, TEAMS, "2026-10-25", hl)
