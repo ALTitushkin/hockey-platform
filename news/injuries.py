@@ -8,9 +8,9 @@ ESPN ловит того, кто травмировался в прошлом м
 
 import unicodedata
 
+from news.nhl import ESPN_INJURIES as ESPN
 from news.nhl import fetch_json
 
-ESPN = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries"
 # «Day-To-Day» не берём: такие часто выходят на лёд — их отсечёт состав прошлого матча, если не играли
 OUT = {"Injured Reserve", "Long Term Injured Reserve", "Out", "Suspension"}
 

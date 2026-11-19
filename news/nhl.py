@@ -17,9 +17,12 @@ STATS = "https://api.nhle.com/stats/rest/en"
 UA = "KulturaHokkeyaNews/0.1 (+https://altitushkin.github.io/hockey-platform/)"
 FINAL_STATES = {"OFF", "FINAL"}
 API_HOSTS = {"api-web.nhle.com", "api.nhle.com", "forge-dapi.d3.nhle.com"}
+ESPN_INJURIES = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries"
 
 
 def validate_url(url: str) -> None:
+    if url == ESPN_INJURIES:
+        return
     parsed = urlsplit(url)
     if (parsed.scheme != "https" or parsed.hostname not in API_HOSTS or parsed.username
             or parsed.password or parsed.port not in (None, 443)):
