@@ -565,6 +565,10 @@ class StabilizationQA(unittest.TestCase):
             ("Troy Terry makes season debut", "Troy Terry", "Anaheim Ducks",
              "Troy Terry made his season debut against the Nashville Predators on Wednesday. "
              "He had surgery in June and missed 61 games last season.", "ANA", "season_debut", "2026-11-11"),
+            ("Heiskanen to return", "Miro Heiskanen", "Dallas Stars",
+             "Miro Heiskanen will return for the Stars to play the Vegas Golden Knights on Thursday "
+             "(10 p.m. ET), the first of consecutive road games.",
+             "DAL", "expected_return", "2026-11-12"),
             ("Kevin Fiala to make season debut", "Kevin Fiala", "Los Angeles Kings",
              "Kevin Fiala is expected to make his season debut against the New York Islanders "
              "on Thursday (10 p.m. ET; ESPN+). Fiala sustained fractures in February.",

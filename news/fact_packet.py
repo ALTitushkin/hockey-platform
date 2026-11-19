@@ -114,6 +114,8 @@ def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | N
     if len(sections) != 1:
         return None
     club, text = sections[0]
+    if not names.get(str(pid), {}).get("ru") or club not in teams:
+        return None
     # The source is a league-wide report; bind only its first factual sentence
     # for this uniquely identified headline actor and club section. Later injury
     # history, stats and quotes must not leak into the new event.
@@ -136,6 +138,9 @@ def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | N
         ("expected_return", "expected",
          rf"{subject} will return to the lineup for (?:the )?{re.escape(club_names[club][1])} "
          rf"against .+? on {weekday}"),
+        ("expected_return", "expected",
+         rf"{subject} will return for the {re.escape(club_names[club][1])} "
+         rf"to play the [\w .-]+? on {weekday}(?=\s*[(.,]|$)"),
     )
     for kind, modality, pattern in patterns:
         match = re.match(pattern + r"(?:\s*\([^)]*\))?[.,]?", lead, re.I)
