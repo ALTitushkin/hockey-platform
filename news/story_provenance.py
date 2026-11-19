@@ -12,6 +12,7 @@ def equivalent_draft(story, packet, out, msk):
     """Reuse work for identical source or supported facts, including unresolved review."""
     today = date.fromisoformat(msk)
     source_hash = fact_packet.snapshot(story)["content_hash"]
+    editorial_matches = []
     revision = fact_packet.revision(packet) if packet else None
     for offset in range(4):
         for path in sorted(out.glob(f"{today - timedelta(days=offset)}_story-*.json")):
@@ -39,12 +40,34 @@ def equivalent_draft(story, packet, out, msk):
                 same_source = (bool(data.get("fact_packet") or data.get("editorial_task"))
                                and data.get("slug") == story.slug
                                and data.get("source_snapshot", {}).get("content_hash") == source_hash)
+                # NHL Status Reports expose several independently selected lead items
+                # under one changing article body. Reuse an outstanding editorial task
+                # for the same exact headline/source instead of creating a new task on
+                # every feed refresh. Distinct headlines in the same report stay separate.
+                source = data.get("source_snapshot") or {}
+                old_event = data.get("source_event") or {}
+                same_editorial_item = (
+                    packet is None
+                    and story.slug.startswith("nhl-status-report-")
+                    and data.get("editorial_task")
+                    and data.get("slug") == story.slug
+                    and old_event.get("headline") == story.headline
+                    and source.get("url") == story.link
+                    and story.text.split("\n\n", 1)[0] == source.get("text", "").split("\n\n", 1)[0]
+                    and not (draft.get("published") or draft.get("rejected")
+                             or draft.get("editorial_closed"))
+                )
                 same_facts = (revision and event_registry.complete(old)
                               and event_registry.revision_key(old) == event_registry.revision_key(revision))
                 if same_source or same_facts:
                     return path, draft
+                if same_editorial_item:
+                    editorial_matches.append((source.get("fetched_at") or "", path, draft))
             except (OSError, ValueError, AttributeError, TypeError, KeyError):
                 continue
+    if editorial_matches:
+        _, path, draft = max(editorial_matches, key=lambda candidate: candidate[0])
+        return path, draft
     return None
 
 
@@ -82,4 +105,3 @@ def published_reference(story, out, msk):
             if slug and slug != story.slug and referenced:
                 return {"slug": slug, "messages": draft["messages"]["tg"]}
     return None
-

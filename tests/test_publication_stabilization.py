@@ -88,6 +88,25 @@ class Stabilization(unittest.TestCase):
         self.assertEqual(source_watch.digest("same", "same", {}, raw),
                          source_watch.digest("same", "same", {}, other))
 
+    def test_same_editorial_headline_from_refreshed_status_report_reuses_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            self.story.slug = "nhl-status-report-example"
+            source = fact_packet.snapshot(self.story)
+            with patch.object(publish, "OUT", out):
+                draft = publish.save_draft(
+                    "2026-11-08", "review", ["требуется редакторская проверка"], "editorial task",
+                    kind="story-first", data={
+                        "slug": self.story.slug, "editorial_task": True,
+                        "source_snapshot": source,
+                        "source_event": {"headline": self.story.headline},
+                    })
+            self.story.text += "\n\nA newer unrelated paragraph changes the feed snapshot."
+            reused = story_provenance.equivalent_draft(self.story, None, out, "2026-11-08")
+            self.assertEqual(reused[0], draft)
+            self.story.headline = "A different player is doubtful for the next game"
+            self.assertIsNone(story_provenance.equivalent_draft(self.story, None, out, "2026-11-08"))
+
     def test_incident08_new_parser_does_not_auto_reopen_legacy_review(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "2026-11-08_story-legacy.json"

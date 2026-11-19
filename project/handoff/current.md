@@ -247,3 +247,7 @@ News running, пик34.3MiB/384, shadow healthy37.2MiB/128, restart/OOM/swap0, f
 
 Локально: 298 unittest, 27 news, 5 delivery, Ruff, data/calendar validators и `git diff --check` прошли. Предыдущий прод и rollback: v0.21.5 (`8d609da`). CI/CD и healthcheck зафиксировать ниже после выката. Отчёт: [v0.21.6](../process/releases/v0.21.6.md).
 
+
+## v0.21.7 — повторы NHL Status Report
+
+Разбор 70 черновиков за 15–19 ноября выявил до 17 версий одной сводки. Повтор с прежним заголовком и вводным абзацем использует последнюю подходящую открытую задачу. 299 unittest и Ruff прошли. Критерий проверки в проде — образ релиза и штатный цикл новостника. Откат — news_image=previous.
