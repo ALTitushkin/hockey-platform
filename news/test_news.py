@@ -449,7 +449,7 @@ def test_tonight_recheck():
         d = json.loads(path.read_text(encoding="utf-8"))
         path.write_text(json.dumps({**d, "published": ["tg"], "messages": {"tg": [7]}}), encoding="utf-8")
         hurt = {"injuries": [{"injuries": [
-            {"status": "Out", "athlete": {"displayName": "Nikita Kucherov"}},
+            {"status": "Out", "details": {"type": "Upper Body"}, "athlete": {"displayName": "Nikita Kucherov"}},
             {"status": "Out", "athlete": {"displayName": "Kirill Kaprizov"}}]}]}  # его матч начался — не трогаем
         assert run.refresh_tonight("2026-10-25", now, lambda url: hurt) == "обновлено: не сыграют: Кучеров"
         assert edits[0][0] == 7 and "Кучеров — травма" in edits[0][1] and "Капризов" not in edits[0][1]

@@ -35,12 +35,16 @@ def snapshot(story) -> dict:
               "headline": story.headline, "text": text, "kind": story.kind,
               "actors": sorted(story.pids), "clubs": sorted(story.teams),
               "english": {str(pid): name for pid, name in story.en.items()}}
+    if story.kind == "trade":
+        source["nhl_editorial"] = getattr(story, "nhl", False)
     source["content_hash"] = source_hash(source)
     return source
 
 
 def source_hash(source: dict) -> str:
     fields = ("url", "published_at", "headline", "text", "kind", "actors", "clubs", "english")
+    if "nhl_editorial" in source:
+        fields += ("nhl_editorial",)
     return key({field: source.get(field) for field in fields})
 
 
@@ -50,6 +54,7 @@ def restore(source: dict):
     return SimpleNamespace(eid=source["document_id"], link=source["url"],
                            date=datetime.fromisoformat(source["published_at"]), kind=source["kind"],
                            headline=source["headline"], text=source["text"],
+                           nhl=source.get("nhl_editorial") is True,
                            pids=set(source["actors"]), teams=set(source["clubs"]),
                            en={int(pid): name for pid, name in source["english"].items()})
 
@@ -316,8 +321,44 @@ def single_injury_duration(story, pid, club, record, teams, club_names):
             "club_alias": list(club_names[club])}
 
 
+def draft_pick_trade(story, names, teams, aliases):
+    lead = story.text.partition("\n\n")[0].strip()
+    weekdays = "|".join(WEEKDAYS)
+    rounds = "first second third fourth fifth sixth seventh".split()
+    match = re.fullmatch(
+        rf"(.+?) was traded to the (.+?) by the (.+?) on ({weekdays}) for "
+        rf"a ({'|'.join(rounds)})-round pick in the (20\d{{2}}) NHL Draft\.", lead, re.I)
+    if not match:
+        return None
+    player, to_name, from_name, weekday, ordinal, year = match.groups()
+    ids = [pid for pid, name in story.en.items() if name.casefold() == player.casefold()]
+    club_map = {" ".join(filter(None, pair)).casefold(): code for code, pair in aliases.items()}
+    for code in ("NYR", "NYI"):
+        if code in aliases:
+            club_map[f"new york {aliases[code][1].casefold()}"] = code
+    club, origin = club_map.get(to_name.casefold()), club_map.get(from_name.casefold())
+    if len(ids) != 1 or club not in teams or origin not in teams or club == origin:
+        return None
+    pid = ids[0]
+    actor = names.get(str(pid), {}).get("ru")
+    if not actor:
+        return None
+    day = source_day(story)
+    delta = (day.weekday() - WEEKDAYS[weekday.lower()]) % 7
+    if delta > 1 or not day.year <= int(year) <= day.year + 5:
+        return None
+    return {"version": 1, "source_hash": snapshot(story)["content_hash"],
+            "actor_name": actor, "club_name": teams[club], "club_alias": list(aliases[club]),
+            "origin_name": teams[origin], "origin_alias": list(aliases[origin]),
+            "claims": [{"kind": "draft_pick_trade", "modality": "confirmed", "subject": pid,
+                        "club": club, "origin": origin, "date": (day - timedelta(days=delta)).isoformat(),
+                        "round": rounds.index(ordinal.lower()) + 1, "year": int(year), "evidence": lead}]}
+
+
 def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> dict | None:
     """One actor/club and explicit action wording only; multiple health events remain review."""
+    if story.kind == "trade":
+        return draft_pick_trade(story, names, teams, club_names or {}) if story.nhl else None
     if "status report" in story.headline.lower():
         return report_packet(story, names, teams, club_names or {})
     paired = paired_injury(story, names, teams, club_names or {})
@@ -434,6 +475,11 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
 def render(packet: dict) -> str:
     """No free model prose: every factual sentence consumes a typed claim."""
     claims = packet["claims"]
+    trade = claims[0]
+    if trade["kind"] == "draft_pick_trade":
+        return (f"{packet['actor_name']} перешёл в «{packet['club_name']}»\n\n"
+                f"«{packet['origin_name']}» получил выбор в {trade['round']}-м раунде драфта НХЛ "
+                f"{trade['year']} года.")
     expectation = next((c for c in claims if c["kind"] == "expected_return"), None)
     practice = next((c for c in claims if c["kind"] == "practice"), None)
     def day(claim):
@@ -500,6 +546,11 @@ def revision(packet: dict) -> dict:
     main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), packet["claims"][0])
     signing = main["kind"] == "signing"
     actors = sorted({claim["subject"] for claim in packet["claims"]})
+    if main["kind"] == "draft_pick_trade":
+        return {"version": 1, "family": "trade", "actors": actors,
+                "clubs": [main["club"]], "effective_date": main["date"], "date_basis": "action_weekday",
+                "phase": "completed", "facts": {key: main[key] for key in ("origin", "round", "year")},
+                "complete": True, "reasons": [], "references": []}
     if signing:
         facts = {"years": main["years"]}
     elif main["kind"] == "injury_duration":
@@ -537,6 +588,8 @@ def caption(packet: dict, source: dict, msk: str) -> str:
     emoji, tag = (("✍️", "#Контракты") if signing else
                   (("🚑", "#Травмы") if injury else
                    (("🏒", "#Дебюты") if debut else ("✅", "#Возвращения"))))
+    if packet["claims"][0]["kind"] == "draft_pick_trade":
+        emoji, tag = "🔄", "#Обмены"
     return (f"{emoji} <b>{html.escape(head)}</b>\n\n{html.escape(body)}\n\n"
             f"🔗 <a href=\"{html.escape(source['url'], quote=True)}\">NHL.com</a>\n"
             f"⚡ {tag} · {parsed.day} {MONTHS[parsed.month - 1]}")
@@ -564,6 +617,8 @@ def card_spec(packet: dict) -> dict:
     label = ("КОНТРАКТ" if kind == "signing" else
              ("ТРАВМА" if kind in ("left_game", "injury_event", "injury_duration") else
               ("ДЕБЮТ" if kind in ("season_debut", "expected_debut") else "ВОЗВРАЩЕНИЕ")))
+    if kind == "draft_pick_trade":
+        label = "ОБМЕН"
     actor_ids = sorted({item["subject"] for item in packet["claims"]})
     return {"version": 1, "hero_id": actor_ids[0] if len(actor_ids) == 1 else actor_ids,
             "hero": packet["actor_name"],
@@ -579,7 +634,7 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
     if (not isinstance(claims, list) or not claims or any(not isinstance(c, dict) for c in claims)
             or any(c.get("kind") not in ("practice", "expected_return", "signing", "left_game",
                                           "season_debut", "expected_debut", "activation", "injury_event",
-                                          "injury_duration")
+                                          "injury_duration", "draft_pick_trade")
                    for c in claims)):
         return ["нет поддержанных утверждений"]
     required = ("subject", "club", "kind", "date", "modality", "evidence")
@@ -608,7 +663,11 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
         club = claims[0]["club"]
         actor_names = packet.get("actor_names") or {str(claims[0]["subject"]): packet["actor_name"]}
         names = {str(claim["subject"]): {"ru": actor_names[str(claim["subject"])]} for claim in claims}
-        rebuilt = extract(original, names, {club: packet["club_name"]}, {club: packet["club_alias"]})
+        teams, aliases = {club: packet["club_name"]}, {club: packet["club_alias"]}
+        if claims[0]["kind"] == "draft_pick_trade":
+            origin = claims[0]["origin"]
+            teams[origin], aliases[origin] = packet["origin_name"], packet["origin_alias"]
+        rebuilt = extract(original, names, teams, aliases)
     except (KeyError, TypeError, ValueError, IndexError):
         return ["неполный контракт фактов/источника"]
     if rebuilt != packet:

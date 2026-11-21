@@ -13,6 +13,22 @@ from news.nhl import fetch_json
 
 # «Day-To-Day» не берём: такие часто выходят на лёд — их отсечёт состав прошлого матча, если не играли
 OUT = {"Injured Reserve", "Long Term Injured Reserve", "Out", "Suspension"}
+REASONS = {
+    "Personal": "личные причины", "Illness": "болезнь", "Suspension": "дисквалификация",
+    "Coach's Decision": "решение тренера", "Healthy Scratch": "решение тренера",
+    "Contract Dispute": "контрактный спор",
+}
+INJURY_TYPES = set(
+    "Abdomen Achilles Ankle Back Concussion Elbow Finger Foot Groin Hand Hip Knee Leg Neck "
+    "Pectoral Shoulder Wrist".split()
+) | {"Lower Body", "Upper Body"}
+
+
+def absence_reason(status: str) -> str:
+    return {
+        "Injured Reserve": "травма", "Long Term Injured Reserve": "травма",
+        "Suspension": "дисквалификация", "Out": "причина не указана",
+    }.get(status, status)
 
 
 def norm(name: str) -> str:
@@ -30,6 +46,14 @@ def injured(fetch=fetch_json) -> dict[str, str]:
     out = {}
     for team in data.get("injuries", []):
         for i in team.get("injuries", []):
-            if i.get("status") in OUT:
-                out[norm(i.get("athlete", {}).get("displayName", ""))] = i["status"]
+            status = i.get("status")
+            detail = (i.get("details") or {}).get("type")
+            reason = REASONS.get(detail)
+            name = norm(i.get("athlete", {}).get("displayName", ""))
+            if not name:
+                continue
+            if status == "Day-To-Day" and reason:
+                out[name] = f"под вопросом: {reason}"
+            elif status in OUT:
+                out[name] = reason or ("травма" if detail in INJURY_TYPES else status)
     return out

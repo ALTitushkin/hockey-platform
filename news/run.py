@@ -237,8 +237,6 @@ def build_weekly(msk: str, review: bool, last_try: bool = True) -> str:
 
 MSK = ZoneInfo("Europe/Moscow")
 # статус ESPN → пометка в посте; «Day-To-Day» в injuries.OUT не входит — такие часто играют
-WHY = {"Injured Reserve": "травма", "Long Term Injured Reserve": "травма", "Out": "травма",
-       "Suspension": "дисквалификация"}
 
 
 def tonight_roster(teams_playing: set[str], players: dict, msk: str) -> dict[str, list[dict]]:
@@ -264,7 +262,7 @@ def split_roster(roster: dict[str, list[dict]], out: dict[str, str]) -> tuple[di
         for r in recs:
             status = out.get(injuries.norm(r["name"]))
             if status:
-                skip.setdefault(team, []).append((r["pid"], r["surname"], WHY.get(status, "травма")))
+                skip.setdefault(team, []).append((r["pid"], r["surname"], injuries.absence_reason(status)))
             elif not r["played"]:
                 skip.setdefault(team, []).append((r["pid"], r["surname"], NOT_PLAYED))
             else:

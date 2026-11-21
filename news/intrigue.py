@@ -8,6 +8,7 @@
 from datetime import date
 
 from news.digest import plural
+from news.events import streak_totals
 from news.nhl import WEB, fetch_json
 
 
@@ -91,9 +92,13 @@ def player_items(pid: int, surname: str, data: dict) -> list[dict]:
             break
         goals += 1
     if goals >= 3:
-        add(1, f"🔥 {name} забивает {goals} {plural(goals, ('матч', 'матча', 'матчей'))} подряд", goals)
+        suffix, numbers = streak_totals(last[:goals])
+        add(1, f"🔥 {name} забивает {goals} {plural(goals, ('матч', 'матча', 'матчей'))} подряд{suffix}",
+            goals, *sorted(numbers))
     elif points >= 4:
-        add(1, f"🔥 {name} набирает очки {points} {plural(points, ('матч', 'матча', 'матчей'))} подряд", points)
+        suffix, numbers = streak_totals(last[:points])
+        add(1, f"🔥 {name} набирает очки {points} {plural(points, ('матч', 'матча', 'матчей'))} подряд{suffix}",
+            points, *sorted(numbers))
 
     season = (data.get("featuredStats") or {}).get("regularSeason", {}).get("subSeason") or {}
     gp, sg = season.get("gamesPlayed", 0), season.get("goals", 0)

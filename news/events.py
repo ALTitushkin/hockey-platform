@@ -117,6 +117,18 @@ def headline(events: list[Event], limit: int = 3) -> list[tuple[int, list[Event]
     return [(pid, sorted(evs, key=lambda e: -e.weight)) for pid, evs in ranked[:limit]]
 
 
+def streak_totals(rows: list[dict]) -> tuple[str, set[int]]:
+    """Return a caption suffix and its guard numbers for exactly the streak games."""
+    if not rows or any(type(r.get("plusMinus")) is not int
+                       or type(r.get("goals")) is not int or type(r.get("points")) is not int
+                       or not 0 <= r["goals"] <= r["points"] for r in rows):
+        return "", set()
+    goals = sum(r["goals"] for r in rows)
+    assists = sum(r["points"] - r["goals"] for r in rows)
+    plus_minus = sum(r["plusMinus"] for r in rows)
+    return f" ({goals}+{assists},{plus_minus:+d})", {goals, assists, abs(plus_minus)}
+
+
 def scoring_streaks(reports: list[GameReport], candidates: set[int],
                     fetch: Callable[[str], dict] = fetch_json) -> list[Event]:
     """Серии регулярного чемпионата: только если полный журнал содержит и текущий матч, и прошлые игры."""
@@ -165,10 +177,14 @@ def scoring_streaks(reports: list[GameReport], candidates: set[int],
             if current_value and prior >= minimum:
                 length = prior + 1
                 count = plural(length, ("матча", "матчей", "матчей"))
-                events.append(Event(pid, weight, f"продлил {label} серию до {length} {count}", {length}))
+                suffix, numbers = streak_totals(ordered[current:current + length])
+                events.append(Event(pid, weight, f"продлил {label} серию до {length} {count}{suffix}",
+                                    numbers | {length}))
             elif not current_value and prior >= minimum + 1:
                 count = plural(prior, ("матча", "матчей", "матчей"))
-                events.append(Event(pid, weight, f"прервал {label} серию из {prior} {count}", {prior}))
+                suffix, numbers = streak_totals(ordered[current + 1:current + 1 + prior])
+                events.append(Event(pid, weight, f"прервал {label} серию из {prior} {count}{suffix}",
+                                    numbers | {prior}))
     return events
 
 

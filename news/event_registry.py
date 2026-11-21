@@ -33,7 +33,7 @@ def topic_key(event):
 def complete(event):
     if not isinstance(event, dict) or event.get("complete") is not True or event.get("version") != 1:
         return False
-    if event.get("family") not in ("signing", "health") or not isinstance(event.get("facts"), dict):
+    if event.get("family") not in ("signing", "health", "trade") or not isinstance(event.get("facts"), dict):
         return False
     if (not isinstance(event.get("actors"), list) or not 1 <= len(event["actors"]) <= 8
             or any(type(actor) is not int or actor <= 0 for actor in event["actors"])
@@ -48,7 +48,7 @@ def complete(event):
         date.fromisoformat(event["effective_date"])
     except (ValueError, TypeError, KeyError):
         return False
-    allowed = {"signing": {"pto", "standard", "entry_level", "terminated"},
+    allowed = {"trade": {"completed"}, "signing": {"pto", "standard", "entry_level", "terminated"},
                "health": {"surgery", "practice", "expected_return", "activated", "return", "left_game",
                           "unavailable", "injury"}}
     return (isinstance(event.get("phase"), str) and event["phase"] in allowed[event["family"]]
@@ -254,6 +254,9 @@ class Registry:
             return {"status": "review", "reasons": ["исход предыдущей отправки этой версии требует сверки"]}
         rows = self.db.execute("SELECT event FROM revisions WHERE topic=? AND id<>?", (topic_key(event), key))
         related = [json.loads(raw) for (raw,) in rows]
+        if event["family"] == "trade" and any(
+                other["effective_date"] == event["effective_date"] for other in related):
+            return {"status": "review", "reasons": ["источники расходятся в условиях обмена"]}
         updated = any(e["effective_date"] == event["effective_date"] for e in related) or bool(event.get("references"))
         return {"status": "update" if updated else "new", "related": len(related)}
 

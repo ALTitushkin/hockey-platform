@@ -259,7 +259,12 @@ def render_tonight(games: list[dict], ours_by_team: dict[str, list[tuple[int, st
         for _, name, why in skip:
             by_why.setdefault(why, []).append(name)
         # Пропуск предыдущего матча не подтверждает текущий статус травмы.
-        sure = [f"{', '.join(names)} — {why}" for why, names in by_why.items() if why != NOT_PLAYED]
+        sure = [f"{', '.join(names)} — {why}" for why, names in by_why.items()
+                if why != NOT_PLAYED and not why.startswith("под вопросом: ")]
+        uncertain = [f"{', '.join(names)} — {why.removeprefix('под вопросом: ')}"
+                     for why, names in by_why.items() if why.startswith("под вопросом: ")]
+        if uncertain:
+            blocks.append("❔ <b>Под вопросом</b>\n" + "\n".join(uncertain))
         if sure:
             blocks.append("🚑 <b>Не сыграют</b>\n" + "\n".join(sure))
         if NOT_PLAYED in by_why:
