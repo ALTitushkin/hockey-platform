@@ -31,6 +31,7 @@ class DraftPickTradeTest(TestCase):
                 "event_revision": event, "expires_at": fact_packet.expires_at(packet), "auto": True}
         with TemporaryDirectory() as directory, patch.object(publish, "OUT", Path(directory)), \
                 patch("news.editorial_lifecycle.utcnow", return_value=story.date), \
+                patch("news.editorial_queue.datetime", wraps=datetime, **{"now.return_value": story.date}), \
                 patch.object(publish, "channel_key", return_value="tg:-100123456"), \
                 patch.object(publish, "tg_send", return_value=(True, "message_id 101")) as send:
             path = publish.save_draft(day, caption, [], "fact", kind="story-a", data=data)

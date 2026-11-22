@@ -115,16 +115,24 @@ def parse_box(box: dict, ours: set[int] | None) -> GameReport:
     return rep
 
 
+def scoreboard_games(nhl_date: str) -> list[dict]:
+    payload = fetch_json(f"{WEB}/score/{nhl_date}")
+    games = payload.get("games") if isinstance(payload, dict) else None
+    if not isinstance(games, list) or any(not isinstance(game, dict) for game in games):
+        raise RuntimeError(f"НХЛ: нет подтверждённого списка матчей за {nhl_date}")
+    return games
+
+
 def pending_games(nhl_date: str) -> int:
     """Сколько матчей даты ещё не закончено (перенесённые и отменённые не ждём)."""
-    games = fetch_json(f"{WEB}/score/{nhl_date}").get("games", [])
+    games = scoreboard_games(nhl_date)
     return sum(1 for g in games if g.get("gameState") not in FINAL_STATES and g.get("gameScheduleState") == "OK")
 
 
 def collect_night(nhl_date: str, ours: set[int] | None) -> list[GameReport]:
     """Все завершённые матчи даты (по времени Северной Америки), где играли наши; ours=None — все матчи."""
     reports = []
-    for game in fetch_json(f"{WEB}/score/{nhl_date}").get("games", []):
+    for game in scoreboard_games(nhl_date):
         if game.get("gameState") not in FINAL_STATES:
             continue
         rep = parse_box(fetch_json(f"{WEB}/gamecenter/{game['id']}/boxscore"), ours)
@@ -135,7 +143,7 @@ def collect_night(nhl_date: str, ours: set[int] | None) -> list[GameReport]:
 
 def upcoming_games(nhl_date: str) -> list[dict]:
     """Матчи даты, которые ещё не начались: {"start": UTC ISO, "home", "away"} по времени начала."""
-    games = fetch_json(f"{WEB}/score/{nhl_date}").get("games", [])
+    games = scoreboard_games(nhl_date)
     out = [{"start": g["startTimeUTC"], "home": g["homeTeam"]["abbrev"], "away": g["awayTeam"]["abbrev"]}
            for g in games if g.get("gameState") in ("FUT", "PRE") and g.get("gameScheduleState") == "OK"]
     return sorted(out, key=lambda g: g["start"])

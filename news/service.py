@@ -120,7 +120,24 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     publish.OUT.mkdir(exist_ok=True)
-    STATE.write_text(json.dumps(state), encoding="utf-8")
+    temporary = STATE.with_suffix(".tmp")
+    temporary.write_text(json.dumps(state), encoding="utf-8")
+    temporary.replace(STATE)
+
+
+def job_outcome(msk: str, kind: str, result: str) -> str:
+    """Report delivery from the saved receipt, separately from scheduler completion."""
+    try:
+        draft = json.loads(publish.draft_path(msk, kind).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return result if result != "ok" or kind == "registry" else "missing_draft"
+    if "tg" in draft.get("published", []) and (draft.get("messages") or {}).get("tg"):
+        return "published"
+    if draft.get("rejected") or draft.get("editorial_closed"):
+        return "closed"
+    if result in ("ok", "guard"):
+        return "review"
+    return result
 
 
 Build = Callable[[str, bool], str]
@@ -151,9 +168,11 @@ def run_forever(jobs: list[tuple[str, str, str, Build]],
             except Exception as e:  # сеть/API: не роняем сервис, пробуем позже
                 result = f"ошибка {type(e).__name__}: {e}"
             print(f"{now:%Y-%m-%d %H:%M} сборка {kind} {msk}: {result}", flush=True)
-            done = result in ("ok", "nogames")
-            state[kind] = {"built": msk} if done else {
-                **job, "next_try": now.timestamp() + RETRY, "last_try": now.time() >= deadline}
+            done = result in ("ok", "nogames", "guard")
+            observation = {"date": msk, "outcome": job_outcome(msk, kind, result), "result": result}
+            state[kind] = ({"built": msk, **observation} if done else {
+                **job, **observation, "next_try": now.timestamp() + RETRY, "last_try": now.time() >= deadline})
+            print(f"{now:%Y-%m-%d %H:%M} итог {kind} {msk}: {observation['outcome']}", flush=True)
             save_state(state)
         for i, (every, fn) in enumerate(ticks):
             if now.timestamp() - last_tick[i] < every:

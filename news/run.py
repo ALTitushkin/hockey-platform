@@ -85,6 +85,8 @@ def build_night(msk: str, chain: str | None, review: bool, last_try: bool = True
         return "pending"
 
     reports = nhl.collect_night(nhl_date, {int(p) for p in players})
+    if not reports and last_try and nhl.pending_games(nhl_date):
+        return "pending"
     candidates = {s.pid for report in reports for s in report.skaters}
     try:
         found = events.detect(reports, events.context(reports))
@@ -142,6 +144,8 @@ def build_league(msk: str, review: bool, last_try: bool = True) -> str:
         return "pending"
     reports = nhl.collect_night(nhl_date, None)
     if not reports:
+        if last_try and nhl.pending_games(nhl_date):
+            return "pending"
         print(f"{msk}: в НХЛ матчей не было ({nhl_date}) — поста нет")
         return "nogames"
     pids = {ln.pid for r in reports for ln in r.skaters + r.goalies}
