@@ -1,0 +1,35 @@
+from datetime import datetime, timezone
+from unittest import TestCase
+
+from news import editorial_lifecycle, fact_packet, stories
+
+
+class HealthUpdateTests(TestCase):
+    def packet(self, text):
+        story = stories.Story("test", "health-update", "Health update", "",
+                              datetime(2026, 11, 21, 21, tzinfo=timezone.utc),
+                              "injury", {1}, {"COL"}, True, text=text, en={1: "Test Player"})
+        return fact_packet.extract(story, {"1": {"ru": "Игрок"}},
+                                   {"COL": "Колорадо"}, stories.TEAM_EN)
+
+    def test_possible_surgery_does_not_become_announced(self):
+        lead = ("Test Player will have surgery on his right shoulder, Colorado Avalanche general "
+                "manager Test Manager told traveling reporters following a 4-3 win at the Kings on Saturday.")
+        self.assertEqual(self.packet(lead)["claims"][0]["kind"], "surgery_announced")
+        self.assertIsNone(self.packet(lead.replace("will have", "may have")))
+
+    def test_recovery_keeps_expected_modality(self):
+        packet = self.packet("Test Player is expected to be out 12 weeks with a lower-body injury after "
+                             "the Colorado Avalanche center was reevaluated by a specialist, "
+                             "coach Test Coach said Saturday.")
+        self.assertEqual(packet["claims"][0]["modality"], "expected")
+        self.assertIn("как ожидается", fact_packet.render(packet))
+
+    def test_absence_expires_at_puck_drop(self):
+        packet = self.packet("Test Player will not play for the Colorado Avalanche against the "
+                             "Vancouver Canucks on Saturday (10 p.m. ET; SN).")
+        start = datetime.fromisoformat(fact_packet.expires_at(packet))
+        self.assertEqual(start.isoformat(), "2026-11-21T22:00:00-05:00")
+        draft = {"data": {"source_snapshot": {"content_hash": "fixture"},
+                          "expires_at": start.isoformat()}}
+        self.assertEqual(editorial_lifecycle.classify(draft, "story-test", start)[0], "expired")

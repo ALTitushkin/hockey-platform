@@ -13,22 +13,28 @@ sys.path.insert(0, str(ROOT))
 
 
 def replay(directory: Path, output: Path, now: datetime) -> dict:
-    from news import editorial_lifecycle, fact_packet, names, stories, story_validation
+    from news import editorial_lifecycle, event_registry, fact_packet, names, stories, story_validation
     registry = json.loads((ROOT / "news/data/players.json").read_text(encoding="utf-8"))["players"]
     teams = json.loads((ROOT / "news/data/teams.json").read_text(encoding="utf-8"))
     output.mkdir(parents=True, exist_ok=True)
     results = []
-    for path in sorted(directory.glob("????-??-??_story-*.json")):
-        draft = json.loads(path.read_text(encoding="utf-8"))
+    ready_keys = set()
+    drafts = [(path, json.loads(path.read_text(encoding="utf-8")))
+              for path in sorted(directory.glob("????-??-??_story-*.json"))]
+    drafts.sort(key=lambda pair: (pair[1]["data"].get("source_snapshot", {}).get("fetched_at") or "", pair[0]))
+    for path, draft in drafts:
         source = draft["data"]["source_event"]
+        frozen = draft["data"].get("source_snapshot") or {}
         story = stories.Story(path.stem, draft["data"]["slug"], source["headline"], "",
                               datetime.fromisoformat(source["date"]), source["kind"],
-                              set(source["pids"]), set(source["teams"]), True,
+                              set(source["pids"]), set(source["teams"]), frozen.get("nhl_editorial") is True,
                               text=source["text"], en={int(pid): name for pid, name in source["en"].items()})
         story.mentioned = set(story.en)
         records = names.league_players(story.pids | story.mentioned, registry)
         packet = fact_packet.extract(story, records, teams, stories.TEAM_EN)
-        item = {"file": path.name, "previous_auto": draft["data"].get("auto"), "decision": "needs_review"}
+        item = {"file": path.name, "slug": story.slug, "previous_auto": draft["data"].get("auto"),
+                "previous_published": draft.get("published", []), "decision": "needs_review",
+                "reasons": event_registry.extract(story)["reasons"] or ["нет проверенного шаблона"]}
         if packet:
             snapshot = fact_packet.snapshot(story)
             image = output / (path.stem + ".png")
@@ -43,9 +49,14 @@ def replay(directory: Path, output: Path, now: datetime) -> dict:
                          "card_hash": story_validation.image_hash(image)}}
             errors = story_validation.check(candidate, path.name[:10])
             status, reasons = editorial_lifecycle.classify(candidate, path.stem.split("_", 1)[1], now)
+            fact_key = event_registry.revision_key(candidate["data"]["event_revision"])
+            if status == "ready" and not errors:
+                if fact_key in ready_keys:
+                    status, reasons = "duplicate", ["та же версия фактов уже прошла в этом прогоне"]
+                ready_keys.add(fact_key)
             item.update(decision="blocked" if errors else status, errors=errors, reasons=reasons,
                         spec=fact_packet.card_spec(packet), text=candidate["text"], image=str(image),
-                        fact_key=fact_packet.key(fact_packet.revision(packet)))
+                        fact_key=fact_key)
         results.append(item)
     report = {"at": now.isoformat(), "cases": results, "counts": dict(Counter(r["decision"] for r in results)),
               "unique_ready_facts": len({r["fact_key"] for r in results if r["decision"] == "ready"}),

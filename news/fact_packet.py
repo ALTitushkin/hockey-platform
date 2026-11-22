@@ -355,6 +355,59 @@ def draft_pick_trade(story, names, teams, aliases):
                         "round": rounds.index(ordinal.lower()) + 1, "year": int(year), "evidence": lead}]}
 
 
+def health_update(story, pid, club, record, teams, club_names):
+    """Validate one dated health statement against the original lead and linked player."""
+    if story.kind not in ("injury", "injury_minor"):
+        return None
+    evidence = story.text.partition("\n\n")[0]
+    lead = re.sub(r"^\*\*[A-Z .'-]+ --\*\*\s+", "", evidence.strip())
+    subject = re.escape(story.en[pid])
+    owner = re.escape(" ".join(filter(None, club_names[club])))
+    weekday = "(?P<weekday>" + "|".join(WEEKDAYS) + ")"
+    patterns = (
+        ("surgery_announced", rf"{subject} will have surgery on his (?:right|left) shoulder, "
+         rf"{owner} general manager [\w .'-]+ told traveling reporters following a "
+         rf"\d+-\d+ (?:overtime )?(?:win|loss) (?:at|against) the [\w .'-]+ on {weekday}\."),
+        ("match_absence", rf"{subject} will not play for the {owner} against the "
+         rf"(?P<opponent>[\w .'-]+) on {weekday} "
+         rf"\((?P<start>\d{{1,2}}(?::\d{{2}})? [ap]\.m\.) ET(?:;[^\n()]*)?\)\."),
+        ("recovery_estimate", rf"{subject} is expected to be out (?P<weeks>\d{{1,2}}) weeks with a "
+         rf"(?P<region>upper|lower)-body injury after the {owner} (?:center|forward|defenseman|goaltender) "
+         rf"was reevaluated by a specialist, coach [\w .'-]+ said {weekday}\."),
+    )
+    for kind, pattern in patterns:
+        match = re.fullmatch(pattern, lead, re.I)
+        if not match:
+            continue
+        day = source_day(story)
+        target = WEEKDAYS[match["weekday"].lower()]
+        delta = (target - day.weekday()) % 7 if kind == "match_absence" else -((day.weekday() - target) % 7)
+        if abs(delta) > 1:
+            return None
+        fields = {key: value for key, value in match.groupdict().items() if key != "weekday" and value is not None}
+        if "start" in fields:
+            from datetime import datetime
+            clock = fields.pop("start").lower().replace(".", "")
+            try:
+                tipoff = datetime.strptime(clock, "%I:%M %p" if ":" in clock else "%I %p").time()
+            except ValueError:
+                return None
+            fields["start_at"] = datetime.combine(day + timedelta(days=delta), tipoff, EASTERN).isoformat()
+        if "weeks" in fields:
+            fields["weeks"] = int(fields["weeks"])
+            if not 1 <= fields["weeks"] <= 52:
+                return None
+        return {"version": 1, "source_hash": snapshot(story)["content_hash"], "actor_name": record["ru"],
+                "club_name": teams[club], "club_alias": list(club_names[club]),
+                "claims": [{"subject": pid, "club": club, "kind": kind, "evidence": evidence,
+                            "modality": "expected" if kind == "recovery_estimate" else "confirmed",
+                            "date": (day + timedelta(days=delta)).isoformat(), **fields}]}
+    return None
+
+
+HEALTH_UPDATES = {"surgery_announced", "match_absence", "recovery_estimate"}
+
+
 def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> dict | None:
     """One actor/club and explicit action wording only; multiple health events remain review."""
     if story.kind == "trade":
@@ -381,6 +434,9 @@ def extract(story, names: dict, teams: dict, club_names: dict | None = None) -> 
     subject = r"(?:" + "|".join(re.escape(a) for a in aliases) + r")"
     if not club_names or club not in club_names:
         return None
+    update = health_update(story, pid, club, record, teams, club_names)
+    if update:
+        return update
     duration = single_injury_duration(story, pid, club, record, teams, club_names)
     if duration:
         return duration
@@ -486,6 +542,16 @@ def render(packet: dict) -> str:
         from datetime import date
         parsed = date.fromisoformat(claim["date"])
         return f"{parsed.day} {MONTHS[parsed.month - 1]}"
+    main = claims[0]
+    if main["kind"] in HEALTH_UPDATES:
+        actor = packet["actor_name"]
+        club = packet["club_name"]
+        if main["kind"] == "surgery_announced":
+            return f"{actor} перенесёт операцию на плече\n\n«{club}» сообщил об операции {day(main)}."
+        if main["kind"] == "match_absence":
+            return f"{actor} пропустит матч «{club}»\n\nМатч состоится {day(main)}."
+        return (f"{actor}, как ожидается, пропустит {main['weeks']} нед.\n\n"
+                f"Тренер «{club}» сообщил новый прогноз {day(main)} после повторного обследования.")
     if claims[0]["kind"] in ("season_debut", "expected_debut"):
         action = ("может впервые сыграть в сезоне" if claims[0]["kind"] == "expected_debut"
                   else "провёл первый матч в сезоне")
@@ -551,7 +617,10 @@ def revision(packet: dict) -> dict:
                 "clubs": [main["club"]], "effective_date": main["date"], "date_basis": "action_weekday",
                 "phase": "completed", "facts": {key: main[key] for key in ("origin", "round", "year")},
                 "complete": True, "reasons": [], "references": []}
-    if signing:
+    if main["kind"] in HEALTH_UPDATES:
+        facts = {key: main[key] for key in ("modality", "opponent", "weeks", "region", "start_at") if key in main}
+        facts["action"] = main["kind"]
+    elif signing:
         facts = {"years": main["years"]}
     elif main["kind"] == "injury_duration":
         facts = {"duration_by_actor": sorted(
@@ -572,7 +641,8 @@ def revision(packet: dict) -> dict:
             "phase": (main["phase"] if signing else
                       {"season_debut": "return", "expected_debut": "expected_return",
                        "activation": "activated", "injury_event": "injury",
-                       "injury_duration": "injury"}.get(main["kind"], main["kind"])),
+                       "injury_duration": "injury", "recovery_estimate": "injury",
+                       "surgery_announced": "surgery", "match_absence": "unavailable"}.get(main["kind"], main["kind"])),
             "facts": facts,
             "complete": True, "reasons": [], "references": []}
 
@@ -583,7 +653,7 @@ def caption(packet: dict, source: dict, msk: str) -> str:
     parsed = date.fromisoformat(msk)
     head, _, body = render(packet).partition("\n\n")
     signing = packet["claims"][0]["kind"] == "signing"
-    injury = packet["claims"][0]["kind"] in ("left_game", "injury_event", "injury_duration")
+    injury = packet["claims"][0]["kind"] in {"left_game", "injury_event", "injury_duration"} | HEALTH_UPDATES
     debut = packet["claims"][0]["kind"] in ("season_debut", "expected_debut")
     emoji, tag = (("✍️", "#Контракты") if signing else
                   (("🚑", "#Травмы") if injury else
@@ -601,6 +671,8 @@ def expires_at(packet: dict) -> str | None:
     main = next((c for c in packet["claims"] if c["kind"] == "expected_return"), packet["claims"][0])
     if main["kind"] == "signing":
         return None
+    if main["kind"] == "match_absence":
+        return main["start_at"]
     days = 1 if main["kind"] in ("expected_return", "expected_debut") else 2
     basis = main.get("published_date", main["date"]) if main["kind"] == "injury_duration" else main["date"]
     if main["kind"] in ("expected_return", "expected_debut") and main.get("action_timezone"):
@@ -615,7 +687,8 @@ def card_spec(packet: dict) -> dict:
     claim = packet["claims"][0]
     kind = claim["kind"]
     label = ("КОНТРАКТ" if kind == "signing" else
-             ("ТРАВМА" if kind in ("left_game", "injury_event", "injury_duration") else
+             ("СТАТУС" if kind in HEALTH_UPDATES else
+              "ТРАВМА" if kind in ("left_game", "injury_event", "injury_duration") else
               ("ДЕБЮТ" if kind in ("season_debut", "expected_debut") else "ВОЗВРАЩЕНИЕ")))
     if kind == "draft_pick_trade":
         label = "ОБМЕН"
@@ -634,7 +707,7 @@ def verify(packet: dict, source: dict, body: str) -> list[str]:
     if (not isinstance(claims, list) or not claims or any(not isinstance(c, dict) for c in claims)
             or any(c.get("kind") not in ("practice", "expected_return", "signing", "left_game",
                                           "season_debut", "expected_debut", "activation", "injury_event",
-                                          "injury_duration", "draft_pick_trade")
+                                          "injury_duration", "draft_pick_trade", *HEALTH_UPDATES)
                    for c in claims)):
         return ["нет поддержанных утверждений"]
     required = ("subject", "club", "kind", "date", "modality", "evidence")
