@@ -115,16 +115,21 @@ def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | N
         clubs = [club for club, alias in club_names.items()
                  if alias[1] and re.search(r"\b" + re.escape(alias[1]) + r"\b", heading, re.I)]
         if len(clubs) == 1:
-            sections.append((clubs[0], text.strip()))
+            sections.append((clubs[0], heading.strip("* "), text.strip()))
     if len(sections) != 1:
         return None
-    club, text = sections[0]
+    club, heading, text = sections[0]
     if not names.get(str(pid), {}).get("ru") or club not in teams:
         return None
     # The source is a league-wide report; bind only its first factual sentence
     # for this uniquely identified headline actor and club section. Later injury
     # history, stats and quotes must not leak into the new event.
     lead = text.split("\n\n")[0].strip()
+    club_heading = " ".join(filter(None, club_names[club]))
+    if heading.casefold() == club_heading.casefold():
+        update = health_update(story, pid, club, names[str(pid)], teams, club_names, section_lead=lead)
+        if update:
+            return update
     english = story.en[pid]
     subject = r"[-\s]+".join(re.escape(part) for part in re.split(r"[-\s]+", english))
     weekday = "(" + "|".join(WEEKDAYS) + ")"
@@ -355,28 +360,33 @@ def draft_pick_trade(story, names, teams, aliases):
                         "round": rounds.index(ordinal.lower()) + 1, "year": int(year), "evidence": lead}]}
 
 
-def health_update(story, pid, club, record, teams, club_names):
+def health_update(story, pid, club, record, teams, club_names, *, section_lead=None):
     """Validate one dated health statement against the original lead and linked player."""
     if story.kind not in ("injury", "injury_minor"):
         return None
-    evidence = story.text.partition("\n\n")[0]
+    evidence = story.text.partition("\n\n")[0] if section_lead is None else section_lead
     lead = re.sub(r"^\*\*[A-Z .'-]+ --\*\*\s+", "", evidence.strip())
     subject = re.escape(story.en[pid])
     owner = re.escape(" ".join(filter(None, club_names[club])))
+    match_owner = rf"(?: for the {owner})" + ("?" if section_lead is not None else "")
     weekday = "(?P<weekday>" + "|".join(WEEKDAYS) + ")"
     patterns = (
         ("surgery_announced", rf"{subject} will have surgery on his (?:right|left) shoulder, "
          rf"{owner} general manager [\w .'-]+ told traveling reporters following a "
          rf"\d+-\d+ (?:overtime )?(?:win|loss) (?:at|against) the [\w .'-]+ on {weekday}\."),
-        ("match_absence", rf"{subject} will not play for the {owner} against the "
+        ("match_absence", rf"{subject}\s+will not play{match_owner} against the "
          rf"(?P<opponent>[\w .'-]+) on {weekday} "
-         rf"\((?P<start>\d{{1,2}}(?::\d{{2}})? [ap]\.m\.) ET(?:;[^\n()]*)?\)\."),
+         rf"\((?P<start>\d{{1,2}}(?::\d{{2}})? [ap]\.m\.) ET(?:;[^\n()]*)?\)"
+         r"(?: because of (?:a|an) (?:upper-body|lower-body|undisclosed) injury)?\."),
         ("recovery_estimate", rf"{subject} is expected to be out (?P<weeks>\d{{1,2}}) weeks with a "
          rf"(?P<region>upper|lower)-body injury after the {owner} (?:center|forward|defenseman|goaltender) "
          rf"was reevaluated by a specialist, coach [\w .'-]+ said {weekday}\."),
     )
     for kind, pattern in patterns:
-        match = re.fullmatch(pattern, lead, re.I)
+        if section_lead is not None and kind != "match_absence":
+            continue
+        match = (re.match(pattern + r"(?=\s|$)", lead, re.I) if section_lead is not None
+                 else re.fullmatch(pattern, lead, re.I))
         if not match:
             continue
         day = source_day(story)
@@ -397,6 +407,8 @@ def health_update(story, pid, club, record, teams, club_names):
             fields["weeks"] = int(fields["weeks"])
             if not 1 <= fields["weeks"] <= 52:
                 return None
+        if section_lead is not None:
+            evidence = match[0]
         return {"version": 1, "source_hash": snapshot(story)["content_hash"], "actor_name": record["ru"],
                 "club_name": teams[club], "club_alias": list(club_names[club]),
                 "claims": [{"subject": pid, "club": club, "kind": kind, "evidence": evidence,

@@ -1,10 +1,34 @@
 from datetime import datetime, timezone
 from unittest import TestCase
 
-from news import editorial_lifecycle, fact_packet, stories
+from news import editorial_lifecycle, fact_packet, shadow_extract, stories
 
 
 class HealthUpdateTests(TestCase):
+    def test_numbered_report_span_binds_player_and_match(self):
+        evidence = ("Evgeni Malkin\u00a0will not play against the Nashville Predators on Saturday "
+                    "(6 p.m. ET; SN-PIT) because of a lower-body injury.")
+        story = stories.Story("report", "status", "NHL Status Report: Malkin out", "",
+                              datetime(2026, 11, 21, 20, tzinfo=timezone.utc), "injury_minor",
+                              set(), set(), True, text=f"## Pittsburgh Penguins\n\n{evidence}\n\nOther details.",
+                              en={8471215: "Evgeni Malkin"})
+        proposal = {"span_id": 1, "player": "Evgeni Malkin", "club": "Pittsburgh Penguins",
+                    "opponent": "Nashville Predators", "action": "match_absence",
+                    "modality": "confirmed", "event_date": "2026-11-21"}
+        self.assertEqual(shadow_extract.resolve_span(story.text, proposal), evidence)
+        self.assertIsNone(shadow_extract.resolve_span(story.text, {"span_id": 99}))
+        game = {"id": 2026020362, "homeTeam": {"abbrev": "NSH"}, "awayTeam": {"abbrev": "PIT"},
+                "startTimeUTC": "2026-11-21T23:00:00Z"}
+        proposal["evidence"] = evidence
+        self.assertEqual(shadow_extract.calendar_absence(story, proposal, stories.TEAM_EN, [game])["game_id"],
+                         game["id"])
+        self.assertIsNone(shadow_extract.calendar_absence(story, {**proposal, "event_date": "2026-11-22"},
+                                                        stories.TEAM_EN, [game]))
+        packet = fact_packet.extract(story, {"8471215": {"ru": "Евгений Малкин"}},
+                                     {"PIT": "Питтсбург"}, stories.TEAM_EN)
+        self.assertEqual(fact_packet.expires_at(packet), "2026-11-21T18:00:00-05:00")
+        self.assertEqual(fact_packet.verify(packet, fact_packet.snapshot(story), fact_packet.render(packet)), [])
+
     def packet(self, text):
         story = stories.Story("test", "health-update", "Health update", "",
                               datetime(2026, 11, 21, 21, tzinfo=timezone.utc),
