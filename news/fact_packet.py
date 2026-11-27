@@ -98,12 +98,49 @@ def left_game(story, pid: int, club: str, record: dict, teams: dict, club_names:
             "actor_name": record["ru"], "club_name": teams[club], "club_alias": list(club_names[club])}
 
 
+def report_pair(story, actors, names, teams, club_names):
+    if story.kind not in ("injury", "injury_minor") or any(not names.get(str(pid), {}).get("ru") for pid in actors):
+        return None
+    a, b = (re.escape(story.en[pid]) for pid in actors)
+    weekday = "|".join(WEEKDAYS)
+    for club, (city, short) in club_names.items():
+        if club not in teams or not short:
+            continue
+        if club in ("NYR", "NYI"):
+            city = "New York"
+        heading = re.escape(" ".join(filter(None, (city, short))))
+        pattern = (rf"^#{{1,6}}[ \t]+\*?\*?{heading}\*?\*?[ \t]*\n\s*"
+                   rf"(?P<evidence>(?:{a}\s+and\s+{b}|{b}\s+and\s+{a})\s+are each out "
+                   rf"(\d{{1,2}})[-–](\d{{1,2}}) (weeks|months) because of an? "
+                   rf"(?:upper|lower)-body injury, the {re.escape(short)} announced ({weekday})\.)")
+        match = re.search(pattern, story.text, re.I | re.M)
+        if not match:
+            continue
+        low, high = map(int, match.group(2, 3))
+        day = source_day(story)
+        delta = (day.weekday() - WEEKDAYS[match[5].lower()]) % 7
+        if not 1 <= low <= high <= (12 if match[4].lower() == "months" else 52) or delta > 1:
+            return None
+        day = (day - timedelta(days=delta)).isoformat()
+        actor_names = {str(pid): names[str(pid)]["ru"] for pid in actors}
+        return {"version": 1, "source_hash": snapshot(story)["content_hash"], "actor_names": actor_names,
+                "actor_name": " и ".join(actor_names.values()), "club_name": teams[club],
+                "club_alias": list(club_names[club]),
+                "claims": [{"subject": pid, "club": club, "kind": "injury_duration", "modality": "confirmed",
+                            "date": day, "published_date": day, "date_role": "announcement",
+                            "duration_min": low, "duration_max": high, "duration_unit": match[4].lower()[:-1],
+                            "evidence": match["evidence"]} for pid in actors]}
+    return None
+
+
 def report_packet(story, names: dict, teams: dict, club_names: dict) -> dict | None:
     """Only the unique headline actor in one explicitly owned section is selected."""
     def in_head(name):
         surname = re.split(r"[-\s]+", name)[-1]
         return bool(re.search(r"\b" + re.escape(surname) + r"\b", story.headline, re.I))
     actors = [pid for pid, name in story.en.items() if in_head(name)]
+    if len(actors) == 2:
+        return report_pair(story, sorted(actors), names, teams, club_names)
     if len(actors) != 1:
         return None
     pid = actors[0]
@@ -367,6 +404,13 @@ def health_update(story, pid, club, record, teams, club_names, *, section_lead=N
     evidence = story.text.partition("\n\n")[0] if section_lead is None else section_lead
     lead = re.sub(r"^\*\*[A-Z .'-]+ --\*\*\s+", "", evidence.strip())
     subject = re.escape(story.en[pid])
+    absence_subject = subject
+    if section_lead is not None:
+        # Resolve only an adjacent role reference in the named player's own section.
+        absence_subject = (
+            rf"(?:{subject}|{subject}\s+is day to day because of an? "
+            rf"(?:upper-body|lower-body|undisclosed) injury\.\s+The (?:forward|defenseman|goaltender))"
+        )
     owner = re.escape(" ".join(filter(None, club_names[club])))
     match_owner = rf"(?: for the {owner})" + ("?" if section_lead is not None else "")
     weekday = "(?P<weekday>" + "|".join(WEEKDAYS) + ")"
@@ -374,10 +418,11 @@ def health_update(story, pid, club, record, teams, club_names, *, section_lead=N
         ("surgery_announced", rf"{subject} will have surgery on his (?:right|left) shoulder, "
          rf"{owner} general manager [\w .'-]+ told traveling reporters following a "
          rf"\d+-\d+ (?:overtime )?(?:win|loss) (?:at|against) the [\w .'-]+ on {weekday}\."),
-        ("match_absence", rf"{subject}\s+will not play{match_owner} against the "
+        ("match_absence", rf"{absence_subject}\s+will not play{match_owner} against the "
          rf"(?P<opponent>[\w .'-]+) on {weekday} "
          rf"\((?P<start>\d{{1,2}}(?::\d{{2}})? [ap]\.m\.) ET(?:;[^\n()]*)?\)"
-         r"(?: because of (?:a|an) (?:upper-body|lower-body|undisclosed) injury)?\."),
+         r"(?: because of an? (?:upper-body|lower-body|undisclosed) injury)?"
+         r"(?:\.|(?=, and (?:the team|the [\w -]+) announced (?:that )?his status will be updated\b))"),
         ("recovery_estimate", rf"{subject} is expected to be out (?P<weeks>\d{{1,2}}) weeks with a "
          rf"(?P<region>upper|lower)-body injury after the {owner} (?:center|forward|defenseman|goaltender) "
          rf"was reevaluated by a specialist, coach [\w .'-]+ said {weekday}\."),
@@ -385,7 +430,7 @@ def health_update(story, pid, club, record, teams, club_names, *, section_lead=N
     for kind, pattern in patterns:
         if section_lead is not None and kind != "match_absence":
             continue
-        match = (re.match(pattern + r"(?=\s|$)", lead, re.I) if section_lead is not None
+        match = (re.match(pattern + r"(?=\s|,|$)", lead, re.I) if section_lead is not None
                  else re.fullmatch(pattern, lead, re.I))
         if not match:
             continue
@@ -593,6 +638,9 @@ def render(packet: dict) -> str:
                     f"Игрок «{packet['club_name']}» получил повреждение {day(claim)}; "
                     f"срок объявлен {day({**claim, 'date': claim['published_date']})}.")
         first, second = claims
+        if first.get("date_role") == "announcement":
+            return (f"{packet['actor_name']} выбыли на {duration_text(first)}\n\n"
+                    f"«{packet['club_name']}» сообщил о сроке для обоих игроков {day(first)}.")
         return (f"{packet['actor_names'][str(first['subject'])]} выбыл на {duration_text(first)}, "
                 f"{packet['actor_names'][str(second['subject'])]} — на {duration_text(second)}\n\n"
                 f"Оба игрока «{packet['club_name']}» получили травмы {day(first)}.")

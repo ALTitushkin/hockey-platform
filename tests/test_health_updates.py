@@ -5,6 +5,24 @@ from news import editorial_lifecycle, fact_packet, shadow_extract, stories
 
 
 class HealthUpdateTests(TestCase):
+    def test_two_linked_players_share_announced_range_without_injury_date(self):
+        story = stories.Story(
+            "pair", "pair", "NHL Status Report: Bjorkstrand, Smits out", "",
+            datetime(2026, 11, 21, 20, tzinfo=timezone.utc), "injury_minor", set(), set(), True,
+            text="## **New York Rangers**\n\nOliver Bjorkstrand and Alberts Smits are each out "
+                 "2-3 months because of an upper-body injury, the Rangers announced Saturday.",
+            en={1: "Oliver Bjorkstrand", 2: "Alberts Smits"})
+        names = {"1": {"ru": "Оливер Бьоркстранд"}, "2": {"ru": "Албертс Смитс"}}
+        teams = {"NYR": "Рейнджерс"}
+        packet = fact_packet.extract(story, names, teams, stories.TEAM_EN)
+        self.assertIsNotNone(packet)
+        self.assertEqual([(c["subject"], c["date_role"]) for c in packet["claims"]],
+                         [(1, "announcement"), (2, "announcement")])
+        self.assertNotIn("получили травмы", fact_packet.render(packet))
+        self.assertEqual(fact_packet.verify(packet, fact_packet.snapshot(story), fact_packet.render(packet)), [])
+        story.text = story.text.replace("announced Saturday", "announced Monday")
+        self.assertIsNone(fact_packet.extract(story, names, teams, stories.TEAM_EN))
+
     def test_numbered_report_span_binds_player_and_match(self):
         evidence = ("Evgeni Malkin\u00a0will not play against the Nashville Predators on Saturday "
                     "(6 p.m. ET; SN-PIT) because of a lower-body injury.")
