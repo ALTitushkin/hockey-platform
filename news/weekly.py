@@ -19,9 +19,31 @@ def period(monday: str) -> tuple[str, str]:
     return (day - timedelta(days=7)).isoformat(), (day - timedelta(days=1)).isoformat()
 
 
+def summary_rows(url: str, kind: str, fetch) -> list[dict]:
+    response = fetch(url)
+    rows, total = response.get("data"), response.get("total")
+    error = f"Недельная статистика {kind}: неполный ответ"
+    if not isinstance(rows, list) or type(total) is not int or not 0 <= total <= 2000:
+        raise RuntimeError(error)
+    if len(rows) == total:
+        return rows
+    # Some NHL responses cap even limit=-1. Restart with a stable sort before paging.
+    if not 0 < len(rows) < total:
+        raise RuntimeError(error)
+    page_url = url.replace("limit=-1", "limit=100") + "&sort=playerId"
+    collected = []
+    for offset in range(0, total, 100):
+        page = fetch(page_url.replace("start=0", f"start={offset}", 1))
+        batch = page.get("data")
+        if page.get("total") != total or not isinstance(batch, list) or len(batch) != min(100, total - offset):
+            raise RuntimeError(error)
+        collected.extend(batch)
+    return collected
+
+
 def collect(monday: str, players: dict, fetch: Callable[[str], dict] = nhl.fetch_json,
             scope: Scope | None = None) -> dict:
-    """Two summary requests; reject truncated, duplicate or inconsistent aggregates."""
+    """Read complete summaries and reject duplicate or inconsistent aggregates."""
     start, end = period(monday)
     year = date.fromisoformat(start).year - (date.fromisoformat(start).month < 7)
     scope = scope or Scope(f"{year}{year + 1}")
@@ -33,10 +55,7 @@ def collect(monday: str, players: dict, fetch: Callable[[str], dict] = nhl.fetch
     result = {"start": start, "end": end, "sources": [], "skaters": [], "goalies": [], "scope": scope.data()}
     for kind, key in (("skater", "skaters"), ("goalie", "goalies")):
         url = f"{nhl.STATS}/{kind}/summary?{query}"
-        response = fetch(url)
-        rows = response.get("data")
-        if not isinstance(rows, list) or type(response.get("total")) is not int or response["total"] != len(rows):
-            raise RuntimeError(f"Недельная статистика {kind}: неполный ответ")
+        rows = summary_rows(url, kind, fetch)
         seen = set()
         for row in rows:
             pid = row.get("playerId")

@@ -223,7 +223,10 @@ def build_weekly(msk: str, review: bool, last_try: bool = True) -> str:
         return "pending"
     reg, teams = load()
     players = reg["players"]
-    data = weekly.collect(msk, players, scope=configured_scope())
+    named = {pid: player for pid, player in players.items() if player.get("ru") and player.get("surname")}
+    if len(named) != len(players):
+        print(f"— недельный выпуск: {len(players) - len(named)} записей реестра ждут подтверждения имени")
+    data = weekly.collect(msk, named, scope=configured_scope())
     data["achievements"] = achievements.load(publish.OUT, start, end, players,
                                               os.environ.get("NEWS_CHANNEL", ""), scope=configured_scope())
     text, facts = weekly.render(data, players)
@@ -427,7 +430,8 @@ def run_stories(now: datetime) -> list[str]:
 
     return stories.process(now, nhl.fetch_json, ours, teams, names.league_players, write,
                            lambda: nhl.fetch_nationals(SEASON), deliver, notify, discover,
-                           refresh_fetch=lambda url, timeout: nhl.fetch_json(url, retries=1, timeout=timeout))
+                           refresh_fetch=lambda url, timeout: nhl.fetch_json(url, retries=1, timeout=timeout),
+                           audit_feed=True)
 
 
 def cmd_stories(args) -> int:

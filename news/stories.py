@@ -15,6 +15,7 @@
 import html
 import json
 import re
+import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -26,6 +27,7 @@ from news import (
     fact_packet,
     guard,
     publish,
+    reconcile_stories,
     source_watch,
     story_provenance,
     story_validation,
@@ -214,36 +216,49 @@ def is_notable(landing: dict) -> bool:
 
 
 def select(items: list[Story], state: dict, now: datetime, ours: set[int], ours_en: dict[str, int],
-           notable: Callable[[int], bool] | None = None) -> list[Story]:
+           notable: Callable[[int], bool] | None = None, outcomes: dict | None = None) -> list[Story]:
     """Новые новости, которые пора обработать: не виденные, важные (или про наших), без дублей события.
     notable(NHL ID) — заметен ли игрок (для травм и возвращений не наших)."""
     out = []
     since = datetime.fromisoformat(state["since"])
     for s in sorted(items, key=lambda s: s.date):
+        def mark(reason):
+            if outcomes is not None:
+                outcomes[s.eid] = reason
+
         if s.eid in state["seen"] or s.date < since:
+            mark("already_processed" if s.eid in state["seen"] else "outside_window")
             continue
         if now.timestamp() < state.get("retry_after", {}).get(s.eid, 0):
+            mark("retry_deferred")
             continue
         for name, pid in ours_en.items():  # клуб не отметил игрока тегом — ищем нашего по имени
             if name in s.headline or name in s.summary:
                 s.pids.add(pid)
         if KINDS[s.kind][2] and not s.pids & ours and not wider(s, notable):
+            mark("outside_editorial_scope")
             state["seen"][s.eid] = now.isoformat()  # мелкое движение не нашего — пропускаем навсегда
             continue
         if not s.nhl and now - s.date < HOLD_TEAM and not any(same_event(s, o) for o in items if o.nhl):
+            mark("waiting_for_league_source")
             continue  # релиз клуба ждёт текст NHL.com — решим на следующем проходе
         twins = [o for o in items if o is not s and same_event(s, o)]
         if any(o.eid in state["seen"] for o in twins):
+            mark("related_already_processed")
             state["seen"][s.eid] = now.isoformat()  # то же событие уже вышло — дубль
             continue
         if any(same_event(s, o) for o in out):
+            mark("related_in_progress")
             continue  # первый текст ещё не доставлен — не закрываем событие заранее
         if not s.nhl and any(o.nhl for o in twins):
+            mark("preferred_league_source")
             continue  # возьмём текст NHL.com, когда до него дойдёт очередь
         if report_repeat(s, state, now, remember=False):
+            mark("repeated_report")
             state["seen"][s.eid] = now.isoformat()
             continue
         out.append(s)
+        mark("selected")
     return out
 
 
@@ -526,7 +541,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             write: Callable[[str], str | None], nationals: Callable[[], list[dict]],
             deliver: Callable[[str, str], tuple[bool, str]], notify: Callable[[str], None],
             discover: Callable[[set[int]], tuple[list[str], dict]] | None = None,
-            refresh_fetch=None) -> list[str]:
+            refresh_fetch=None, *, audit_feed: bool = False) -> list[str]:
     """Один проход: → строки для лога. write(промпт, гард) → (текст, кто написал, журнал),
     deliver(дата, рубрика) → итог отправки владельцу/в канал, notify(текст) — владельцу о сбое,
     discover(NHL ID) → новые наши среди героев подписаний/обменов/вызовов (registry.from_story)."""
@@ -535,7 +550,13 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
     # Сохраняем исходники выбранных новостей: отказ модели может пережить
     # несколько обновлений короткой ленты (40 элементов).
     queued = state.setdefault("pending_items", {})
-    raw = list(queued.values()) + fetch(FEED).get("items", [])
+    feed = fetch(FEED).get("items", [])
+    audit = {}
+    for item in feed:
+        if isinstance(item, dict) and item.get("slug"):
+            audit[str(item.get("_entityId") or item["slug"])] = {
+                "slug": item["slug"], "outcome": "filtered_or_unidentified", "at": now.isoformat()}
+    raw = list(queued.values()) + feed
     raw, refreshed = source_watch.prepare(
         raw, state, now, parse_item, lambda s: body_text(fetch(s.url)),
         bounded_fetch=(lambda s, timeout: body_text(refresh_fetch(s.url, timeout))) if refresh_fetch else None)
@@ -564,14 +585,18 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                 return False  # не ответил — решим на следующем проходе
         return cache[str(pid)]
 
-    for s in select(items, state, now, ours, ours_by_name(state, msk, nationals), notable):
+    outcomes = {}
+    documents = {}
+    for s in select(items, state, now, ours, ours_by_name(state, msk, nationals), notable, outcomes):
         if report_repeat(s, state, now, remember=False):
             state["seen"][s.eid] = now.isoformat()
+            outcomes[s.eid] = "repeated_report"
             continue
         kind = f"story-{s.eid[:8]}"
         queued[s.eid] = parsed[s.eid][1]
         save_state(state)
         draft_msk = state.setdefault("draft_dates", {}).get(s.eid, msk)
+        documents[s.eid] = publish.draft_path(draft_msk, kind)
         # После сбоя доставки повторяем тот же черновик: уже отправленные каналы
         # пропустит publish(), модель и источник повторно не вызываются.
         existing_path = publish.draft_path(draft_msk, kind)
@@ -609,6 +634,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             s.text, s.en = refreshed[s.eid] if s.eid in refreshed else body_text(fetch(s.url))
             s.mentioned = set(s.en)
         except RuntimeError as e:
+            outcomes[s.eid] = "source_unavailable"
             log.append(f"инфоповод {s.slug}: текст не получен ({e})")
             continue
         names = wiki(s.mentioned | s.pids, registry)
@@ -622,6 +648,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         if equivalent:
             previous_path, previous = equivalent
             previous_date, previous_kind = previous_path.stem.split("_", 1)
+            documents[s.eid] = previous_path
             if previous.get("published") or previous.get("rejected") or previous.get("editorial_closed"):
                 ok, info = True, "прежний редакционный исход сохранён"
             else:
@@ -649,6 +676,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
         finally:
             events_db.close()
         if decision["status"] == "duplicate":
+            outcomes[s.eid] = "duplicate"
             state["seen"][s.eid] = now.isoformat()
             queued.pop(s.eid, None)
             log.append(f"инфоповод {s.slug}: уже опубликована та же версия события")
@@ -679,6 +707,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                         "личность/клуб и связь фактов не подтверждены типизированным источником"]
             notes.extend(attempts)
         if source == "editorial_task":
+            documents[s.eid] = publish.draft_path(draft_msk, kind)
             variant = "редакторская задача · нет проверенного шаблона"
             caption = (f"📝 <b>Нужна редакторская сборка</b>\n\n"
                        f"{html.escape(s.headline)}\n\n"
@@ -709,6 +738,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                 save_state(state)
             continue
         if not body:  # новость есть, а поста нет — владелец должен знать
+            outcomes[s.eid] = "facts_blocked"
             failures = state.setdefault("failures", {})
             failures[s.eid] = failures.get(s.eid, 0) + 1
             delay = min(6 * 60 * 60, 30 * 60 * 2 ** min(failures[s.eid] - 1, 4))
@@ -751,6 +781,7 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
                    render(s, body, msk, [goalie_line(g) for g in goalies]))
         publish.save_draft(msk, caption, [], variant, pic,
                            kind=kind, data=data)
+        documents[s.eid] = publish.draft_path(msk, kind)
         source_watch.remember(state, parsed[s.eid][1], s, now)
         state["draft_dates"][s.eid] = msk
         save_state(state)  # дата черновика переживает сбой доставки и московскую полночь
@@ -762,4 +793,19 @@ def process(now: datetime, fetch: Fetch, registry: dict, teams_ru: dict, wiki: C
             report_repeat(s, state, now)
             save_state(state)
     save_state(state)
+    if not audit_feed:
+        return log
+    for eid, outcome in outcomes.items():
+        story, raw_item = parsed[eid]
+        raw_id = str(raw_item.get("_entityId") or story.slug)
+        if raw_id != eid and audit.get(raw_id, {}).get("outcome") == "filtered_or_unidentified":
+            audit.pop(raw_id)
+        path = documents.get(eid) or publish.draft_path(
+            state.get("draft_dates", {}).get(eid, msk), f"story-{eid[:8]}")
+        audit[eid] = {"slug": story.slug, "at": now.isoformat(), "outcome": outcome,
+                      "document": path.name if path.is_file() else None}
+    try:
+        log.extend(reconcile_stories.record_pass(publish.OUT, audit, now))
+    except (OSError, ValueError, sqlite3.Error) as error:
+        log.append(f"сверка инфоповодов: {type(error).__name__}")
     return log
